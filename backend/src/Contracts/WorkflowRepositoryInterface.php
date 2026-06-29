@@ -26,11 +26,21 @@ interface WorkflowRepositoryInterface
 
     /**
      * Instanzen, die der Cron-Runner aufwecken soll
-     * (status = waiting_timer und wake_at <= jetzt).
+     * (status = waiting_timer und wake_at <= jetzt). Reine Lese-Abfrage.
      *
      * @return list<WorkflowInstance>
      */
     public function findDueInstances(\DateTimeImmutable $now, int $limit = 50): array;
+
+    /**
+     * Faellige Timer-Instanzen NEBENLAEUFIGKEITSSICHER abholen: sperrt die Zeilen,
+     * ueberspringt bereits von anderen Workern gesperrte Instanzen und markiert die
+     * abgeholten als laufend, sodass parallele Cron-Laeufe dieselbe Instanz nicht
+     * doppelt verarbeiten. Die zurueckgegebenen Instanzen haben Status RUNNING.
+     *
+     * @return list<WorkflowInstance>
+     */
+    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array;
 
     /**
      * Schreibt einen Audit-/History-Eintrag.

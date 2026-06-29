@@ -5,6 +5,19 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 6: Background-Runner & Trigger (Nebenlaeufigkeit)
+- `WorkflowRunner::tick()`: holt faellige Timer-Instanzen ab, laesst sie weiterlaufen
+  und prueft datengetriebene Trigger; gibt eine Statistik (woken/started/errors) zurueck.
+- `TriggerInterface` und `DataProviderInterface` (Ports); Beispiel `OverdueInvoiceTrigger`
+  mit Fake `ArrayDataProvider`.
+- **Nebenlaeufigkeit:** `WorkflowRepositoryInterface::claimDueInstances()` holt faellige
+  Instanzen mit `SELECT … FOR UPDATE SKIP LOCKED` ab und markiert sie atomar als `running`.
+  Parallele Cron-Laeufe verarbeiten dieselbe Instanz nicht doppelt.
+- `bin/run-workflows.php` als Cron-Einstieg; `examples/bootstrap.php` (Host-App-Wiring).
+- Tests: Runner-Unit (Timer fortgeschrieben, Trigger startet, keine Doppelverarbeitung,
+  Fehlerzaehlung) und Integrationstests gegen MariaDB fuer das Locking (gesperrte Zeile
+  wird uebersprungen; Status-Flip verhindert Re-Claim).
+
 ### Added — Phase 5: Actions & Mailer
 - `MailerInterface` (Port) und eingebaute `SendEmailAction` mit
   `{{platzhalter}}`-Interpolation aus dem Instanz-Kontext (fehlende/nicht

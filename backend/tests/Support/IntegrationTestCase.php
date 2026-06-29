@@ -47,6 +47,20 @@ abstract class IntegrationTestCase extends TestCase
         return $this->pdo;
     }
 
+    /**
+     * Eigene, unabhaengige Verbindung (z. B. um in Nebenlaeufigkeits-Tests
+     * eine Zeile aus einer zweiten Transaktion heraus zu sperren).
+     */
+    protected function newConnection(): \PDO
+    {
+        return new \PDO(
+            (string) (getenv('WF_DB_DSN') ?: ''),
+            (string) (getenv('WF_DB_USER') ?: 'root'),
+            (string) (getenv('WF_DB_PASS') ?: ''),
+            [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],
+        );
+    }
+
     private function ensureDatabaseExists(string $dsn, string $user, string $pass): void
     {
         if (preg_match('/dbname=([^;]+)/', $dsn, $m) !== 1) {

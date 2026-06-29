@@ -109,6 +109,52 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
         return $instances;
     }
 
+    /**
+     * @return list<WorkflowInstance>
+     */
+    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // Faellige Zeilen sperren; bereits gesperrte (von anderen Workern) ueberspringen.
+            $select = $this->pdo->prepare(
+                'SELECT * FROM wf_instance
+                 WHERE status = :st AND wake_at IS NOT NULL AND wake_at <= :now
+                 ORDER BY wake_at ASC
+                 LIMIT ' . max(1, $limit) . '
+                 FOR UPDATE SKIP LOCKED'
+            );
+            $select->execute([
+                ':st' => WorkflowInstance::WAITING_TIMER,
+                ':now' => $now->format('Y-m-d H:i:s'),
+            ]);
+
+            $claim = $this->pdo->prepare('UPDATE wf_instance SET status = :run WHERE id = :id');
+
+            $instances = [];
+            foreach ($select->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $instance = $this->hydrate($row);
+                // Atomar als laufend markieren, damit kein anderer Lauf sie erneut abholt.
+                $claim->execute([':run' => WorkflowInstance::RUNNING, ':id' => $instance->id]);
+                $instance->status = WorkflowInstance::RUNNING;
+                $instances[] = $instance;
+            }
+
+            $this->pdo->commit();
+
+            return $instances;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
     public function logHistory(string $instanceId, string $kind, ?string $step, array $detail = []): void
     {
         $sql = 'INSERT INTO wf_history (instance_id, kind, step, detail)

@@ -115,11 +115,17 @@ das Frontend muss die einzelnen Workflows nicht kennen, sondern rendert generisc
 `WorkflowEngine` + `WorkflowRunner` zusammen. In einer echten App gehört das in den
 DI-Container.
 
+## Nebenläufigkeit (mehrere Cron-Worker)
+
+Der `WorkflowRunner` holt fällige Timer-Instanzen über
+`WorkflowRepositoryInterface::claimDueInstances()` ab. Die PDO-Implementierung sperrt
+die Zeilen mit `SELECT … FOR UPDATE SKIP LOCKED` in einer Transaktion und markiert sie
+atomar als `running`. Dadurch verarbeiten parallele Cron-Läufe dieselbe Instanz nicht
+doppelt (benötigt InnoDB; `SKIP LOCKED` ab MariaDB 10.6).
+
 ## Nächste sinnvolle Schritte
 
 - Eigene Actions (`ActionInterface`) für deine Domäne registrieren
 - `DataProvider.find()` mit einem sauberen Query-Builder ausimplementieren
-- Optimistic Locking auf `wf_instance` (Versionsspalte), falls mehrere Cron-Worker laufen
 - Retry/Backoff bei fehlgeschlagenen Actions statt direktem `failed`
 - Editor im Frontend zum Erstellen/Versionieren von Definitionen
-```

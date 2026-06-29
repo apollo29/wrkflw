@@ -73,6 +73,27 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         return $due;
     }
 
+    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array
+    {
+        $claimed = [];
+        foreach ($this->instances as $instance) {
+            if (count($claimed) >= $limit) {
+                break;
+            }
+            if (
+                $instance->status === WorkflowInstance::WAITING_TIMER
+                && $instance->wakeAt !== null
+                && $instance->wakeAt <= $now
+            ) {
+                // Abholen = als laufend markieren, sodass ein zweiter Lauf sie nicht erneut erhaelt.
+                $instance->status = WorkflowInstance::RUNNING;
+                $claimed[] = $instance;
+            }
+        }
+
+        return $claimed;
+    }
+
     public function logHistory(string $instanceId, string $kind, ?string $step, array $detail = []): void
     {
         $this->history[] = [
@@ -97,5 +118,13 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
     public function historyKinds(): array
     {
         return array_map(static fn (array $h): string => $h['kind'], $this->history);
+    }
+
+    /**
+     * @return list<WorkflowInstance>
+     */
+    public function allInstances(): array
+    {
+        return array_values($this->instances);
     }
 }
