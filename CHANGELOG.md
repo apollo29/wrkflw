@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 4: Core-Engine
+- `WorkflowEngine` mit `start()`, `advance()` und `handleEvent()` als Zustandsmaschine.
+- Step-Typen `automatic` (Action ausfuehren), `interactive` (auf Event warten),
+  `timer` (`wake_at` setzen, vom Cron aufgeweckt).
+- Transition-Auswahl mit/ohne Event-Bindung, Schleifenschutz (Step-Limit),
+  Fehler in Actions fuehren zu Status `failed` mit `last_error`.
+- History-Logging an allen Uebergaengen (start/action/wait_event/wait_timer/
+  transition/event/complete/error).
+- `ActionInterface` (Port) und `ActionRegistry` (von der Engine benoetigt;
+  konkrete Actions folgen in Phase 5).
+- In-Memory-Fake `InMemoryWorkflowRepository` fuer schnelle Engine-Unit-Tests.
+- Unit-Tests: Happy Path bis `completed`, Verzweigung enterprise/standard,
+  interaktiver Submit, Bedingung-nicht-erfuellt-bleibt-stehen, Timer mit
+  Wiederaufnahme, fehlerhafte Action, Schleifenschutz, Kontext-Merge.
+
 ### Added — Phase 3: Expression-Evaluator
 - `ExpressionEvaluatorInterface` (Port) mit `evaluate()` und `evaluateValue()`.
 - `SymfonyExpressionEvaluator` (sandboxed): Sprache ohne eingebaute Funktionen
