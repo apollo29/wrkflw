@@ -80,7 +80,16 @@ Transitionen nutzen Ausdrücke der Symfony ExpressionLanguage. Der Scope enthäl
 context['status'] == 'approved'
 context['amount'] > 1000 and context['vip']
 context['dueDate'] < now
+context['lastSeen'] < now - days(30)
 ```
+
+**Sandbox:** Der `SymfonyExpressionEvaluator` läuft ohne eingebaute Funktionen –
+auch das standardmäßige `constant()` ist deaktiviert, beliebige PHP-Funktionen sind
+nicht erreichbar. Freigegeben sind nur die Zeitfunktionen `days(n)`, `hours(n)`,
+`minutes(n)` (liefern Sekunden) sowie Funktionen, die die Host-App ausdrücklich
+übergibt (`new SymfonyExpressionEvaluator([$ownFunction])`). Fehlende Kontext-Keys
+werten zu `null` aus (kein Fehler); ungültige Ausdrücke werfen eine
+`ExpressionException` statt eines Fatals.
 
 ## Frontend (Angular)
 

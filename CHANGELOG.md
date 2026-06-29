@@ -5,6 +5,17 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 3: Expression-Evaluator
+- `ExpressionEvaluatorInterface` (Port) mit `evaluate()` und `evaluateValue()`.
+- `SymfonyExpressionEvaluator` (sandboxed): Sprache ohne eingebaute Funktionen
+  initialisiert — auch `constant()` ist deaktiviert, beliebige PHP-Funktionen sind
+  nicht erreichbar.
+- Freigegebene Zeitfunktionen `days()`, `hours()`, `minutes()`; zusaetzliche
+  Funktionen per Konstruktor (Whitelist) registrierbar.
+- Scope mit `context` und `now`; fehlende Kontext-Keys werten zu `null` aus
+  (kein Fatal, keine Warnung); ungueltige Ausdruecke werfen `ExpressionException`.
+- Beispiel-Ausdruecke und Sandbox-Hinweis im README dokumentiert.
+
 ### Added — Phase 2: Persistenz (MariaDB)
 - `WorkflowRepositoryInterface` (Port) und `PdoWorkflowRepository`:
   `findDefinition` (neueste aktive Version), `saveInstance` (Insert/Update),
