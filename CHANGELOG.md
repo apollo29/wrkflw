@@ -5,6 +5,16 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 5: Actions & Mailer
+- `MailerInterface` (Port) und eingebaute `SendEmailAction` mit
+  `{{platzhalter}}`-Interpolation aus dem Instanz-Kontext (fehlende/nicht
+  darstellbare Werte werden zu leerem String); Rueckgabe `lastEmailTo` fuer den Merge.
+- Test-Double `ArrayMailer`, das versendete Mails im Speicher sammelt.
+- Beispielhafte Host-App-Action `MarkVipAction` (leitet einen Wert aus dem Kontext
+  ab) als Vorlage fuer eigene Aktionen.
+- Tests: korrekte Interpolation und Mailer-Aufruf, unbekannter Action-Key wirft
+  Exception, Custom-Action-Ergebnis wird gemergt und in einer Transition genutzt.
+
 ### Added — Phase 4: Core-Engine
 - `WorkflowEngine` mit `start()`, `advance()` und `handleEvent()` als Zustandsmaschine.
 - Step-Typen `automatic` (Action ausfuehren), `interactive` (auf Event warten),
