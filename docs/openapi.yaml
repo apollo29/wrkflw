@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: Workflow Engine API
+  version: 0.0.0
+  description: >
+    Platzhalter-Spezifikation. Die vollstaendige REST-API (Slim) wird in Phase 7
+    ausgearbeitet (siehe PLAN.md). Endpunkte: Workflow starten, Instanz-Zustand,
+    aktueller Schritt, Events anwenden, History.
+servers:
+  - url: http://localhost:8080
+paths: {}

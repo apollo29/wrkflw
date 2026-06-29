@@ -1,0 +1,72 @@
+{
+  "id": "onboarding",
+  "version": 1,
+  "name": "Benutzer-Onboarding",
+  "startStep": "send_welcome",
+  "steps": {
+    "send_welcome": {
+      "type": "automatic",
+      "action": "send_email",
+      "config": {
+        "to": "{{email}}",
+        "subject": "Willkommen, {{name}}!",
+        "body": "Hallo {{name}}, bitte bestaetige dein Profil."
+      },
+      "transitions": [
+        { "to": "await_profile" }
+      ]
+    },
+    "await_profile": {
+      "type": "interactive",
+      "ui": {
+        "title": "Profil vervollstaendigen",
+        "description": "Bitte fuelle dein Profil aus.",
+        "fields": [
+          { "name": "phone", "label": "Telefon", "type": "text" },
+          { "name": "acceptedTerms", "label": "AGB akzeptiert", "type": "boolean" }
+        ],
+        "events": ["submit"]
+      },
+      "transitions": [
+        { "event": "submit", "to": "check_vip", "when": "context['acceptedTerms'] == true" },
+        { "event": "submit", "to": "await_profile", "when": "context['acceptedTerms'] != true" }
+      ]
+    },
+    "check_vip": {
+      "type": "automatic",
+      "transitions": [
+        { "to": "vip_followup", "when": "context['plan'] == 'enterprise'" },
+        { "to": "wait_3_days",  "when": "true" }
+      ]
+    },
+    "vip_followup": {
+      "type": "automatic",
+      "action": "send_email",
+      "config": {
+        "to": "{{email}}",
+        "subject": "Ihr persoenlicher Ansprechpartner",
+        "body": "Hallo {{name}}, als Enterprise-Kunde melden wir uns persoenlich."
+      },
+      "transitions": [ { "to": "done" } ]
+    },
+    "wait_3_days": {
+      "type": "timer",
+      "delaySeconds": 259200,
+      "transitions": [ { "to": "send_tips" } ]
+    },
+    "send_tips": {
+      "type": "automatic",
+      "action": "send_email",
+      "config": {
+        "to": "{{email}}",
+        "subject": "Tipps fuer den Start",
+        "body": "Hallo {{name}}, hier ein paar Tipps ..."
+      },
+      "transitions": [ { "to": "done" } ]
+    },
+    "done": {
+      "type": "automatic",
+      "transitions": []
+    }
+  }
+}

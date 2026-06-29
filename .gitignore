@@ -1,0 +1,22 @@
+# PHP / Composer
+/backend/vendor/
+/backend/.phpunit.cache/
+/backend/.phpstan.cache/
+/backend/.php-cs-fixer.cache
+
+# Node / Angular
+node_modules/
+/frontend/dist/
+/frontend/.angular/
+
+# Umgebung & lokale Konfiguration
+.env
+.env.local
+
+# Referenz-Scaffold (wird Phase fuer Phase test-getrieben eingebaut)
+/workflow-engine.zip
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.log
