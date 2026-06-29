@@ -5,6 +5,22 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 2: Persistenz (MariaDB)
+- `WorkflowRepositoryInterface` (Port) und `PdoWorkflowRepository`:
+  `findDefinition` (neueste aktive Version), `saveInstance` (Insert/Update),
+  `findInstance`, `findDueInstances`, `logHistory`.
+- Defensive JSON-/Row-Dekodierung (PHPStan level max, keine ungeprueften Casts);
+  `id` und `version` der Definition kommen massgeblich aus der DB.
+- Integrationstest-Basis `IntegrationTestCase`: legt die Test-DB an und spielt
+  `schema.sql` vor jedem Test frisch ein; ueberspringt ohne `WF_DB_DSN`.
+- Integrationstests gegen MariaDB: Instanz-Roundtrip inkl. JSON-Kontext,
+  `findDueInstances` (nur faellige Timer), History-Schreiben, Versions-Auswahl.
+- Skripte: `bin/migrate.php` (Schema anwenden), `bin/seed-definition.php`
+  (Definition aus JSON validieren und einspielen).
+
+### Changed
+- Phase-0-Platzhalter-Integrationstest entfernt (durch echte Tests ersetzt).
+
 ### Added — Phase 1: Domaenenmodell & Definition-Parsing
 - Typisierte, readonly Value-Objects: `Transition`, `Step`, `WorkflowDefinition`
   (`src/Definition`) und `WorkflowInstance` (`src/Instance`).
