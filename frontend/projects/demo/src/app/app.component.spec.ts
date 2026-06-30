@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { WORKFLOW_API_BASE_URL } from 'workflow-client';
+import { WORKFLOW_API_BASE_URL } from '@apollo29/workflow-client';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {

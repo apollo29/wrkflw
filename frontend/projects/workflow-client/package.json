@@ -1,12 +1,17 @@
 {
-  "name": "workflow-client",
-  "version": "0.0.1",
+  "name": "@apollo29/workflow-client",
+  "version": "1.0.0",
+  "description": "Angular-Client (Service, Runner- und Editor-Komponenten) fuer die Workflow-Engine.",
+  "license": "MIT",
   "peerDependencies": {
     "@angular/common": "^19.2.0",
     "@angular/core": "^19.2.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "sideEffects": false
 }

@@ -131,6 +131,39 @@ das Frontend muss die einzelnen Workflows nicht kennen, sondern rendert generisc
 `WorkflowEngine` + `WorkflowRunner` zusammen. In einer echten App gehört das in den
 DI-Container.
 
+## Einbinden in andere Projekte
+
+### PHP-Engine (Composer)
+
+Paket `apollo29/workflow-engine` (Namespace `WorkflowEngine\` → `backend/src`). Die
+Root-`composer.json` macht das Repo direkt installierbar.
+
+Per Git/VCS in der `composer.json` des Zielprojekts:
+
+```json
+{
+  "repositories": [{ "type": "vcs", "url": "https://github.com/apollo29/wrkflw" }],
+  "require": { "apollo29/workflow-engine": "^1.2" }
+}
+```
+
+Auf Packagist veröffentlicht (Repo-URL einreichen) genügt `composer require
+apollo29/workflow-engine`. Die Tags `vX.Y.Z` sind die Versionen. Schema:
+`backend/schema.sql`; Wiring-Vorlage: `backend/examples/bootstrap.php`.
+
+### Angular-Client (npm)
+
+Paket `@apollo29/workflow-client` (Angular ≥ 19.2). Veröffentlichen über einen Tag
+`client-vX.Y.Z` — der Workflow `publish-npm` baut die Library und publisht sie
+(einmalig das Repo-Secret `NPM_TOKEN` mit einem npm-Access-Token setzen). Danach:
+
+```bash
+npm install @apollo29/workflow-client
+```
+
+Ohne Registry (lokal): `cd frontend && ng build workflow-client` und im Zielprojekt
+`npm install /pfad/zu/frontend/dist/workflow-client`.
+
 ## Nebenläufigkeit (mehrere Cron-Worker)
 
 Der `WorkflowRunner` holt fällige Timer-Instanzen über

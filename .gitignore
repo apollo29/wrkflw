@@ -1,4 +1,5 @@
 # PHP / Composer
+/vendor/
 /backend/vendor/
 /backend/.phpunit.cache/
 /backend/.phpstan.cache/

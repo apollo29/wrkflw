@@ -1,6 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
-import { authInterceptor, WORKFLOW_API_BASE_URL } from 'workflow-client';
+import { authInterceptor, WORKFLOW_API_BASE_URL } from '@apollo29/workflow-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [

@@ -5,6 +5,20 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-30
+
+### Added
+- Root-`composer.json` (`apollo29/workflow-engine`): macht die PHP-Engine direkt per
+  Composer (VCS/Packagist) einbindbar; Autoload `WorkflowEngine\` → `backend/src`.
+- npm-Publish-Workflow (`.github/workflows/publish-npm.yml`): veroeffentlicht die
+  Angular-Library bei Tags `client-v*` (benoetigt Repo-Secret `NPM_TOKEN`).
+- README-Abschnitt „Einbinden in andere Projekte" (Composer + npm).
+
+### Changed
+- Angular-Library auf scoped Namen `@apollo29/workflow-client` mit Version `1.0.0`
+  umgestellt (inkl. `publishConfig.access=public`); Demo-Importe und tsconfig-Pfad
+  entsprechend angepasst.
+
 ## [1.2.0] - 2026-06-30
 
 ### Added

@@ -1,0 +1,25 @@
+{
+    "name": "apollo29/workflow-engine",
+    "description": "Eingebettete Workflow-Engine als PHP-Library (Slim/MariaDB), mit Angular-Client.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["workflow", "engine", "state-machine", "slim", "mariadb"],
+    "require": {
+        "php": ">=8.4",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "psr/container": "^1.1 || ^2.0",
+        "psr/log": "^3.0",
+        "symfony/expression-language": "^6.4 || ^7.0",
+        "slim/slim": "^4.12",
+        "slim/psr7": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "WorkflowEngine\\": "backend/src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

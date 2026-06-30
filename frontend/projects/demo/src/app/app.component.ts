@@ -4,7 +4,7 @@ import {
   WorkflowEditorComponent,
   WorkflowRunnerComponent,
   WorkflowService,
-} from 'workflow-client';
+} from '@apollo29/workflow-client';
 
 @Component({
   selector: 'app-root',
