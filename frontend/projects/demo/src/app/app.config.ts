@@ -6,8 +6,9 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideHttpClient(withInterceptors([authInterceptor])),
-    // Basis-URL der Workflow-API. Bei Bedarf an die echte Umgebung anpassen.
-    { provide: WORKFLOW_API_BASE_URL, useValue: 'http://localhost:8080' },
+    // Leer = same-origin: im Dev-Modus leitet der ng-serve-Proxy (proxy.conf.json)
+    // /workflows und /instances an die API (http://127.0.0.1:8080) weiter -> kein CORS.
+    { provide: WORKFLOW_API_BASE_URL, useValue: '' },
     // Optional: { provide: WORKFLOW_API_KEY, useValue: '<api-key>' },
   ],
 };

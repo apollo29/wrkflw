@@ -24,9 +24,68 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
     /** @var list<array{instanceId:string,kind:string,step:?string,detail:array<string,mixed>}> */
     private array $history = [];
 
+    /** @var array<string,array<int,array{name:string,active:bool,json:?string}>> */
+    private array $definitionMeta = [];
+
     public function addDefinition(WorkflowDefinition $def): void
     {
         $this->definitions[$def->id][$def->version] = $def;
+        $this->definitionMeta[$def->id][$def->version] = [
+            'name' => $def->name,
+            'active' => true,
+            'json' => null,
+        ];
+    }
+
+    public function listDefinitions(): array
+    {
+        $out = [];
+        foreach ($this->definitionMeta as $id => $versions) {
+            ksort($versions);
+            foreach ($versions as $version => $meta) {
+                $out[] = [
+                    'id' => $id,
+                    'version' => $version,
+                    'name' => $meta['name'],
+                    'active' => $meta['active'],
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    public function findDefinitionJson(string $id, ?int $version = null): ?string
+    {
+        $versions = $this->definitionMeta[$id] ?? [];
+        if ($versions === []) {
+            return null;
+        }
+        $version ??= max(array_keys($versions));
+
+        return $versions[$version]['json'] ?? null;
+    }
+
+    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int
+    {
+        $existing = array_keys($this->definitions[$id] ?? []);
+        $version = ($existing === [] ? 0 : max($existing)) + 1;
+
+        if ($activate && isset($this->definitionMeta[$id])) {
+            foreach ($this->definitionMeta[$id] as $v => $meta) {
+                $meta['active'] = false;
+                $this->definitionMeta[$id][$v] = $meta;
+            }
+        }
+
+        /** @var array<string,mixed> $data */
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $data['id'] = $id;
+        $data['version'] = $version;
+        $this->definitions[$id][$version] = WorkflowDefinition::fromArray($data);
+        $this->definitionMeta[$id][$version] = ['name' => $name, 'active' => $activate, 'json' => $json];
+
+        return $version;
     }
 
     public function findDefinition(string $id, ?int $version = null): WorkflowDefinition

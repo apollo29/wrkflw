@@ -49,6 +49,85 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
         return WorkflowDefinition::fromArray($data);
     }
 
+    public function listDefinitions(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, version, name, active FROM wf_definition ORDER BY id ASC, version ASC');
+        if ($stmt === false) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $out[] = [
+                'id' => $this->reqString($row, 'id'),
+                'version' => $this->reqInt($row, 'version'),
+                'name' => $this->reqString($row, 'name'),
+                'active' => $this->reqInt($row, 'active') === 1,
+            ];
+        }
+
+        return $out;
+    }
+
+    public function findDefinitionJson(string $id, ?int $version = null): ?string
+    {
+        if ($version === null) {
+            $stmt = $this->pdo->prepare(
+                'SELECT definition FROM wf_definition
+                 WHERE id = :id AND active = 1 ORDER BY version DESC LIMIT 1'
+            );
+            $stmt->execute([':id' => $id]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'SELECT definition FROM wf_definition WHERE id = :id AND version = :v'
+            );
+            $stmt->execute([':id' => $id, ':v' => $version]);
+        }
+
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $this->reqString($row, 'definition') : null;
+    }
+
+    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(version), 0) + 1 FROM wf_definition WHERE id = :id');
+            $stmt->execute([':id' => $id]);
+            $next = $stmt->fetchColumn();
+            $version = is_numeric($next) ? (int) $next : 1;
+
+            if ($activate) {
+                $this->pdo->prepare('UPDATE wf_definition SET active = 0 WHERE id = :id')->execute([':id' => $id]);
+            }
+
+            $this->pdo->prepare(
+                'INSERT INTO wf_definition (id, version, name, definition, active)
+                 VALUES (:id, :v, :name, :def, :active)'
+            )->execute([
+                ':id' => $id,
+                ':v' => $version,
+                ':name' => $name,
+                ':def' => $json,
+                ':active' => $activate ? 1 : 0,
+            ]);
+
+            $this->pdo->commit();
+
+            return $version;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
     public function saveInstance(WorkflowInstance $i): void
     {
         $sql = 'INSERT INTO wf_instance

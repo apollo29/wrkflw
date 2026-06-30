@@ -64,3 +64,28 @@ export interface HistoryResponse {
   instanceId: string;
   history: HistoryEntry[];
 }
+
+/** Kurzeintrag einer Definition-Version (GET /workflows). */
+export interface DefinitionSummary {
+  id: string;
+  version: number;
+  name: string;
+  active: boolean;
+}
+
+export interface DefinitionListResponse {
+  definitions: DefinitionSummary[];
+}
+
+/** Die aktive Definition als Objekt (GET /workflows/{id}). */
+export interface DefinitionResponse {
+  id: string;
+  definition: Record<string, unknown>;
+}
+
+/** Antwort beim Anlegen einer neuen Version (POST /workflows/{id}). */
+export interface SaveDefinitionResponse {
+  id: string;
+  version: number;
+  active: boolean;
+}

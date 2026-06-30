@@ -71,6 +71,22 @@ Cron (jede Minute):
 * * * * * php /pfad/backend/bin/run-workflows.php >> /var/log/wf.log 2>&1
 ```
 
+## Demo starten
+
+Den kompletten Stack zum Ausprobieren (MariaDB → Seed → REST-API → Angular-Demo)
+startet ein Skript:
+
+```bash
+bash scripts/demo.sh
+# -> http://localhost:4200  (API über Dev-Proxy auf http://127.0.0.1:8080)
+```
+
+Voraussetzungen: Docker, PHP, Node. Strg-C stoppt API und MariaDB wieder. Die Demo hat
+zwei Tabs: **Runner** (spielt das Onboarding durch) und **Editor** (Definitionen anlegen/
+versionieren). Definitionen lassen sich auch direkt über die API verwalten:
+`GET /workflows`, `GET /workflows/{def}`, `POST /workflows/{def}` (validiert, legt eine
+neue aktive Version an).
+
 ## Bedingungen (`when`)
 
 Transitionen nutzen Ausdrücke der Symfony ExpressionLanguage. Der Scope enthält

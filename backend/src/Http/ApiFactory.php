@@ -14,6 +14,7 @@ use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
+use WorkflowEngine\Definition\DefinitionValidator;
 use WorkflowEngine\Engine\WorkflowEngine;
 
 /**
@@ -26,13 +27,20 @@ use WorkflowEngine\Engine\WorkflowEngine;
  */
 final class ApiFactory
 {
-    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, Controller-Aktion */
-    private const ROUTES = [
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, WorkflowController-Aktion */
+    private const WORKFLOW_ROUTES = [
         ['POST', '/workflows/{def}/instances', 'start'],
         ['GET', '/instances/{id}', 'show'],
         ['GET', '/instances/{id}/current-step', 'currentStep'],
         ['POST', '/instances/{id}/events', 'postEvent'],
         ['GET', '/instances/{id}/history', 'history'],
+    ];
+
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, DefinitionController-Aktion */
+    private const DEFINITION_ROUTES = [
+        ['GET', '/workflows', 'list'],
+        ['GET', '/workflows/{def}', 'get'],
+        ['POST', '/workflows/{def}', 'save'],
     ];
 
     /**
@@ -44,7 +52,8 @@ final class ApiFactory
         ?MiddlewareInterface $auth = null,
     ): App {
         $app = AppFactory::create();
-        self::addRoutes($app, new WorkflowController($engine, $repo));
+        self::addWorkflowRoutes($app, new WorkflowController($engine, $repo));
+        self::addDefinitionRoutes($app, new DefinitionController($repo, new DefinitionValidator()));
         self::finalize($app, $auth);
 
         return $app;
@@ -62,7 +71,8 @@ final class ApiFactory
     ): App {
         AppFactory::setContainer($container);
         $app = AppFactory::create();
-        self::addRoutes($app, WorkflowController::class);
+        self::addWorkflowRoutes($app, WorkflowController::class);
+        self::addDefinitionRoutes($app, DefinitionController::class);
         self::finalize($app, $auth);
 
         return $app;
@@ -71,9 +81,20 @@ final class ApiFactory
     /**
      * @param App<\Psr\Container\ContainerInterface|null> $app
      */
-    private static function addRoutes(App $app, WorkflowController|string $controller): void
+    private static function addWorkflowRoutes(App $app, WorkflowController|string $controller): void
     {
-        foreach (self::ROUTES as [$method, $pattern, $action]) {
+        foreach (self::WORKFLOW_ROUTES as [$method, $pattern, $action]) {
+            $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
+            $app->map([$method], $pattern, $handler);
+        }
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function addDefinitionRoutes(App $app, DefinitionController|string $controller): void
+    {
+        foreach (self::DEFINITION_ROUTES as [$method, $pattern, $action]) {
             $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
             $app->map([$method], $pattern, $handler);
         }

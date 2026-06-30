@@ -69,6 +69,28 @@ describe('WorkflowService', () => {
     req.flush({ id: 'i1', status: 'running', currentStep: 'check_vip' });
   });
 
+  it('listDefinitions() and getDefinition() use GET', () => {
+    service.listDefinitions().subscribe();
+    const listReq = httpMock.expectOne(`${BASE}/workflows`);
+    expect(listReq.request.method).toBe('GET');
+    listReq.flush({ definitions: [] });
+
+    service.getDefinition('onboarding').subscribe();
+    const getReq = httpMock.expectOne(`${BASE}/workflows/onboarding`);
+    expect(getReq.request.method).toBe('GET');
+    getReq.flush({ id: 'onboarding', definition: { startStep: 'a', steps: {} } });
+  });
+
+  it('saveDefinition() posts name and definition', () => {
+    const definition = { startStep: 'a', steps: { a: { type: 'automatic' } } };
+    service.saveDefinition('onboarding', 'Onboarding', definition).subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/workflows/onboarding`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ name: 'Onboarding', definition });
+    req.flush({ id: 'onboarding', version: 2, active: true });
+  });
+
   it('getInstance() and history() use GET', () => {
     service.getInstance('i1').subscribe();
     const stateReq = httpMock.expectOne(`${BASE}/instances/i1`);

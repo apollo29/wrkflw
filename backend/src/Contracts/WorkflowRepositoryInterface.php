@@ -20,6 +20,26 @@ interface WorkflowRepositoryInterface
      */
     public function findDefinition(string $id, ?int $version = null): WorkflowDefinition;
 
+    /**
+     * Alle Definition-Versionen als Kurzuebersicht (fuer Verwaltung/Editor).
+     *
+     * @return list<array{id:string,version:int,name:string,active:bool}>
+     */
+    public function listDefinitions(): array;
+
+    /**
+     * Rohes Definition-JSON (neueste aktive Version, oder eine bestimmte). Null,
+     * wenn nicht vorhanden. Bewahrt die gespeicherte JSON-Form verlustfrei.
+     */
+    public function findDefinitionJson(string $id, ?int $version = null): ?string;
+
+    /**
+     * Speichert eine neue Definition-Version (auto-inkrementiert). Wird $activate
+     * gesetzt, werden andere Versionen derselben id deaktiviert. Gibt die neue
+     * Versionsnummer zurueck.
+     */
+    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int;
+
     public function saveInstance(WorkflowInstance $instance): void;
 
     public function findInstance(string $id): ?WorkflowInstance;

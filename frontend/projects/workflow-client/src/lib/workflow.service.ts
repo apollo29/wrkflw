@@ -4,9 +4,12 @@ import { Observable } from 'rxjs';
 import { WORKFLOW_API_BASE_URL } from './workflow.config';
 import {
   CurrentStep,
+  DefinitionListResponse,
+  DefinitionResponse,
   HistoryResponse,
   InstanceState,
   InstanceSummary,
+  SaveDefinitionResponse,
 } from './workflow.models';
 
 /**
@@ -53,6 +56,29 @@ export class WorkflowService {
   history(id: string): Observable<HistoryResponse> {
     return this.http.get<HistoryResponse>(
       `${this.baseUrl}/instances/${encodeURIComponent(id)}/history`,
+    );
+  }
+
+  // -- Definition-Verwaltung (Editor) --------------------------------------
+
+  listDefinitions(): Observable<DefinitionListResponse> {
+    return this.http.get<DefinitionListResponse>(`${this.baseUrl}/workflows`);
+  }
+
+  getDefinition(id: string): Observable<DefinitionResponse> {
+    return this.http.get<DefinitionResponse>(
+      `${this.baseUrl}/workflows/${encodeURIComponent(id)}`,
+    );
+  }
+
+  saveDefinition(
+    id: string,
+    name: string,
+    definition: Record<string, unknown>,
+  ): Observable<SaveDefinitionResponse> {
+    return this.http.post<SaveDefinitionResponse>(
+      `${this.baseUrl}/workflows/${encodeURIComponent(id)}`,
+      { name, definition },
     );
   }
 }

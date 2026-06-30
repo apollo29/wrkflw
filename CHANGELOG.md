@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-30
+
+### Added
+- Definitions-Verwaltung (API): `GET /workflows` (Liste), `GET /workflows/{def}`
+  (aktive Definition), `POST /workflows/{def}` (neue Version anlegen, validiert via
+  `DefinitionValidator`, wird aktiv) — neuer `DefinitionController` und Repository-
+  Methoden `listDefinitions()`, `findDefinitionJson()`, `saveDefinition()`.
+- Angular: `WorkflowEditorComponent` (Liste + JSON-Editor + lokale & Engine-Validierung)
+  sowie Service-Methoden `listDefinitions()`/`getDefinition()`/`saveDefinition()`.
+  Demo-App mit Tabs **Runner** / **Editor**.
+- `scripts/demo.sh`: startet den kompletten Stack (MariaDB → Seed → API → ng serve)
+  inkl. Dev-Proxy (kein CORS).
+- Integrations- und Endpunkt-Tests fuer die Definitions-Verwaltung; Frontend-Tests
+  fuer Service und Editor-Komponente.
+
 ## [1.1.0] - 2026-06-30
 
 ### Added

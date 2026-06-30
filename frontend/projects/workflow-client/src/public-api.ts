@@ -6,3 +6,4 @@ export * from './lib/workflow.config';
 export * from './lib/workflow.service';
 export * from './lib/auth.interceptor';
 export * from './lib/workflow-runner.component';
+export * from './lib/workflow-editor.component';

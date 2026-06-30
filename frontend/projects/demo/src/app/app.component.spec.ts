@@ -21,11 +21,15 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should render the start button before an instance exists', () => {
+  it('should render tabs and the runner start button by default', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Onboarding');
-    expect(compiled.querySelector('button')?.textContent).toContain('Onboarding starten');
+
+    expect(compiled.querySelector('h1')?.textContent).toContain('Workflow-Demo');
+
+    const buttonTexts = Array.from(compiled.querySelectorAll('button')).map((b) => b.textContent ?? '');
+    expect(buttonTexts.some((t) => t.includes('Runner'))).toBe(true);
+    expect(buttonTexts.some((t) => t.includes('Onboarding starten'))).toBe(true);
   });
 });
