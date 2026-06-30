@@ -12,6 +12,15 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   MariaDB-11.4-Service — `composer cs`, `stan`, `test` inkl. Integrationstests) und
   Frontend-Job (Node 22 — `ng build` Library/Demo, headless Unit-Tests).
 - `frontend/karma.conf.js` mit `ChromeHeadlessCI`-Launcher (`--no-sandbox`) fuer CI.
+- Release-Workflow (`.github/workflows/release.yml`): erstellt bei Tags `v*` ein
+  GitHub Release aus dem passenden CHANGELOG-Abschnitt.
+
+### Added — Robustheit & Repo
+- Lease-Timeout im `WorkflowRunner`: haengende `running`-Instanzen werden nach einer
+  konfigurierbaren Spanne (Default 300 s) erneut abgeholt — `claimDueInstances()` mit
+  `staleAfterSeconds`, `updated_at` als Lease. Schuetzt vor Worker-Abstuerzen zwischen
+  Claim und Verarbeitung.
+- MIT-`LICENSE`-Datei (passend zur `composer.json`-Deklaration).
 
 ### Added — Phase 9: Härtung & Dokumentation
 - Retry/Backoff für fehlgeschlagene Actions: erneutes Einplanen als `waiting_timer`

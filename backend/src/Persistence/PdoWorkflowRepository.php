@@ -114,24 +114,37 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
     /**
      * @return list<WorkflowInstance>
      */
-    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array
+    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50, int $staleAfterSeconds = 0): array
     {
+        $nowSql = $now->format('Y-m-d H:i:s');
+
+        // Faellige Timer-Instanzen ...
+        $where = '(status = :timer AND wake_at IS NOT NULL AND wake_at <= :now)';
+        $params = [':timer' => WorkflowInstance::WAITING_TIMER, ':now' => $nowSql];
+
+        // ... und optional haengende RUNNING-Instanzen (Lease abgelaufen).
+        if ($staleAfterSeconds > 0) {
+            $where .= ' OR (status = :running AND updated_at <= :stale)';
+            $params[':running'] = WorkflowInstance::RUNNING;
+            $params[':stale'] = $now->modify("-{$staleAfterSeconds} seconds")->format('Y-m-d H:i:s');
+        }
+
         $this->pdo->beginTransaction();
         try {
-            // Faellige Zeilen sperren; bereits gesperrte (von anderen Workern) ueberspringen.
+            // Zeilen sperren; bereits gesperrte (von anderen Workern) ueberspringen.
             $select = $this->pdo->prepare(
-                'SELECT * FROM wf_instance
-                 WHERE status = :st AND wake_at IS NOT NULL AND wake_at <= :now
+                "SELECT * FROM wf_instance
+                 WHERE {$where}
                  ORDER BY wake_at ASC
-                 LIMIT ' . max(1, $limit) . '
+                 LIMIT " . max(1, $limit) . '
                  FOR UPDATE SKIP LOCKED'
             );
-            $select->execute([
-                ':st' => WorkflowInstance::WAITING_TIMER,
-                ':now' => $now->format('Y-m-d H:i:s'),
-            ]);
+            $select->execute($params);
 
-            $claim = $this->pdo->prepare('UPDATE wf_instance SET status = :run WHERE id = :id');
+            // updated_at explizit erneuern (Lease), auch wenn der Status bereits running ist.
+            $claim = $this->pdo->prepare(
+                'UPDATE wf_instance SET status = :run, updated_at = :now WHERE id = :id'
+            );
 
             $instances = [];
             foreach ($select->fetchAll(\PDO::FETCH_ASSOC) as $row) {
@@ -139,8 +152,7 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
                     continue;
                 }
                 $instance = $this->hydrate($row);
-                // Atomar als laufend markieren, damit kein anderer Lauf sie erneut abholt.
-                $claim->execute([':run' => WorkflowInstance::RUNNING, ':id' => $instance->id]);
+                $claim->execute([':run' => WorkflowInstance::RUNNING, ':now' => $nowSql, ':id' => $instance->id]);
                 $instance->status = WorkflowInstance::RUNNING;
                 $instances[] = $instance;
             }

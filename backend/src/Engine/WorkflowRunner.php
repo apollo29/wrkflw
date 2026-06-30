@@ -27,10 +27,15 @@ final class WorkflowRunner
 
     private readonly LoggerInterface $logger;
 
+    /**
+     * @param int $leaseSeconds Nach dieser Spanne gelten RUNNING-Instanzen als haengen
+     *                          geblieben und werden erneut abgeholt (0 = deaktiviert).
+     */
     public function __construct(
         private readonly WorkflowEngine $engine,
         private readonly WorkflowRepositoryInterface $repo,
         ?LoggerInterface $logger = null,
+        private readonly int $leaseSeconds = 300,
     ) {
         $this->logger = $logger ?? new NullLogger();
     }
@@ -52,8 +57,8 @@ final class WorkflowRunner
         $started = 0;
         $errors = 0;
 
-        // 1) Faellige Timer-Instanzen (atomar abgeholt -> keine Doppelverarbeitung).
-        foreach ($this->repo->claimDueInstances($now, $batchSize) as $instance) {
+        // 1) Faellige Timer- und haengende RUNNING-Instanzen (atomar abgeholt).
+        foreach ($this->repo->claimDueInstances($now, $batchSize, $this->leaseSeconds) as $instance) {
             try {
                 $this->engine->advance($instance);
                 $woken++;

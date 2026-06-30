@@ -38,9 +38,17 @@ interface WorkflowRepositoryInterface
      * abgeholten als laufend, sodass parallele Cron-Laeufe dieselbe Instanz nicht
      * doppelt verarbeiten. Die zurueckgegebenen Instanzen haben Status RUNNING.
      *
+     * Ist $staleAfterSeconds > 0, werden zusaetzlich "haengende" Instanzen
+     * zurueckgeholt, die laenger als diese Spanne im Status RUNNING verharren
+     * (z. B. weil ein Worker zwischen Claim und Verarbeitung abgestuerzt ist).
+     *
      * @return list<WorkflowInstance>
      */
-    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array;
+    public function claimDueInstances(
+        \DateTimeImmutable $now,
+        int $limit = 50,
+        int $staleAfterSeconds = 0,
+    ): array;
 
     /**
      * Schreibt einen Audit-/History-Eintrag.

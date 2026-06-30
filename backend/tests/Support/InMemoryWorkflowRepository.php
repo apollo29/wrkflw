@@ -73,8 +73,10 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         return $due;
     }
 
-    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50): array
+    public function claimDueInstances(\DateTimeImmutable $now, int $limit = 50, int $staleAfterSeconds = 0): array
     {
+        // Der Lease-Mechanismus (staleAfterSeconds) ist DB-spezifisch und wird hier
+        // nicht simuliert; der Fake holt nur faellige Timer-Instanzen ab.
         $claimed = [];
         foreach ($this->instances as $instance) {
             if (count($claimed) >= $limit) {

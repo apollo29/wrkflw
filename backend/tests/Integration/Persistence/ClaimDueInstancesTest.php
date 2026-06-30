@@ -75,4 +75,39 @@ final class ClaimDueInstancesTest extends IntegrationTestCase
         $claimed = $this->repo->claimDueInstances($now);
         self::assertSame(['locked'], array_map(static fn (WorkflowInstance $i): string => $i->id, $claimed));
     }
+
+    public function testLeaseReclaimsStaleRunningInstancesOnly(): void
+    {
+        $now = new \DateTimeImmutable('2026-06-29 12:00:00');
+        $this->saveRunning('stuck');
+        $this->saveRunning('fresh');
+        $this->touch('stuck', '2000-01-01 00:00:00');     // lange im Status running
+        $this->touch('fresh', $now->format('Y-m-d H:i:s')); // gerade erst aktualisiert
+
+        // Ohne Lease (0): haengende RUNNING-Instanzen werden nicht abgeholt.
+        $withoutLease = $this->repo->claimDueInstances($now, 50, 0);
+        self::assertCount(0, $withoutLease);
+
+        // Mit Lease 60s: nur die wirklich haengende Instanz wird zurueckgeholt.
+        $claimed = $this->repo->claimDueInstances($now, 50, 60);
+        self::assertSame(['stuck'], array_map(static fn (WorkflowInstance $i): string => $i->id, $claimed));
+    }
+
+    private function saveRunning(string $id): void
+    {
+        $this->repo->saveInstance(new WorkflowInstance(
+            id: $id,
+            definitionId: 'd',
+            definitionVersion: 1,
+            currentStep: 'go',
+            status: WorkflowInstance::RUNNING,
+        ));
+    }
+
+    private function touch(string $id, string $updatedAt): void
+    {
+        $this->pdo()
+            ->prepare('UPDATE wf_instance SET updated_at = :u WHERE id = :id')
+            ->execute([':u' => $updatedAt, ':id' => $id]);
+    }
 }
