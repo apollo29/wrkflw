@@ -104,6 +104,23 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         ];
     }
 
+    public function findHistory(string $instanceId): array
+    {
+        $entries = [];
+        foreach ($this->history as $h) {
+            if ($h['instanceId'] === $instanceId) {
+                $entries[] = [
+                    'kind' => $h['kind'],
+                    'step' => $h['step'],
+                    'detail' => $h['detail'],
+                    'createdAt' => '',
+                ];
+            }
+        }
+
+        return $entries;
+    }
+
     /**
      * @return list<array{instanceId:string,kind:string,step:?string,detail:array<string,mixed>}>
      */

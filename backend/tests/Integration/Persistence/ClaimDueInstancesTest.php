@@ -67,7 +67,8 @@ final class ClaimDueInstancesTest extends IntegrationTestCase
         $lock->execute([':id' => 'locked']);
 
         // Solange gesperrt: SKIP LOCKED ueberspringt die Zeile -> nichts geclaimt.
-        self::assertCount(0, $this->repo->claimDueInstances($now));
+        $whileLocked = $this->repo->claimDueInstances($now);
+        self::assertCount(0, $whileLocked);
 
         $other->commit(); // Sperre freigeben
 

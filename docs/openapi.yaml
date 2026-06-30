@@ -1,11 +1,221 @@
 openapi: 3.1.0
 info:
   title: Workflow Engine API
-  version: 0.0.0
+  version: 1.0.0
   description: >
-    Platzhalter-Spezifikation. Die vollstaendige REST-API (Slim) wird in Phase 7
-    ausgearbeitet (siehe PLAN.md). Endpunkte: Workflow starten, Instanz-Zustand,
-    aktueller Schritt, Events anwenden, History.
+    REST-API der eingebetteten Workflow-Engine (Slim 4). Alle Antworten sind JSON.
+    Fehler verwenden ein einheitliches Format ({ "error": { "code", "message" } }).
+    Authentifizierung ist optional und austauschbar; die Default-Middleware erwartet
+    einen API-Key als Bearer-Token (aktiv, wenn WF_API_KEY gesetzt ist).
 servers:
   - url: http://localhost:8080
-paths: {}
+security:
+  - bearerAuth: []
+paths:
+  /workflows/{def}/instances:
+    post:
+      summary: Workflow starten
+      operationId: startInstance
+      parameters:
+        - name: def
+          in: path
+          required: true
+          description: ID der Workflow-Definition (neueste aktive Version wird genutzt).
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: object
+                  additionalProperties: true
+                subjectType:
+                  type: string
+                subjectId:
+                  type: string
+      responses:
+        '201':
+          description: Instanz erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceSummary'
+        '400':
+          description: Ungueltige Definition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Definition nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /instances/{id}:
+    get:
+      summary: Instanz-Zustand
+      operationId: getInstance
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      responses:
+        '200':
+          description: Zustand der Instanz
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { $ref: '#/components/schemas/Status' }
+                  currentStep: { type: string }
+                  context:
+                    type: object
+                    additionalProperties: true
+                  lastError:
+                    type: [string, 'null']
+        '404':
+          description: Instanz nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /instances/{id}/current-step:
+    get:
+      summary: Aktueller Schritt inkl. UI-Metadaten (fuer das Frontend)
+      operationId: getCurrentStep
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      responses:
+        '200':
+          description: Aktueller Schritt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instanceId: { type: string }
+                  status: { $ref: '#/components/schemas/Status' }
+                  step: { type: string }
+                  type:
+                    type: string
+                    enum: [automatic, interactive, timer]
+                  interactive: { type: boolean }
+                  finished: { type: boolean }
+                  ui:
+                    type: object
+                    additionalProperties: true
+                  events:
+                    type: array
+                    items: { type: string }
+                  context:
+                    type: object
+                    additionalProperties: true
+        '404':
+          description: Instanz nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /instances/{id}/events:
+    post:
+      summary: Event auf eine wartende Instanz anwenden
+      operationId: postEvent
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event: { type: string }
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Event verarbeitet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceSummary'
+        '404':
+          description: Instanz nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Workflow bereits beendet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Pflichtfeld "event" fehlt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /instances/{id}/history:
+    get:
+      summary: History-Eintraege einer Instanz
+      operationId: getHistory
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      responses:
+        '200':
+          description: Chronologische History
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instanceId: { type: string }
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string }
+                        step: { type: [string, 'null'] }
+                        detail:
+                          type: object
+                          additionalProperties: true
+                        createdAt: { type: string }
+        '404':
+          description: Instanz nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    InstanceId:
+      name: id
+      in: path
+      required: true
+      description: UUID der Instanz.
+      schema:
+        type: string
+  schemas:
+    Status:
+      type: string
+      enum: [running, waiting_event, waiting_timer, completed, failed]
+    InstanceSummary:
+      type: object
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/Status' }
+        currentStep: { type: string }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }

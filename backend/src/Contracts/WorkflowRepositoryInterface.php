@@ -53,4 +53,11 @@ interface WorkflowRepositoryInterface
         ?string $step,
         array $detail = [],
     ): void;
+
+    /**
+     * Liest die History-Eintraege einer Instanz in chronologischer Reihenfolge.
+     *
+     * @return list<array{kind:string,step:string|null,detail:array<string,mixed>,createdAt:string}>
+     */
+    public function findHistory(string $instanceId): array;
 }

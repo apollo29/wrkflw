@@ -5,6 +5,19 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 7: REST-API (Slim)
+- HTTP-Layer in `src/Http`: `ApiFactory` (baut die Slim-App), `WorkflowController`
+  (typisierte Endpunkte) und `ApiKeyAuthMiddleware` (PSR-15, austauschbar).
+- Endpunkte: `POST /workflows/{def}/instances`, `GET /instances/{id}`,
+  `GET /instances/{id}/current-step`, `POST /instances/{id}/events`,
+  `GET /instances/{id}/history`.
+- Einheitliches JSON-Fehlerformat ({ error: { code, message } }); 404/422/409/400/401/500.
+- Repository-Lese-Methode `findHistory()` (Interface + Pdo + Fake).
+- `api/index.php` nutzt die ApiFactory; `docs/openapi.yaml` ausgearbeitet.
+- Endpunkt-Tests ueber Slim-PSR-7-Requests (Happy Paths, 404/422/409, Auth 401)
+  und ein Integrationstest fuer `findHistory`.
+- Dev-Tooling: `phpstan/phpstan-phpunit` fuer PHPUnit-bewusstes Typ-Narrowing.
+
 ### Added — Phase 6: Background-Runner & Trigger (Nebenlaeufigkeit)
 - `WorkflowRunner::tick()`: holt faellige Timer-Instanzen ab, laesst sie weiterlaufen
   und prueft datengetriebene Trigger; gibt eine Statistik (woken/started/errors) zurueck.

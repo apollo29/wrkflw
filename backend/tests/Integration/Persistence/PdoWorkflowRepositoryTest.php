@@ -164,6 +164,27 @@ final class PdoWorkflowRepositoryTest extends IntegrationTestCase
         self::assertSame('a', $explicit->startStep);
     }
 
+    public function testFindHistoryReturnsEntriesInOrder(): void
+    {
+        $this->repo->saveInstance(new WorkflowInstance(
+            id: 'h1',
+            definitionId: 'd',
+            definitionVersion: 1,
+            currentStep: 'a',
+            status: WorkflowInstance::RUNNING,
+        ));
+        $this->repo->logHistory('h1', 'start', 'a', ['context' => ['x' => 1]]);
+        $this->repo->logHistory('h1', 'transition', 'a', ['to' => 'b']);
+
+        $history = $this->repo->findHistory('h1');
+
+        self::assertCount(2, $history);
+        self::assertSame('start', $history[0]['kind']);
+        self::assertSame('transition', $history[1]['kind']);
+        self::assertSame('b', $history[1]['detail']['to'] ?? null);
+        self::assertNotSame('', $history[0]['createdAt']);
+    }
+
     private function seedDefinition(string $id, int $version, string $json, bool $active): void
     {
         $stmt = $this->pdo()->prepare(

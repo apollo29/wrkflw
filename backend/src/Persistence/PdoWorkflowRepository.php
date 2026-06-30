@@ -169,6 +169,33 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
         ]);
     }
 
+    public function findHistory(string $instanceId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT kind, step, detail, created_at FROM wf_history
+             WHERE instance_id = :id ORDER BY id ASC'
+        );
+        $stmt->execute([':id' => $instanceId]);
+
+        $entries = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $detailRaw = $row['detail'] ?? null;
+            $detail = is_string($detailRaw) && $detailRaw !== '' ? $this->decodeObject($detailRaw) : [];
+
+            $entries[] = [
+                'kind' => $this->reqString($row, 'kind'),
+                'step' => $this->nullableString($row, 'step'),
+                'detail' => $detail,
+                'createdAt' => $this->reqString($row, 'created_at'),
+            ];
+        }
+
+        return $entries;
+    }
+
     /**
      * @param array<mixed,mixed> $row
      */
