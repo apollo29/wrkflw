@@ -1,0 +1,126 @@
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { authInterceptor } from './auth.interceptor';
+import { WORKFLOW_API_BASE_URL, WORKFLOW_API_KEY } from './workflow.config';
+import { WorkflowService } from './workflow.service';
+
+const BASE = 'http://api.test';
+
+describe('WorkflowService', () => {
+  let service: WorkflowService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: WORKFLOW_API_BASE_URL, useValue: BASE },
+      ],
+    });
+    service = TestBed.inject(WorkflowService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('start() posts context and subject and returns the summary', () => {
+    let result: unknown;
+    service.start('onboarding', { name: 'Mara' }, { type: 'user', id: '7' }).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne(`${BASE}/workflows/onboarding/instances`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.context).toEqual({ name: 'Mara' });
+    expect(req.request.body.subjectType).toBe('user');
+    expect(req.request.body.subjectId).toBe('7');
+    req.flush({ id: 'i1', status: 'waiting_event', currentStep: 'await_profile' });
+
+    expect(result).toEqual({ id: 'i1', status: 'waiting_event', currentStep: 'await_profile' });
+  });
+
+  it('currentStep() requests the current-step endpoint', () => {
+    service.currentStep('i1').subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/instances/i1/current-step`);
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      instanceId: 'i1',
+      status: 'waiting_event',
+      step: 'await_profile',
+      type: 'interactive',
+      interactive: true,
+      finished: false,
+      ui: {},
+      events: ['submit'],
+      context: {},
+    });
+  });
+
+  it('sendEvent() posts event and payload', () => {
+    service.sendEvent('i1', 'submit', { acceptedTerms: true }).subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/instances/i1/events`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ event: 'submit', payload: { acceptedTerms: true } });
+    req.flush({ id: 'i1', status: 'running', currentStep: 'check_vip' });
+  });
+
+  it('getInstance() and history() use GET', () => {
+    service.getInstance('i1').subscribe();
+    const stateReq = httpMock.expectOne(`${BASE}/instances/i1`);
+    expect(stateReq.request.method).toBe('GET');
+    stateReq.flush({
+      id: 'i1',
+      status: 'completed',
+      currentStep: 'done',
+      context: {},
+      lastError: null,
+    });
+
+    service.history('i1').subscribe();
+    const historyReq = httpMock.expectOne(`${BASE}/instances/i1/history`);
+    expect(historyReq.request.method).toBe('GET');
+    historyReq.flush({ instanceId: 'i1', history: [] });
+  });
+});
+
+describe('authInterceptor', () => {
+  function setup(apiKey: string | null): { service: WorkflowService; httpMock: HttpTestingController } {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        { provide: WORKFLOW_API_BASE_URL, useValue: BASE },
+        { provide: WORKFLOW_API_KEY, useValue: apiKey },
+      ],
+    });
+    return {
+      service: TestBed.inject(WorkflowService),
+      httpMock: TestBed.inject(HttpTestingController),
+    };
+  }
+
+  it('adds a Bearer header when an API key is configured', () => {
+    const { service, httpMock } = setup('secret');
+    service.currentStep('i1').subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/instances/i1/current-step`);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer secret');
+    req.flush({});
+    httpMock.verify();
+  });
+
+  it('omits the header when no API key is configured', () => {
+    const { service, httpMock } = setup(null);
+    service.currentStep('i1').subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/instances/i1/current-step`);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+    httpMock.verify();
+  });
+});

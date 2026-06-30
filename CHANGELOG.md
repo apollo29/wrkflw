@@ -5,6 +5,19 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 8: Angular-Integration
+- Library `workflow-client`: Typen (`workflow.models`), `WorkflowService`
+  (start/getInstance/currentStep/sendEvent/history), `WorkflowRunnerComponent`
+  (standalone, Signals) mit generischem Feld-Rendering aus `ui.fields`, Polling
+  solange Status `running` sowie Lade-/Fehler-/Abschluss-Zustaenden.
+- Functional `authInterceptor` + Konfigurations-Tokens `WORKFLOW_API_BASE_URL`
+  und `WORKFLOW_API_KEY`.
+- Demo-App: startet den Onboarding-Workflow und fuehrt ueber den Runner bis
+  `completed`; HttpClient mit Auth-Interceptor verdrahtet.
+- Tests (Karma/Jasmine, ChromeHeadless): `WorkflowService` mit
+  `HttpTestingController`, Interceptor-Verhalten und Runner-Komponente
+  (interaktiver Schritt -> Submit -> Abschluss).
+
 ### Added — Phase 7: REST-API (Slim)
 - HTTP-Layer in `src/Http`: `ApiFactory` (baut die Slim-App), `WorkflowController`
   (typisierte Endpunkte) und `ApiKeyAuthMiddleware` (PSR-15, austauschbar).
