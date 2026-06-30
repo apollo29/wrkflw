@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Engine;
 
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use WorkflowEngine\Contracts\TriggerInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 
@@ -23,10 +25,14 @@ final class WorkflowRunner
     /** @var list<TriggerInterface> */
     private array $triggers = [];
 
+    private readonly LoggerInterface $logger;
+
     public function __construct(
         private readonly WorkflowEngine $engine,
         private readonly WorkflowRepositoryInterface $repo,
+        ?LoggerInterface $logger = null,
     ) {
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function addTrigger(TriggerInterface $trigger): void
@@ -56,6 +62,11 @@ final class WorkflowRunner
                 $this->repo->logHistory($instance->id, 'error', $instance->currentStep, [
                     'message' => $e->getMessage(),
                 ]);
+                $this->logger->error('workflow.advance_failed', [
+                    'instanceId' => $instance->id,
+                    'step' => $instance->currentStep,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -72,10 +83,17 @@ final class WorkflowRunner
                     $started++;
                 } catch (\Throwable $e) {
                     $errors++;
+                    $this->logger->error('workflow.trigger_failed', [
+                        'definition' => $job['definition'],
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
 
-        return ['woken' => $woken, 'started' => $started, 'errors' => $errors];
+        $stats = ['woken' => $woken, 'started' => $started, 'errors' => $errors];
+        $this->logger->info('workflow.tick', $stats);
+
+        return $stats;
     }
 }

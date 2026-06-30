@@ -1,0 +1,10 @@
+# Beispiel-Crontab für die Workflow-Engine
+#
+# Ruft den Runner jede Minute auf: fällige Timer-Instanzen werden aufgeweckt und
+# datengetriebene Trigger geprüft. Mehrere parallele Läufe sind sicher
+# (FOR UPDATE SKIP LOCKED, siehe docs/adr/0004-concurrency-skip-locked.md).
+#
+# Umgebungsvariablen (DB_*) entweder hier setzen oder in der Umgebung des Cron-Users.
+
+* * * * * DB_HOST=127.0.0.1 DB_PORT=3306 DB_NAME=workflow DB_USER=workflow DB_PASS=secret \
+  php /pfad/zur/app/backend/bin/run-workflows.php >> /var/log/workflow-runner.log 2>&1

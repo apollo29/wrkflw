@@ -123,9 +123,33 @@ die Zeilen mit `SELECT … FOR UPDATE SKIP LOCKED` in einer Transaktion und mark
 atomar als `running`. Dadurch verarbeiten parallele Cron-Läufe dieselbe Instanz nicht
 doppelt (benötigt InnoDB; `SKIP LOCKED` ab MariaDB 10.6).
 
+## Härtung: Retry, Idempotenz, Versionierung
+
+**Retry & Backoff.** Wirft die Action eines automatischen Schritts eine Exception, geht
+die Instanz nicht sofort auf `failed`, sondern wird als `waiting_timer` mit exponentiell
+wachsender Verzögerung (`baseRetryDelaySeconds * 2^(versuch-1)`) erneut eingeplant –
+bis zu `maxAttempts` Versuchen (Konstruktor-Parameter von `WorkflowEngine`,
+Default 3 / 60 s). Erst danach `failed`. Der Zähler `attempts` wird bei jedem
+erfolgreichen Schrittwechsel zurückgesetzt.
+
+**Idempotenz.** `handleEvent()` akzeptiert einen optionalen Idempotenz-Key; über die API
+wird dieser aus dem Header `Idempotency-Key` gelesen. Ein bereits angewendeter Key ist ein
+No-op (History-Eintrag `event_duplicate`) – doppelte Submits verändern den Zustand nicht.
+Angewendete Keys werden im Kontext unter dem reservierten Schlüssel `__appliedEventIds`
+gehalten.
+
+**Versionierung.** Eine Instanz speichert `definition_ver` und wird über
+`findDefinition(id, version)` immer mit **genau dieser** Version ausgeführt. Eine neue
+aktive Definition-Version betrifft nur **neue** Instanzen (`start()` nutzt die neueste
+aktive Version); laufende Instanzen laufen stabil auf ihrer Version weiter.
+
+**Logging.** Der `WorkflowRunner` akzeptiert einen optionalen PSR-3-Logger und schreibt
+strukturierte Einträge (`workflow.tick` mit Statistik, `workflow.advance_failed`,
+`workflow.trigger_failed`).
+
 ## Nächste sinnvolle Schritte
 
 - Eigene Actions (`ActionInterface`) für deine Domäne registrieren
 - `DataProvider.find()` mit einem sauberen Query-Builder ausimplementieren
-- Retry/Backoff bei fehlgeschlagenen Actions statt direktem `failed`
 - Editor im Frontend zum Erstellen/Versionieren von Definitionen
+- PSR-11-Container für das API-Wiring statt der Factory

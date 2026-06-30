@@ -30,6 +30,7 @@ final class WorkflowInstance
         public ?string $subjectType = null,
         public ?string $subjectId = null,
         public ?string $lastError = null,
+        public int $attempts = 0,
     ) {
     }
 

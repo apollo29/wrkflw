@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 9: Härtung & Dokumentation
+- Retry/Backoff für fehlgeschlagene Actions: erneutes Einplanen als `waiting_timer`
+  mit exponentiellem Backoff bis `maxAttempts`, danach `failed`; neue Spalte `attempts`
+  auf `wf_instance` (bei jedem Schrittwechsel zurückgesetzt).
+- Idempotentes Event-Handling: `handleEvent()` mit optionalem Idempotenz-Key
+  (API-Header `Idempotency-Key`); doppelte Events sind No-ops (`event_duplicate`).
+- Strukturiertes Logging im `WorkflowRunner` über optionalen PSR-3-Logger.
+- Versionierungs-Strategie dokumentiert und getestet (laufende Instanzen behalten
+  ihre Definition-Version).
+- Dokumentation: README-Härtungsabschnitt, ADRs (`docs/adr/0001`–`0005`),
+  `docs/crontab.example`.
+- End-to-End-Smoke-Test (API + MariaDB + Engine + Runner + Mailer) für den
+  Enterprise-Pfad und den Timer-/Runner-Pfad.
+- Abhängigkeit `psr/log` ergänzt.
+
 ### Added — Phase 8: Angular-Integration
 - Library `workflow-client`: Typen (`workflow.models`), `WorkflowService`
   (start/getInstance/currentStep/sendEvent/history), `WorkflowRunnerComponent`

@@ -26,10 +26,20 @@ final class WorkflowEngine
 {
     private const STEP_LIMIT = 1000;
 
+    /** Reservierter Kontext-Schluessel fuer bereits angewendete Idempotenz-Keys. */
+    private const APPLIED_EVENTS_KEY = '__appliedEventIds';
+
+    /**
+     * @param int $maxAttempts          maximale Ausfuehrungsversuche einer Action,
+     *                                  bevor die Instanz auf 'failed' geht (>= 1)
+     * @param int $baseRetryDelaySeconds Basis-Verzoegerung fuer den exponentiellen Backoff
+     */
     public function __construct(
         private readonly WorkflowRepositoryInterface $repo,
         private readonly ActionRegistry $actions,
         private readonly ExpressionEvaluatorInterface $expr,
+        private readonly int $maxAttempts = 3,
+        private readonly int $baseRetryDelaySeconds = 60,
     ) {
     }
 
@@ -116,7 +126,7 @@ final class WorkflowEngine
                         'result' => $result,
                     ]);
                 } catch (\Throwable $e) {
-                    $this->fail($instance, "Aktion '{$step->action}' fehlgeschlagen: {$e->getMessage()}");
+                    $this->handleActionFailure($instance, $step, $e);
 
                     return;
                 }
@@ -143,8 +153,12 @@ final class WorkflowEngine
      *
      * @param array<string,mixed> $payload
      */
-    public function handleEvent(string $instanceId, string $event, array $payload = []): WorkflowInstance
-    {
+    public function handleEvent(
+        string $instanceId,
+        string $event,
+        array $payload = [],
+        ?string $eventId = null,
+    ): WorkflowInstance {
         $instance = $this->repo->findInstance($instanceId)
             ?? throw new WorkflowException("Instanz '{$instanceId}' nicht gefunden.");
 
@@ -152,9 +166,22 @@ final class WorkflowEngine
             throw new WorkflowException('Workflow ist bereits beendet.');
         }
 
+        // Idempotenz: ein bereits angewendetes Event (gleicher eventId) ist ein No-op.
+        if ($eventId !== null && $this->isEventApplied($instance, $eventId)) {
+            $this->repo->logHistory($instance->id, 'event_duplicate', $instance->currentStep, [
+                'event' => $event,
+                'eventId' => $eventId,
+            ]);
+
+            return $instance;
+        }
+
         $def = $this->repo->findDefinition($instance->definitionId, $instance->definitionVersion);
         $step = $def->step($instance->currentStep);
 
+        if ($eventId !== null) {
+            $this->markEventApplied($instance, $eventId);
+        }
         $instance->mergeContext($payload);
         $this->repo->logHistory($instance->id, 'event', $step->name, [
             'event' => $event,
@@ -205,7 +232,41 @@ final class WorkflowEngine
         $instance->currentStep = $t->to;
         $instance->status = WorkflowInstance::RUNNING;
         $instance->wakeAt = null;
+        $instance->attempts = 0; // neuer Schritt -> Retry-Zaehler zuruecksetzen
         $this->repo->saveInstance($instance);
+    }
+
+    /**
+     * Behandelt eine fehlgeschlagene Action: bis zur Obergrenze wird mit
+     * exponentiellem Backoff als Timer neu geplant, danach geht die Instanz
+     * auf 'failed'.
+     */
+    private function handleActionFailure(WorkflowInstance $instance, Step $step, \Throwable $e): void
+    {
+        $instance->attempts++;
+
+        if ($instance->attempts < $this->maxAttempts) {
+            $delay = $this->baseRetryDelaySeconds * (2 ** ($instance->attempts - 1));
+            $wakeAt = (new \DateTimeImmutable())->modify("+{$delay} seconds");
+
+            $instance->status = WorkflowInstance::WAITING_TIMER;
+            $instance->wakeAt = $wakeAt;
+            $instance->lastError = $e->getMessage();
+            $this->repo->saveInstance($instance);
+            $this->repo->logHistory($instance->id, 'retry', $step->name, [
+                'attempt' => $instance->attempts,
+                'maxAttempts' => $this->maxAttempts,
+                'error' => $e->getMessage(),
+                'nextAttemptAt' => $wakeAt->format(DATE_ATOM),
+            ]);
+
+            return;
+        }
+
+        $this->fail(
+            $instance,
+            "Aktion '{$step->action}' nach {$instance->attempts} Versuch(en) fehlgeschlagen: {$e->getMessage()}",
+        );
     }
 
     private function fail(WorkflowInstance $instance, string $msg): void
@@ -214,6 +275,23 @@ final class WorkflowEngine
         $instance->lastError = $msg;
         $this->repo->saveInstance($instance);
         $this->repo->logHistory($instance->id, 'error', $instance->currentStep, ['message' => $msg]);
+    }
+
+    private function isEventApplied(WorkflowInstance $instance, string $eventId): bool
+    {
+        $applied = $instance->context[self::APPLIED_EVENTS_KEY] ?? [];
+
+        return is_array($applied) && in_array($eventId, $applied, true);
+    }
+
+    private function markEventApplied(WorkflowInstance $instance, string $eventId): void
+    {
+        $applied = $instance->context[self::APPLIED_EVENTS_KEY] ?? [];
+        if (!is_array($applied)) {
+            $applied = [];
+        }
+        $applied[] = $eventId;
+        $instance->context[self::APPLIED_EVENTS_KEY] = $applied;
     }
 
     private function timerElapsed(WorkflowInstance $instance): bool

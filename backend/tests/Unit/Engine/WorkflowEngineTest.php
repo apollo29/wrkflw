@@ -124,7 +124,9 @@ final class WorkflowEngineTest extends TestCase
         ]));
         $this->actions->register('boom', $this->throwingAction('kaboom'));
 
-        $instance = $this->engine->start('boom-flow');
+        // maxAttempts=1 -> kein Retry, sofortiges Fehlschlagen.
+        $engine = new WorkflowEngine($this->repo, $this->actions, new SymfonyExpressionEvaluator(), maxAttempts: 1);
+        $instance = $engine->start('boom-flow');
 
         self::assertSame(WorkflowInstance::FAILED, $instance->status);
         self::assertNotNull($instance->lastError);

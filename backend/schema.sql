@@ -26,6 +26,9 @@ CREATE TABLE wf_instance (
     context         JSON         NOT NULL,
     -- Fuer zeit-/timer-basierte Schritte: wann der Cron sie aufwecken soll.
     wake_at         DATETIME     NULL,
+    -- Fehlversuche der aktuellen Action (Retry/Backoff); bei jedem erfolgreichen
+    -- Schrittwechsel auf 0 zurueckgesetzt.
+    attempts        INT          NOT NULL DEFAULT 0,
     -- Optionaler Bezug auf eine Entitaet der Host-App (z.B. order:123).
     subject_type    VARCHAR(64)  NULL,
     subject_id      VARCHAR(64)  NULL,

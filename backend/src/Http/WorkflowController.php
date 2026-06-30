@@ -127,8 +127,15 @@ final class WorkflowController
             return $this->error($response, 'not_found', 'Instanz nicht gefunden.', 404);
         }
 
+        $idempotencyKey = $request->getHeaderLine('Idempotency-Key');
+
         try {
-            $instance = $this->engine->handleEvent($id, $event, $this->assoc($body['payload'] ?? null));
+            $instance = $this->engine->handleEvent(
+                $id,
+                $event,
+                $this->assoc($body['payload'] ?? null),
+                $idempotencyKey !== '' ? $idempotencyKey : null,
+            );
         } catch (WorkflowException $e) {
             return $this->error($response, 'conflict', $e->getMessage(), 409);
         }

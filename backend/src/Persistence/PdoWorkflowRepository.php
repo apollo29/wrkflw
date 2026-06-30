@@ -53,15 +53,16 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
     {
         $sql = 'INSERT INTO wf_instance
                   (id, definition_id, definition_ver, current_step, status, context,
-                   wake_at, subject_type, subject_id, last_error)
+                   wake_at, attempts, subject_type, subject_id, last_error)
                 VALUES
                   (:id, :did, :dver, :step, :status, :context,
-                   :wake, :stype, :sid, :err)
+                   :wake, :attempts, :stype, :sid, :err)
                 ON DUPLICATE KEY UPDATE
                    current_step = VALUES(current_step),
                    status       = VALUES(status),
                    context      = VALUES(context),
                    wake_at      = VALUES(wake_at),
+                   attempts     = VALUES(attempts),
                    last_error   = VALUES(last_error)';
 
         $this->pdo->prepare($sql)->execute([
@@ -72,6 +73,7 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
             ':status' => $i->status,
             ':context' => json_encode($i->context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             ':wake' => $i->wakeAt?->format('Y-m-d H:i:s'),
+            ':attempts' => $i->attempts,
             ':stype' => $i->subjectType,
             ':sid' => $i->subjectId,
             ':err' => $i->lastError,
@@ -214,6 +216,7 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
             subjectType: $this->nullableString($row, 'subject_type'),
             subjectId: $this->nullableString($row, 'subject_id'),
             lastError: $this->nullableString($row, 'last_error'),
+            attempts: $this->reqInt($row, 'attempts'),
         );
     }
 

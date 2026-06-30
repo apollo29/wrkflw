@@ -13,6 +13,7 @@ use WorkflowEngine\Engine\SymfonyExpressionEvaluator;
 use WorkflowEngine\Engine\WorkflowEngine;
 use WorkflowEngine\Engine\WorkflowRunner;
 use WorkflowEngine\Instance\WorkflowInstance;
+use WorkflowEngine\Tests\Support\ArrayLogger;
 use WorkflowEngine\Tests\Support\InMemoryWorkflowRepository;
 
 #[CoversClass(WorkflowRunner::class)]
@@ -125,5 +126,17 @@ final class WorkflowRunnerTest extends TestCase
         $good = $this->repo->findInstance('good');
         self::assertNotNull($good);
         self::assertSame(WorkflowInstance::COMPLETED, $good->status);
+    }
+
+    public function testTickLogsStructuredSummary(): void
+    {
+        $logger = new ArrayLogger();
+        $engine = new WorkflowEngine($this->repo, new ActionRegistry(), new SymfonyExpressionEvaluator());
+        $runner = new WorkflowRunner($engine, $this->repo, $logger);
+        $this->repo->saveInstance($this->dueTimerInstance('t-log'));
+
+        $runner->tick();
+
+        self::assertTrue($logger->hasMessage('workflow.tick'));
     }
 }
