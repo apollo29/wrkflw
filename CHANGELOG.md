@@ -5,6 +5,19 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-30
+
+### Added
+- PSR-11-Container-Wiring (php-di) fuer die API: `examples/bootstrap.php` stellt
+  `buildContainer()` bereit; `ApiFactory::createFromContainer()` loest den
+  `WorkflowController` ueber den Container auf. `api/index.php` nutzt diesen Weg.
+- Beispiel-`AppDataProvider` implementiert `find()` echt (Whitelist-Tabellen,
+  sichere Spaltennamen, prepared statements) statt eines Stubs.
+
+### Changed
+- `schema.sql` nutzt `CREATE TABLE IF NOT EXISTS` — `bin/migrate.php` ist damit
+  gefahrlos wiederholbar.
+
 ## [1.0.1] - 2026-06-30
 
 ### Changed

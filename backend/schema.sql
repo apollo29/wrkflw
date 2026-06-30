@@ -3,7 +3,7 @@
 -- =============================================================
 
 -- Unveraenderliche Workflow-DEFINITION (Template), versioniert.
-CREATE TABLE wf_definition (
+CREATE TABLE IF NOT EXISTS wf_definition (
     id            VARCHAR(64)  NOT NULL,
     version       INT          NOT NULL DEFAULT 1,
     name          VARCHAR(255) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE wf_definition (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Laufende INSTANZ einer Definition (ein konkreter Durchlauf).
-CREATE TABLE wf_instance (
+CREATE TABLE IF NOT EXISTS wf_instance (
     id              CHAR(36)     NOT NULL,            -- UUID
     definition_id   VARCHAR(64)  NOT NULL,
     definition_ver  INT          NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE wf_instance (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Audit-/HISTORIE: jeder Schritt, jedes Event, jede Transition.
-CREATE TABLE wf_history (
+CREATE TABLE IF NOT EXISTS wf_history (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     instance_id   CHAR(36)     NOT NULL,
     -- enter_step | action | event | transition | error | complete

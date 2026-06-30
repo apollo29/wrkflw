@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Http;
 
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -19,10 +20,21 @@ use WorkflowEngine\Engine\WorkflowEngine;
  * Baut die Slim-Anwendung der Workflow-Engine auf: Routen, Body-Parsing,
  * einheitliches JSON-Fehlerformat und optionale Auth-Middleware.
  *
- * Dependencies werden hier injiziert (in einer echten App aus dem DI-Container).
+ * Zwei Wege:
+ *  - create():               direkte Injektion von Engine + Repository (z. B. für Tests)
+ *  - createFromContainer():  Wiring über einen PSR-11-Container (z. B. php-di)
  */
 final class ApiFactory
 {
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, Controller-Aktion */
+    private const ROUTES = [
+        ['POST', '/workflows/{def}/instances', 'start'],
+        ['GET', '/instances/{id}', 'show'],
+        ['GET', '/instances/{id}/current-step', 'currentStep'],
+        ['POST', '/instances/{id}/events', 'postEvent'],
+        ['GET', '/instances/{id}/history', 'history'],
+    ];
+
     /**
      * @return App<\Psr\Container\ContainerInterface|null>
      */
@@ -32,14 +44,46 @@ final class ApiFactory
         ?MiddlewareInterface $auth = null,
     ): App {
         $app = AppFactory::create();
-        $controller = new WorkflowController($engine, $repo);
+        self::addRoutes($app, new WorkflowController($engine, $repo));
+        self::finalize($app, $auth);
 
-        $app->post('/workflows/{def}/instances', [$controller, 'start']);
-        $app->get('/instances/{id}', [$controller, 'show']);
-        $app->get('/instances/{id}/current-step', [$controller, 'currentStep']);
-        $app->post('/instances/{id}/events', [$controller, 'postEvent']);
-        $app->get('/instances/{id}/history', [$controller, 'history']);
+        return $app;
+    }
 
+    /**
+     * Wiring über einen PSR-11-Container. Der Container muss WorkflowController
+     * auflösen können (z. B. via Autowiring in examples/bootstrap.php).
+     *
+     * @return App<\Psr\Container\ContainerInterface|null>
+     */
+    public static function createFromContainer(
+        ContainerInterface $container,
+        ?MiddlewareInterface $auth = null,
+    ): App {
+        AppFactory::setContainer($container);
+        $app = AppFactory::create();
+        self::addRoutes($app, WorkflowController::class);
+        self::finalize($app, $auth);
+
+        return $app;
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function addRoutes(App $app, WorkflowController|string $controller): void
+    {
+        foreach (self::ROUTES as [$method, $pattern, $action]) {
+            $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
+            $app->map([$method], $pattern, $handler);
+        }
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function finalize(App $app, ?MiddlewareInterface $auth): void
+    {
         $app->addBodyParsingMiddleware();
 
         if ($auth !== null) {
@@ -65,8 +109,6 @@ final class ApiFactory
                 return $response->withHeader('Content-Type', 'application/json');
             }
         );
-
-        return $app;
     }
 
     /**
