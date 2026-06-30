@@ -5,6 +5,14 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
+### Added — CI/CD
+- GitHub-Actions-Pipeline (`.github/workflows/ci.yml`): Backend-Job (PHP 8.4 mit
+  MariaDB-11.4-Service — `composer cs`, `stan`, `test` inkl. Integrationstests) und
+  Frontend-Job (Node 22 — `ng build` Library/Demo, headless Unit-Tests).
+- `frontend/karma.conf.js` mit `ChromeHeadlessCI`-Launcher (`--no-sandbox`) fuer CI.
+
 ### Added — Phase 9: Härtung & Dokumentation
 - Retry/Backoff für fehlgeschlagene Actions: erneutes Einplanen als `waiting_timer`
   mit exponentiellem Backoff bis `maxAttempts`, danach `failed`; neue Spalte `attempts`

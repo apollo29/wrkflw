@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.4']
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_mysql, json
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer-Pakete
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Code-Style
+        run: composer cs
+
+      - name: Statische Analyse
+        run: composer stan
+
+      - name: Tests (Unit + Integration)
+        env:
+          WF_DB_DSN: "mysql:host=127.0.0.1;port=3306;dbname=workflow_test;charset=utf8mb4"
+          WF_DB_USER: root
+          WF_DB_PASS: root
+        run: composer test
+
+  frontend:
+    name: Frontend (Node 22)
+    runs-on: ubuntu-latest
+    env:
+      NG_CLI_ANALYTICS: 'false'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build Library
+        run: npx ng build workflow-client
+
+      - name: Build Demo
+        run: npx ng build demo
+
+      - name: Tests (headless)
+        run: |
+          npx ng test workflow-client --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.js
+          npx ng test demo --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.js
