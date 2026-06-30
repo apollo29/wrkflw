@@ -123,6 +123,32 @@ final class WorkflowEngineHardeningTest extends TestCase
         self::assertContains('event_duplicate', $this->repo->historyKinds());
     }
 
+    public function testAppliedEventIdsAreCappedToAvoidUnboundedGrowth(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'counter-flow',
+            'startStep' => 'wait',
+            'steps' => [
+                'wait' => ['type' => 'interactive', 'transitions' => [['event' => 'inc', 'to' => 'bump']]],
+                'bump' => ['type' => 'automatic', 'action' => 'bump', 'transitions' => [['to' => 'wait']]],
+            ],
+        ]));
+        $this->actions->register('bump', $this->bumpAction());
+        $engine = $this->engine();
+
+        $instance = $engine->start('counter-flow', ['count' => 0]);
+        for ($i = 0; $i < 60; $i++) {
+            $engine->handleEvent($instance->id, 'inc', [], "key-{$i}");
+        }
+
+        // Alle 60 eindeutigen Events wurden verarbeitet ...
+        self::assertSame(60, $instance->context['count']);
+        // ... aber die Liste der Idempotenz-Keys ist gedeckelt.
+        $applied = $instance->context['__appliedEventIds'];
+        self::assertIsArray($applied);
+        self::assertCount(50, $applied);
+    }
+
     public function testRunningInstanceKeepsItsDefinitionVersion(): void
     {
         $this->repo->addDefinition(WorkflowDefinition::fromArray([

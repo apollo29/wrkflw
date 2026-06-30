@@ -29,6 +29,9 @@ final class WorkflowEngine
     /** Reservierter Kontext-Schluessel fuer bereits angewendete Idempotenz-Keys. */
     private const APPLIED_EVENTS_KEY = '__appliedEventIds';
 
+    /** Obergrenze gespeicherter Idempotenz-Keys pro Instanz (aelteste werden verworfen). */
+    private const MAX_APPLIED_EVENTS = 50;
+
     /**
      * @param int $maxAttempts          maximale Ausfuehrungsversuche einer Action,
      *                                  bevor die Instanz auf 'failed' geht (>= 1)
@@ -291,7 +294,11 @@ final class WorkflowEngine
             $applied = [];
         }
         $applied[] = $eventId;
-        $instance->context[self::APPLIED_EVENTS_KEY] = $applied;
+        // Wachstum begrenzen: nur die juengsten Keys behalten.
+        if (count($applied) > self::MAX_APPLIED_EVENTS) {
+            $applied = array_slice($applied, -self::MAX_APPLIED_EVENTS);
+        }
+        $instance->context[self::APPLIED_EVENTS_KEY] = array_values($applied);
     }
 
     private function timerElapsed(WorkflowInstance $instance): bool

@@ -5,6 +5,14 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-30
+
+### Changed
+- Idempotenz: gespeicherte Event-Keys pro Instanz werden auf die jüngsten 50 begrenzt
+  (kein unbegrenztes Wachstum des Kontexts).
+- CI: Actions auf Node-24-Versionen gehoben (`actions/checkout@v5`,
+  `actions/setup-node@v5`, `actions/cache@v6`) — Deprecation-Warnungen entfernt.
+
 ## [1.0.0] - 2026-06-30
 
 ### Added — CI/CD
