@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Angular-Client (Service, Runner- und Editor-Komponenten) fuer die Workflow-Engine.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apollo29/wrkflw.git"
+  },
   "peerDependencies": {
     "@angular/common": "^19.2.0",
     "@angular/core": "^19.2.0"

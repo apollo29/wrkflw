@@ -151,17 +151,29 @@ Auf Packagist veröffentlicht (Repo-URL einreichen) genügt `composer require
 apollo29/workflow-engine`. Die Tags `vX.Y.Z` sind die Versionen. Schema:
 `backend/schema.sql`; Wiring-Vorlage: `backend/examples/bootstrap.php`.
 
-### Angular-Client (npm)
+> Hinweis: GitHub Packages unterstützt **kein** Composer/PHP — die Engine wird per VCS
+> oder Packagist bezogen, nicht über GitHub Packages.
 
-Paket `@apollo29/workflow-client` (Angular ≥ 19.2). Veröffentlichen über einen Tag
-`client-vX.Y.Z` — der Workflow `publish-npm` baut die Library und publisht sie
-(einmalig das Repo-Secret `NPM_TOKEN` mit einem npm-Access-Token setzen). Danach:
+### Angular-Client (npm, GitHub Packages)
+
+Paket `@apollo29/workflow-client` (Angular ≥ 19.2), veröffentlicht in der **GitHub-
+Packages npm-Registry**. Release über einen Tag `client-vX.Y.Z` — der Workflow
+`publish-npm` baut und publisht via `GITHUB_TOKEN` (kein zusätzliches Secret nötig).
+
+Im Zielprojekt eine `.npmrc` anlegen (Scope auf GitHub Packages routen):
+
+```
+@apollo29:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+`GITHUB_TOKEN` ist ein Personal Access Token mit `read:packages`. Dann:
 
 ```bash
 npm install @apollo29/workflow-client
 ```
 
-Ohne Registry (lokal): `cd frontend && ng build workflow-client` und im Zielprojekt
+Ohne Registry (rein lokal): `cd frontend && ng build workflow-client` und im Zielprojekt
 `npm install /pfad/zu/frontend/dist/workflow-client`.
 
 ## Nebenläufigkeit (mehrere Cron-Worker)

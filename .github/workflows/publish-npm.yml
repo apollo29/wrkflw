@@ -1,11 +1,16 @@
 name: Publish npm
 
-# Veroeffentlicht die Angular-Library @apollo29/workflow-client bei Tags wie
-# "client-v1.0.0". Voraussetzung: Repository-Secret NPM_TOKEN (npm Access Token).
+# Veroeffentlicht die Angular-Library @apollo29/workflow-client in die GitHub-Packages
+# npm-Registry bei Tags wie "client-v1.0.0". Nutzt das eingebaute GITHUB_TOKEN
+# (kein zusaetzliches Secret noetig).
 
 on:
   push:
     tags: ['client-v*']
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   publish:
@@ -17,11 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Setup Node
+      - name: Setup Node (GitHub Packages)
         uses: actions/setup-node@v5
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@apollo29'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -41,4 +47,4 @@ jobs:
         run: npm publish
         working-directory: frontend/dist/workflow-client
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

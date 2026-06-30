@@ -5,6 +5,15 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-06-30
+
+### Changed
+- npm-Publish-Workflow veroeffentlicht jetzt in die **GitHub-Packages**-npm-Registry
+  (`npm.pkg.github.com`) via `GITHUB_TOKEN` — kein `NPM_TOKEN`-Secret mehr noetig.
+- Angular-Library um `repository`-Feld ergaenzt (verknuepft das Paket mit dem Repo).
+- README: Bezug ueber GitHub Packages dokumentiert; Hinweis, dass die PHP-Engine
+  nicht ueber GitHub Packages, sondern via VCS/Packagist bezogen wird.
+
 ## [1.3.0] - 2026-06-30
 
 ### Added
