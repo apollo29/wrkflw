@@ -91,6 +91,13 @@ describe('WorkflowService', () => {
     req.flush({ id: 'onboarding', version: 2, active: true });
   });
 
+  it('listActions() requests the action catalog', () => {
+    service.listActions().subscribe();
+    const req = httpMock.expectOne(`${BASE}/actions`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ actions: [] });
+  });
+
   it('getInstance() and history() use GET', () => {
     service.getInstance('i1').subscribe();
     const stateReq = httpMock.expectOne(`${BASE}/instances/i1`);

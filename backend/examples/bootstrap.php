@@ -126,6 +126,7 @@ function buildContainer(\PDO $pdo): ContainerInterface
         ),
         WorkflowController::class => \DI\autowire(),
         WorkflowEngine\Http\DefinitionController::class => \DI\autowire(),
+        WorkflowEngine\Http\ActionController::class => \DI\autowire(),
     ]);
 
     return $builder->build();

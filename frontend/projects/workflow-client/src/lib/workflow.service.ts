@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { WORKFLOW_API_BASE_URL } from './workflow.config';
 import {
+  ActionCatalogResponse,
   CurrentStep,
   DefinitionListResponse,
   DefinitionResponse,
@@ -80,5 +81,10 @@ export class WorkflowService {
       `${this.baseUrl}/workflows/${encodeURIComponent(id)}`,
       { name, definition },
     );
+  }
+
+  /** Katalog der verfügbaren Actions inkl. Config-Schema (GET /actions). */
+  listActions(): Observable<ActionCatalogResponse> {
+    return this.http.get<ActionCatalogResponse>(`${this.baseUrl}/actions`);
   }
 }

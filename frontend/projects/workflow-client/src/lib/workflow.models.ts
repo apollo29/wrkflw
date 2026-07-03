@@ -89,3 +89,21 @@ export interface SaveDefinitionResponse {
   version: number;
   active: boolean;
 }
+
+/** Ein Config-Feld einer Action (aus dem Action-Katalog). */
+export interface ActionField {
+  name: string;
+  label: string;
+  type: string;
+}
+
+/** Ein Eintrag im Action-Katalog (GET /actions). */
+export interface ActionCatalogEntry {
+  key: string;
+  label?: string;
+  config: ActionField[];
+}
+
+export interface ActionCatalogResponse {
+  actions: ActionCatalogEntry[];
+}

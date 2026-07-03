@@ -5,6 +5,27 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-03
+
+### Added
+- No-Code-Workflow-Builder (Admin-GUI) in der Angular-Library: `WorkflowBuilderComponent`
+  (`wf-builder`) mit geführter Schrittliste, typabhängigen Konfigurations-Formularen,
+  Bedingungs-Assistent (Feld/Operator/Wert) samt „Erweitert"-Rohausdruck, read-only
+  Ablauf-Vorschau und Visuell/JSON-Umschalter. Erzeugt dieselbe Definition-JSON wie der
+  rohe Editor; Server-Validierung bleibt maßgeblich.
+- Reines Mapping-Modul `definition-mapping.ts` (Modell↔JSON, `compileCondition`/
+  `parseCondition`, BFS-Reihenfolge) mit eigenen Unit-Tests.
+- Backend `GET /actions`: Action-Katalog mit optionalem Config-Schema. Neues optionales
+  `ConfigurableActionInterface` (rein additiv); `SendEmailAction` beschreibt `to/subject/body`;
+  `ActionRegistry::keys()`; `ActionController`; Route in `ApiFactory` (Container- und
+  Direkt-Pfad) + Container-Wiring in `examples/bootstrap.php`.
+- `WorkflowService.listActions()`; Katalog-Typen in `workflow.models.ts`.
+- Demo: „Editor"-Tab nutzt jetzt den Builder; `proxy.conf.json` um `/actions` ergänzt.
+
+### Changed
+- `ApiFactory::create()` akzeptiert optional eine `ActionRegistry`, um die `/actions`-Route
+  auch ohne Container zu registrieren.
+
 ## [1.3.1] - 2026-06-30
 
 ### Changed

@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import {
   CurrentStep,
-  WorkflowEditorComponent,
+  WorkflowBuilderComponent,
   WorkflowRunnerComponent,
   WorkflowService,
 } from '@apollo29/workflow-client';
@@ -9,7 +9,7 @@ import {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [WorkflowRunnerComponent, WorkflowEditorComponent],
+  imports: [WorkflowRunnerComponent, WorkflowBuilderComponent],
   template: `
     <main class="demo">
       <h1>Workflow-Demo</h1>
@@ -35,7 +35,7 @@ import {
           }
         }
       } @else {
-        <wf-editor />
+        <wf-builder />
       }
     </main>
   `,

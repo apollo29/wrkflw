@@ -1,0 +1,168 @@
+<div class="wf-b">
+  <div class="wf-b__bar">
+    @if (viewMode() === 'visual') {
+      <input type="text" placeholder="workflow-id" [ngModel]="model().id" (ngModelChange)="model().id = $event" aria-label="Workflow-ID" />
+      <input type="text" placeholder="Anzeigename" [ngModel]="model().name" (ngModelChange)="model().name = $event" aria-label="Anzeigename" />
+    }
+    <span style="display:inline-flex; border:0.5px solid var(--border,#ccc); border-radius:8px; overflow:hidden;">
+      <button type="button" (click)="showVisual()" [style.fontWeight]="viewMode() === 'visual' ? '500' : '400'">Visuell</button>
+      <button type="button" (click)="showJson()" [style.fontWeight]="viewMode() === 'json' ? '500' : '400'">JSON</button>
+    </span>
+    <button type="button" (click)="save()" [disabled]="busy()">Speichern</button>
+  </div>
+
+  @if (message(); as msg) { <p class="wf-b__ok">{{ msg }}</p> }
+  @if (error(); as err) { <p class="wf-b__error" role="alert">{{ err }}</p> }
+
+  @if (viewMode() === 'json') {
+    <textarea class="wf-b__json" rows="18" [ngModel]="jsonText()" (ngModelChange)="jsonText.set($event)" aria-label="Definition JSON"></textarea>
+    <div><button type="button" (click)="showVisual()">Zur visuellen Ansicht übernehmen</button></div>
+  } @else {
+
+    <div class="wf-b__preview">
+      <span style="font-size:12px; color:var(--text-secondary,#666);">Ablauf:</span>
+      @for (name of preview(); track name) {
+        <span class="wf-b__chip">{{ name }}</span>
+      } @empty {
+        <span style="font-size:12px; color:var(--text-secondary,#666);">noch keine Schritte</span>
+      }
+    </div>
+
+    <div class="wf-b__cols">
+      <div class="wf-b__panel">
+        <div class="wf-b__label">Vorhandene laden</div>
+        <div class="wf-b__steplist">
+          @for (def of definitions(); track def.id + ':' + def.version) {
+            <button type="button" class="wf-b__step" (click)="loadDefinition(def.id)">{{ def.id }} v{{ def.version }}</button>
+          }
+          <button type="button" (click)="newDefinition()">+ Neuer Workflow</button>
+        </div>
+
+        <div class="wf-b__label">Schritte</div>
+        <div class="wf-b__steplist">
+          @for (step of model().steps; track $index) {
+            <div class="wf-b__row" style="justify-content:space-between; margin:2px 0;">
+              <button type="button" class="wf-b__step" [class.wf-b__step--active]="selected() === $index" (click)="selected.set($index)" style="flex:1;">
+                {{ step.name }} <span style="color:var(--text-secondary,#666); font-size:11px;">({{ step.type }})</span>
+              </button>
+              <button type="button" (click)="removeStep($index)" aria-label="Schritt entfernen">×</button>
+            </div>
+          }
+        </div>
+        <div class="wf-b__row">
+          <button type="button" (click)="addStep('automatic')">+ Automatisch</button>
+          <button type="button" (click)="addStep('interactive')">+ Interaktiv</button>
+          <button type="button" (click)="addStep('timer')">+ Timer</button>
+        </div>
+
+        <div class="wf-b__label">Start-Schritt</div>
+        <select [ngModel]="model().startStep" (ngModelChange)="model().startStep = $event; bump()" aria-label="Start-Schritt">
+          <option value="">—</option>
+          @for (n of stepNames(); track n) { <option [value]="n">{{ n }}</option> }
+        </select>
+      </div>
+
+      <div class="wf-b__panel">
+        @if (selectedStep(); as step) {
+          <div class="wf-b__label">Name des Schritts</div>
+          <input type="text" [ngModel]="step.name" (ngModelChange)="step.name = $event; bump()" aria-label="Schrittname" />
+
+          <div class="wf-b__label">Typ</div>
+          <select [ngModel]="step.type" (ngModelChange)="setType(step, $event)" aria-label="Schritt-Typ">
+            <option value="automatic">Automatisch</option>
+            <option value="interactive">Interaktiv</option>
+            <option value="timer">Timer</option>
+          </select>
+
+          @if (step.type === 'automatic') {
+            <div class="wf-b__label">Aktion</div>
+            <select [ngModel]="step.action ?? ''" (ngModelChange)="setAction(step, $event)" aria-label="Aktion">
+              <option value="">— keine —</option>
+              @for (a of actions(); track a.key) { <option [value]="a.key">{{ a.label ?? a.key }}</option> }
+            </select>
+            @for (field of actionSchema(step); track field.name) {
+              <div class="wf-b__label">{{ field.label }}</div>
+              @if (field.type === 'textarea') {
+                <textarea rows="3" style="width:100%;" [ngModel]="configValue(step, field.name)" (ngModelChange)="setConfig(step, field.name, $event)"></textarea>
+              } @else {
+                <input type="text" style="width:100%;" [ngModel]="configValue(step, field.name)" (ngModelChange)="setConfig(step, field.name, $event)" />
+              }
+            }
+          }
+
+          @if (step.type === 'interactive') {
+            <div class="wf-b__label">Überschrift</div>
+            <input type="text" style="width:100%;" [(ngModel)]="step.title" />
+            <div class="wf-b__label">Beschreibung</div>
+            <input type="text" style="width:100%;" [(ngModel)]="step.description" />
+            <div class="wf-b__label">Eingabefelder</div>
+            <table class="wf-b__fields">
+              @for (f of step.fields; track $index) {
+                <tr>
+                  <td><input type="text" [(ngModel)]="f.name" placeholder="name" /></td>
+                  <td><input type="text" [(ngModel)]="f.label" placeholder="Label" /></td>
+                  <td>
+                    <select [ngModel]="f.type" (ngModelChange)="setFieldType(f, $event)">
+                      <option value="text">Text</option>
+                      <option value="boolean">Ja/Nein</option>
+                    </select>
+                  </td>
+                  <td><button type="button" (click)="removeField(step, $index)" aria-label="Feld entfernen">×</button></td>
+                </tr>
+              }
+            </table>
+            <button type="button" (click)="addField(step)">+ Feld</button>
+          }
+
+          @if (step.type === 'timer') {
+            <div class="wf-b__label">Wartezeit</div>
+            <div class="wf-b__row">
+              <input type="number" min="0" style="width:90px;" [ngModel]="timerValue(step)" (ngModelChange)="setTimer(step, +$event, timerUnit(step))" aria-label="Wert" />
+              <select [ngModel]="timerUnit(step)" (ngModelChange)="setTimer(step, timerValue(step), $event)" aria-label="Einheit">
+                @for (u of units; track u.unit) { <option [value]="u.unit">{{ u.label }}</option> }
+              </select>
+            </div>
+          }
+
+          <div class="wf-b__label">Übergänge</div>
+          @for (t of step.transitions; track $index) {
+            <div style="border:0.5px solid var(--border,#ccc); border-radius:8px; padding:8px; margin-bottom:6px;">
+              <div class="wf-b__row">
+                <span style="font-size:12px; color:var(--text-secondary,#666);">gehe zu</span>
+                <select [ngModel]="t.to" (ngModelChange)="t.to = $event; bump()" aria-label="Ziel">
+                  <option value="">—</option>
+                  @for (n of stepNames(); track n) { <option [value]="n">{{ n }}</option> }
+                </select>
+                @if (step.type === 'interactive') {
+                  <span style="font-size:12px; color:var(--text-secondary,#666);">bei Ereignis</span>
+                  <input type="text" style="width:100px;" [ngModel]="t.event ?? ''" (ngModelChange)="t.event = $event || null" placeholder="submit" aria-label="Ereignis" />
+                }
+                <button type="button" (click)="removeTransition(step, $index)" aria-label="Übergang entfernen">×</button>
+              </div>
+              <div class="wf-b__row">
+                <button type="button" (click)="toggleConditionMode(t)">{{ t.mode === 'assistant' ? 'Assistent' : 'Erweitert' }}</button>
+                @if (t.mode === 'assistant') {
+                  <span style="font-size:12px; color:var(--text-secondary,#666);">wenn</span>
+                  <input type="text" list="wf-field-names" style="width:120px;" [(ngModel)]="t.condition.field" placeholder="Feld" aria-label="Feld" />
+                  <select [ngModel]="t.condition.op" (ngModelChange)="setOp(t, $event)" aria-label="Operator">
+                    @for (o of operators; track o.op) { <option [value]="o.op">{{ o.label }}</option> }
+                  </select>
+                  <input type="text" style="width:120px;" [(ngModel)]="t.condition.value" placeholder="Wert" aria-label="Wert" />
+                } @else {
+                  <input type="text" style="flex:1;" [(ngModel)]="t.raw" placeholder="context['x'] == 'y'" aria-label="Ausdruck" />
+                }
+              </div>
+            </div>
+          }
+          <button type="button" (click)="addTransition(step)">+ Übergang</button>
+        } @else {
+          <p style="color:var(--text-secondary,#666); font-size:13px;">Wähle links einen Schritt oder füge einen hinzu.</p>
+        }
+      </div>
+    </div>
+
+    <datalist id="wf-field-names">
+      @for (n of fieldSuggestions(); track n) { <option [value]="n"></option> }
+    </datalist>
+  }
+</div>

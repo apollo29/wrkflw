@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="workflow-engine">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/workflow-engine.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

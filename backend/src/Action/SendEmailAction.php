@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace WorkflowEngine\Action;
 
 use WorkflowEngine\Contracts\ActionInterface;
+use WorkflowEngine\Contracts\ConfigurableActionInterface;
 use WorkflowEngine\Contracts\MailerInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
@@ -20,10 +21,19 @@ use WorkflowEngine\Instance\WorkflowInstance;
  *       "body":    "Hallo {{name}}, ..."
  *   }
  */
-final class SendEmailAction implements ActionInterface
+final class SendEmailAction implements ActionInterface, ConfigurableActionInterface
 {
     public function __construct(private readonly MailerInterface $mailer)
     {
+    }
+
+    public function configSchema(): array
+    {
+        return [
+            ['name' => 'to', 'label' => 'An', 'type' => 'text'],
+            ['name' => 'subject', 'label' => 'Betreff', 'type' => 'text'],
+            ['name' => 'body', 'label' => 'Text', 'type' => 'textarea'],
+        ];
     }
 
     public function execute(WorkflowInstance $instance, Step $step): array

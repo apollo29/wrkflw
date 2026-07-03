@@ -31,4 +31,12 @@ final class ActionRegistry
     {
         return isset($this->actions[$key]);
     }
+
+    /**
+     * @return list<string> die registrierten Action-Schluessel
+     */
+    public function keys(): array
+    {
+        return array_keys($this->actions);
+    }
 }

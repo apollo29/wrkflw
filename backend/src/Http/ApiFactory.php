@@ -13,6 +13,7 @@ use Slim\Exception\HttpException;
 use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
+use WorkflowEngine\Action\ActionRegistry;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\DefinitionValidator;
 use WorkflowEngine\Engine\WorkflowEngine;
@@ -43,6 +44,11 @@ final class ApiFactory
         ['POST', '/workflows/{def}', 'save'],
     ];
 
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, ActionController-Aktion */
+    private const ACTION_ROUTES = [
+        ['GET', '/actions', 'list'],
+    ];
+
     /**
      * @return App<\Psr\Container\ContainerInterface|null>
      */
@@ -50,10 +56,14 @@ final class ApiFactory
         WorkflowEngine $engine,
         WorkflowRepositoryInterface $repo,
         ?MiddlewareInterface $auth = null,
+        ?ActionRegistry $actions = null,
     ): App {
         $app = AppFactory::create();
         self::addWorkflowRoutes($app, new WorkflowController($engine, $repo));
         self::addDefinitionRoutes($app, new DefinitionController($repo, new DefinitionValidator()));
+        if ($actions !== null) {
+            self::addActionRoutes($app, new ActionController($actions));
+        }
         self::finalize($app, $auth);
 
         return $app;
@@ -73,6 +83,7 @@ final class ApiFactory
         $app = AppFactory::create();
         self::addWorkflowRoutes($app, WorkflowController::class);
         self::addDefinitionRoutes($app, DefinitionController::class);
+        self::addActionRoutes($app, ActionController::class);
         self::finalize($app, $auth);
 
         return $app;
@@ -95,6 +106,17 @@ final class ApiFactory
     private static function addDefinitionRoutes(App $app, DefinitionController|string $controller): void
     {
         foreach (self::DEFINITION_ROUTES as [$method, $pattern, $action]) {
+            $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
+            $app->map([$method], $pattern, $handler);
+        }
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function addActionRoutes(App $app, ActionController|string $controller): void
+    {
+        foreach (self::ACTION_ROUTES as [$method, $pattern, $action]) {
             $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
             $app->map([$method], $pattern, $handler);
         }
