@@ -1,6 +1,11 @@
 # PHP / Composer
 /vendor/
 /backend/vendor/
+# Root-Lock wird nicht benoetigt (Library; backend/composer.lock bleibt getrackt)
+/composer.lock
+
+# IDE
+/.idea/
 /backend/.phpunit.cache/
 /backend/.phpstan.cache/
 /backend/.php-cs-fixer.cache
