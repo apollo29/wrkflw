@@ -5,6 +5,10 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- `publish-npm`-Workflow legt bei `client-v*`-Tags zusätzlich automatisch einen
+  GitHub-Release (nicht „Latest") mit dem gepackten `.tgz` an.
+
 ## [1.4.0] - 2026-07-03
 
 ### Added

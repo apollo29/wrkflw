@@ -1,15 +1,15 @@
 name: Publish npm
 
 # Veroeffentlicht die Angular-Library @apollo29/workflow-client in die GitHub-Packages
-# npm-Registry bei Tags wie "client-v1.0.0". Nutzt das eingebaute GITHUB_TOKEN
-# (kein zusaetzliches Secret noetig).
+# npm-Registry bei Tags wie "client-v1.0.0" und legt zusaetzlich einen GitHub-Release
+# mit dem gepackten Tarball an. Nutzt das eingebaute GITHUB_TOKEN (kein extra Secret).
 
 on:
   push:
     tags: ['client-v*']
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -37,14 +37,40 @@ jobs:
       - name: Version aus Tag uebernehmen (client-vX.Y.Z -> X.Y.Z)
         run: |
           VERSION="${GITHUB_REF_NAME#client-v}"
+          echo "CLIENT_VERSION=$VERSION" >> "$GITHUB_ENV"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
         working-directory: frontend/projects/workflow-client
 
       - name: Build Library
         run: npx ng build workflow-client
 
-      - name: Publish
+      - name: Publish (npm / GitHub Packages)
         run: npm publish
         working-directory: frontend/dist/workflow-client
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tarball packen
+        run: npm pack
+        working-directory: frontend/dist/workflow-client
+
+      - name: GitHub-Release erstellen (mit .tgz)
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "@apollo29/workflow-client ${{ env.CLIENT_VERSION }}"
+          make_latest: 'false'
+          files: frontend/dist/workflow-client/*.tgz
+          body: |
+            Angular-Client der Workflow-Engine — `@apollo29/workflow-client@${{ env.CLIENT_VERSION }}`
+            (veröffentlicht in GitHub Packages).
+
+            ## Installation (GitHub Packages)
+            `.npmrc` im Zielprojekt:
+            ```
+            @apollo29:registry=https://npm.pkg.github.com
+            //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+            ```
+            (GITHUB_TOKEN = PAT mit `read:packages`), dann `npm install @apollo29/workflow-client`.
+
+            Das angehängte `.tgz` ist dasselbe Paket zum lokalen Einbinden ohne Registry
+            (`npm install ./apollo29-workflow-client-${{ env.CLIENT_VERSION }}.tgz`).
