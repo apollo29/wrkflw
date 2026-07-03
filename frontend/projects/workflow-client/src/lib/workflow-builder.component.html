@@ -82,16 +82,17 @@
       <div class="wfb__panel">
         <div class="wfb__side-label">Schritte</div>
         <div class="wfb__steplist">
-          @for (step of model().steps; track $index) {
+          <!-- Ablauf-Reihenfolge (wie die Vorschau), nicht Array-Reihenfolge -->
+          @for (entry of orderedSteps(); track entry.index) {
             <div class="wfb__step-row">
-              <button type="button" class="wfb__step" [class.is-active]="selected() === $index"
-                      (click)="selected.set($index)">
+              <button type="button" class="wfb__step" [class.is-active]="selected() === entry.index"
+                      (click)="selected.set(entry.index)">
                 <svg class="wfb__icon" aria-hidden="true">
-                  <use [attr.href]="step.type === 'interactive' ? '#wfb-i-inter' : step.type === 'timer' ? '#wfb-i-timer' : '#wfb-i-auto'"/>
+                  <use [attr.href]="entry.step.type === 'interactive' ? '#wfb-i-inter' : entry.step.type === 'timer' ? '#wfb-i-timer' : '#wfb-i-auto'"/>
                 </svg>
-                {{ step.name }}
+                {{ entry.step.name }}
               </button>
-              <button type="button" class="wfb__step-x" (click)="removeStep($index)" aria-label="Schritt entfernen">×</button>
+              <button type="button" class="wfb__step-x" (click)="removeStep(entry.index)" aria-label="Schritt entfernen">×</button>
             </div>
           }
         </div>

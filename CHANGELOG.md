@@ -5,6 +5,12 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Builder (client 1.2.1):** Die Schritt-Liste links zeigt die Schritte jetzt in
+  Ablauf-Reihenfolge (BFS ab Start-Schritt, identisch zur Ablauf-Vorschau) statt
+  in der rohen Array-Reihenfolge der Definition; nicht erreichbare Schritte
+  folgen am Ende. Auswahl/Löschen laufen weiter über den Original-Index.
+
 ### Changed
 - `publish-npm`-Workflow legt bei `client-v*`-Tags zusätzlich automatisch einen
   GitHub-Release (nicht „Latest") mit dem gepackten `.tgz` an.

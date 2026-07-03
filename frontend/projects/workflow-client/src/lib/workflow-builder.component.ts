@@ -80,6 +80,38 @@ export class WorkflowBuilderComponent implements OnInit {
     return orderedStepNames(this.model());
   }
 
+  /**
+   * Schritte in Ablauf-Reihenfolge (BFS ab Start-Schritt, wie die Vorschau) —
+   * nicht erreichbare Schritte folgen am Ende in Original-Reihenfolge.
+   * Liefert Paare mit dem Original-Index, damit Auswahl/Löschen weiter über
+   * den model().steps-Index laufen.
+   */
+  orderedSteps(): { step: BuilderStep; index: number }[] {
+    const model = this.model();
+    const byName = new Map<string, { step: BuilderStep; index: number }>();
+    model.steps.forEach((step, index) => {
+      if (!byName.has(step.name)) {
+        byName.set(step.name, { step, index });
+      }
+    });
+
+    const out: { step: BuilderStep; index: number }[] = [];
+    const seen = new Set<number>();
+    for (const name of orderedStepNames(model)) {
+      const entry = byName.get(name);
+      if (entry && !seen.has(entry.index)) {
+        out.push(entry);
+        seen.add(entry.index);
+      }
+    }
+    model.steps.forEach((step, index) => {
+      if (!seen.has(index)) {
+        out.push({ step, index });
+      }
+    });
+    return out;
+  }
+
   selectedStep(): BuilderStep | null {
     const steps = this.model().steps;
     const i = this.selected();
