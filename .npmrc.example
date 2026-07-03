@@ -1,0 +1,11 @@
+# Vorlage fuer den Bezug von @apollo29/workflow-client aus GitHub Packages.
+#
+# Nutzung: diese Datei zu ".npmrc" kopieren (die echte .npmrc ist gitignored und
+# wird NIE committet). Empfohlen: den Token als Umgebungsvariable GITHUB_TOKEN
+# setzen (PAT mit Scope read:packages) — dann steht kein Geheimnis in einer Datei.
+
+@apollo29:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+
+# Literal-Variante (nur lokal, NIEMALS committen) — statt der Zeile oben:
+# //npm.pkg.github.com/:_authToken=ghp_dein_token_hier

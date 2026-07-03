@@ -6,6 +6,10 @@
 
 # IDE
 /.idea/
+
+# Lokale npm-Auth (GitHub Packages) — enthaelt ggf. einen Token, nie committen.
+# Vorlage: .npmrc.example
+.npmrc
 /backend/.phpunit.cache/
 /backend/.phpstan.cache/
 /backend/.php-cs-fixer.cache
