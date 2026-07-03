@@ -1,10 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BuilderModel,
   BuilderStep,
   BuilderTransition,
+  compileCondition,
   ConditionOp,
   emptyModel,
   emptyStep,
@@ -30,40 +31,37 @@ const UNITS: { unit: string; label: string; factor: number }[] = [
   { unit: 'days', label: 'Tage', factor: 86400 },
 ];
 
+const TYPE_LABELS: Record<StepType, string> = {
+  automatic: 'Automatisch',
+  interactive: 'Interaktiv',
+  timer: 'Timer',
+};
+
+const TYPE_BADGES: Record<StepType, string> = {
+  automatic: 'Automatisch · läuft im Hintergrund',
+  interactive: 'Interaktiv · wartet auf Eingabe',
+  timer: 'Timer · wartet',
+};
+
 /**
  * No-Code-Builder für Workflow-Definitionen: geführte Schrittliste, Konfigurations-
  * formulare, Bedingungs-Assistent und read-only Ablauf-Vorschau. Erzeugt dieselbe
- * Definition-JSON wie der rohe Editor; ein „Erweitert"-Umschalter zeigt/bearbeitet JSON.
+ * Definition-JSON wie der rohe Editor; ein Umschalter zeigt/bearbeitet JSON.
+ *
+ * Theming über CSS-Variablen (Defaults ergeben ein neutrales, helles Design):
+ *   --wfb-primary, --wfb-border, --wfb-bg, --wfb-bg-soft, --wfb-text,
+ *   --wfb-text-muted, --wfb-radius
  */
 @Component({
   selector: 'wf-builder',
   standalone: true,
   imports: [FormsModule],
   templateUrl: './workflow-builder.component.html',
-  styles: [
-    `
-      .wf-b { display: flex; flex-direction: column; gap: 12px; }
-      .wf-b__bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-      .wf-b__bar input { flex: 1; min-width: 140px; }
-      .wf-b__cols { display: grid; grid-template-columns: 220px 1fr; gap: 12px; align-items: start; }
-      .wf-b__panel { border: 0.5px solid var(--border, #ccc); border-radius: 12px; padding: 12px; }
-      .wf-b__steplist { display: flex; flex-direction: column; gap: 4px; }
-      .wf-b__step { text-align: left; }
-      .wf-b__step--active { font-weight: 500; }
-      .wf-b__row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
-      .wf-b__label { font-size: 12px; color: var(--text-secondary, #666); display: block; margin: 8px 0 4px; }
-      .wf-b__preview { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-      .wf-b__chip { font-size: 12px; padding: 4px 8px; border: 0.5px solid var(--border, #ccc); border-radius: 6px; }
-      .wf-b__error { color: #b00020; }
-      .wf-b__ok { color: #0a7d28; }
-      textarea.wf-b__json { width: 100%; font-family: monospace; }
-      table.wf-b__fields { width: 100%; border-collapse: collapse; }
-      table.wf-b__fields td { padding: 2px; }
-    `,
-  ],
+  styleUrl: './workflow-builder.component.css',
 })
 export class WorkflowBuilderComponent implements OnInit {
   private readonly service = inject(WorkflowService);
+  private readonly typePicker = viewChild<ElementRef<HTMLElement>>('typePicker');
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
@@ -86,6 +84,32 @@ export class WorkflowBuilderComponent implements OnInit {
     const steps = this.model().steps;
     const i = this.selected();
     return i >= 0 && i < steps.length ? steps[i] : null;
+  }
+
+  stepByName(name: string): BuilderStep | null {
+    return this.model().steps.find((s) => s.name === name) ?? null;
+  }
+
+  typeLabel(type: StepType): string {
+    return TYPE_LABELS[type];
+  }
+
+  typeBadge(type: StepType): string {
+    return TYPE_BADGES[type];
+  }
+
+  /** Kompilierter when-Ausdruck für die Vorschau-Zeile unter dem Assistenten. */
+  compiledCondition(t: BuilderTransition): string {
+    return t.mode === 'assistant' ? compileCondition(t.condition) : t.raw;
+  }
+
+  /** "Sonst"-Übergang: Assistent-Modus ohne Feld (== immer wahr). */
+  isElse(t: BuilderTransition): boolean {
+    return t.mode === 'assistant' && t.condition.field.trim() === '';
+  }
+
+  scrollToTypePicker(): void {
+    this.typePicker()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   ngOnInit(): void {

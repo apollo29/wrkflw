@@ -8,6 +8,17 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ### Changed
 - `publish-npm`-Workflow legt bei `client-v*`-Tags zusätzlich automatisch einen
   GitHub-Release (nicht „Latest") mit dem gepackten `.tgz` an.
+- **Builder-Redesign (client 1.2.0):** `wf-builder` nach Design-Vorlage komplett
+  neu gestylt — typisierte Ablauf-Chips mit Icons und Pfeilen (Blau/Violett/Amber
+  für automatic/interactive/timer, aktiver Schritt umrandet), Schritt-Detail mit
+  Typ-Badge („Interaktiv · wartet auf Eingabe"), Eingabefelder als Zeilenliste,
+  Bedingungs-Assistent als hervorgehobenes blaues Panel („Wenn … ist … → gehe zu …")
+  mit kompiliertem Ausdruck als Vorschau-Zeile, bedingungslose Übergänge als
+  „Sonst → gehe zu …"-Zeile, Typ-Auswahl-Karten mit Beschreibung am Seitenende,
+  segmentierter Visuell/JSON-Umschalter. Styles jetzt in eigener CSS-Datei mit
+  Theming-Hooks (`--wfb-primary`, `--wfb-border`, `--wfb-bg`, `--wfb-bg-soft`,
+  `--wfb-text`, `--wfb-text-muted`, `--wfb-radius`) und brauchbaren Defaults —
+  Host-Apps brauchen keine ::ng-deep-Brücke mehr. Funktionalität/API unverändert.
 
 ## [1.4.0] - 2026-07-03
 
