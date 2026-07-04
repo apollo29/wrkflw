@@ -13,8 +13,10 @@ import {
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Editor } from '@tiptap/core';
+import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
 import StarterKit from '@tiptap/starter-kit';
+import { Column, Columns, EmailButton, PlaceholderHighlight } from './email-extensions';
 
 /**
  * Reicher WYSIWYG-/Template-Editor für HTML-Inhalte (z. B. E-Mail-Bodies) auf Basis
@@ -37,6 +39,8 @@ export class HtmlEditorComponent implements AfterViewInit, OnDestroy {
   readonly value = model<string>('');
   readonly placeholders = input<string[]>([]);
   readonly sampleContext = input<Record<string, string>>({});
+  /** Optionaler Host-Upload: bekommt die Datei, liefert eine Bild-URL zurück. */
+  readonly imageUpload = input<((file: File) => Promise<string>) | null>(null);
 
   readonly showSource = signal(false);
   readonly showPreview = signal(false);
@@ -72,6 +76,11 @@ export class HtmlEditorComponent implements AfterViewInit, OnDestroy {
       extensions: [
         StarterKit.configure({ link: { openOnClick: false } }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Image.configure({ inline: false, allowBase64: true }),
+        PlaceholderHighlight,
+        EmailButton,
+        Columns,
+        Column,
       ],
       content: this.value() || '<p></p>',
       onUpdate: ({ editor }) => {
@@ -142,6 +151,85 @@ export class HtmlEditorComponent implements AfterViewInit, OnDestroy {
 
   clearFormat(): void {
     this.editor?.chain().focus().unsetAllMarks().clearNodes().run();
+  }
+
+  // -- E-Mail-Bausteine ---------------------------------------------------
+
+  insertDivider(): void {
+    this.editor?.chain().focus().setHorizontalRule().run();
+  }
+
+  insertColumns(): void {
+    this.editor
+      ?.chain()
+      .focus()
+      .insertContent({
+        type: 'columns',
+        content: [
+          { type: 'column', content: [{ type: 'paragraph' }] },
+          { type: 'column', content: [{ type: 'paragraph' }] },
+        ],
+      })
+      .run();
+  }
+
+  insertButton(label: string, href: string): void {
+    if (!label.trim()) {
+      return;
+    }
+    this.editor
+      ?.chain()
+      .focus()
+      .insertContent({ type: 'emailButton', attrs: { label: label.trim(), href: href || '#' } })
+      .run();
+  }
+
+  promptButton(): void {
+    const label = window.prompt('Button-Text:');
+    if (label === null || label.trim() === '') {
+      return;
+    }
+    const href = window.prompt('Link-URL:', 'https://') ?? '#';
+    this.insertButton(label, href || '#');
+  }
+
+  // -- Bilder -------------------------------------------------------------
+
+  insertImage(src: string): void {
+    if (src) {
+      this.editor?.chain().focus().setImage({ src }).run();
+    }
+  }
+
+  promptImageUrl(): void {
+    const url = window.prompt('Bild-URL:');
+    if (url) {
+      this.insertImage(url);
+    }
+  }
+
+  onImageFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.handleImageFile(file);
+    }
+    input.value = '';
+  }
+
+  private handleImageFile(file: File): void {
+    const upload = this.imageUpload();
+    if (upload) {
+      upload(file).then((src) => this.insertImage(src)).catch(() => undefined);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        this.insertImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   setLink(): void {

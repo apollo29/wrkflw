@@ -46,6 +46,30 @@ describe('HtmlEditorComponent', () => {
     expect(component.showPreview()).toBe(true);
   });
 
+  it('inserts an email button, divider, columns and image', () => {
+    component.insertButton('Jetzt kaufen', 'https://shop.example.com');
+    expect(component.value()).toContain('data-email-button');
+    expect(component.value()).toContain('Jetzt kaufen');
+
+    component.insertDivider();
+    expect(component.value()).toContain('<hr');
+
+    component.insertColumns();
+    expect(component.value()).toContain('data-columns');
+    expect(component.value()).toContain('data-column');
+
+    component.insertImage('https://img.example.com/logo.png');
+    expect(component.value()).toContain('<img');
+    expect(component.value()).toContain('logo.png');
+  });
+
+  it('keeps placeholders as plain text in the value (chips are display-only)', () => {
+    component.insertPlaceholder('name');
+    // getHTML enthält den reinen Platzhalter, kein Chip-Markup.
+    expect(component.value()).toContain('{{name}}');
+    expect(component.value()).not.toContain('wfb-ph');
+  });
+
   it('renders a preview with resolved sample values', () => {
     component.toggleSource();
     fixture.detectChanges();

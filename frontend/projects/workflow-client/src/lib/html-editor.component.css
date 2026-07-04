@@ -82,6 +82,41 @@
   color: var(--wfb-text-muted, #666);
 }
 
+.wfb-html__area ::ng-deep .tiptap img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Platzhalter als Chip (rein visuell; Inhalt bleibt {{feld}}). */
+.wfb-html__area ::ng-deep .wfb-ph {
+  background: var(--wfb-bg-soft, #eef2ff);
+  color: var(--wfb-primary, #2f6feb);
+  border: 1px solid var(--wfb-primary, #2f6feb);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 0.9em;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+/* Spalten im Editor sichtbar machen (nur Editor, nicht im gespeicherten HTML). */
+.wfb-html__area ::ng-deep table[data-columns] {
+  margin: 0 0 0.6em;
+}
+
+.wfb-html__area ::ng-deep table[data-columns] td[data-column] {
+  border: 1px dashed var(--wfb-border, #d5d7db);
+}
+
+.wfb-html__area ::ng-deep a[data-email-button] {
+  cursor: default;
+}
+
+.wfb-html__preview-body img {
+  max-width: 100%;
+  height: auto;
+}
+
 .wfb-html__source {
   width: 100%;
   border: 0;

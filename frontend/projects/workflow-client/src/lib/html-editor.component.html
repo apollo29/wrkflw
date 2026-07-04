@@ -36,6 +36,13 @@
       aria-label="Eigener Platzhalter"
     />
     <button type="button" (click)="addCustom()">einfügen</button>
+    <span class="wfb-html__sep"></span>
+    <input #fileInput type="file" accept="image/*" hidden (change)="onImageFile($event)" />
+    <button type="button" (click)="fileInput.click()" title="Bild hochladen">Bild</button>
+    <button type="button" (click)="promptImageUrl()" title="Bild per URL">Bild-URL</button>
+    <button type="button" (click)="promptButton()" title="Button einfügen">Button</button>
+    <button type="button" (click)="insertDivider()" title="Trennlinie">Trenner</button>
+    <button type="button" (click)="insertColumns()" title="Zwei Spalten">2 Spalten</button>
     <span class="wfb-html__spacer"></span>
     <button type="button" [class.is-active]="showSource()" (click)="toggleSource()">HTML</button>
     <button type="button" [class.is-active]="showPreview()" (click)="togglePreview()">Vorschau</button>

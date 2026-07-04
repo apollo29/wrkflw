@@ -5,6 +5,18 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-04
+
+### Added
+- **Editor-Bausteine (client 1.5.0):** Der `wf-html-editor` bekommt
+  - **Platzhalter-Chips:** `{{feld}}` wird im Editor als Chip hervorgehoben (rein via
+    ProseMirror-Decorations) — der gespeicherte Inhalt bleibt reiner Text `{{feld}}`.
+  - **Bilder:** Einfügen per Datei (Upload-Handler `[imageUpload]` oder Base64-Fallback)
+    und per URL (`@tiptap/extension-image`).
+  - **E-Mail-Bausteine:** Call-to-Action-**Button** (inline-gestylter Anchor),
+    **Trennlinie** (`<hr>`) und **2-Spalten-Layout** als E-Mail-sichere `role=presentation`-
+    Tabelle — jede Spalte frei editierbar. Alle rendern zu E-Mail-tauglichem HTML.
+
 ## [1.6.0] - 2026-07-04
 
 ### Changed
