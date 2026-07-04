@@ -14,7 +14,13 @@ import {
   toDefinition,
 } from './definition-mapping';
 import { HtmlEditorComponent } from './html-editor.component';
-import { ActionCatalogEntry, ActionField, DefinitionSummary, StepType } from './workflow.models';
+import {
+  ActionCatalogEntry,
+  ActionField,
+  DefinitionSummary,
+  StepType,
+  TemplateSummary,
+} from './workflow.models';
 import { WorkflowService } from './workflow.service';
 
 const OPERATORS: { op: ConditionOp; label: string }[] = [
@@ -66,6 +72,7 @@ export class WorkflowBuilderComponent implements OnInit {
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
+  readonly templates = signal<TemplateSummary[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
   readonly selected = signal<number>(-1);
   readonly viewMode = signal<'visual' | 'json'>('visual');
@@ -149,6 +156,10 @@ export class WorkflowBuilderComponent implements OnInit {
     this.reloadDefinitions();
     this.service.listActions().subscribe({
       next: (res) => this.actions.set(res.actions),
+      error: (err: unknown) => this.error.set(this.apiError(err)),
+    });
+    this.service.listTemplates().subscribe({
+      next: (res) => this.templates.set(res.templates),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
   }

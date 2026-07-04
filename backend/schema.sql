@@ -55,3 +55,15 @@ CREATE TABLE IF NOT EXISTS wf_history (
     CONSTRAINT fk_hist_instance FOREIGN KEY (instance_id)
         REFERENCES wf_instance(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Wiederverwendbare TEMPLATES (z.B. E-Mail): Betreff + HTML-Body mit {{platzhalter}}.
+-- Workflow-Schritte referenzieren ein Template ueber seine id (config.templateId).
+CREATE TABLE IF NOT EXISTS wf_template (
+    id            VARCHAR(64)   NOT NULL,
+    name          VARCHAR(255)  NOT NULL,
+    subject       VARCHAR(1024) NOT NULL DEFAULT '',
+    body          MEDIUMTEXT    NOT NULL,
+    updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

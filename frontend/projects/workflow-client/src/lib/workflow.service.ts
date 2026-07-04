@@ -11,6 +11,8 @@ import {
   InstanceState,
   InstanceSummary,
   SaveDefinitionResponse,
+  TemplateDetail,
+  TemplateListResponse,
 } from './workflow.models';
 
 /**
@@ -86,5 +88,22 @@ export class WorkflowService {
   /** Katalog der verfügbaren Actions inkl. Config-Schema (GET /actions). */
   listActions(): Observable<ActionCatalogResponse> {
     return this.http.get<ActionCatalogResponse>(`${this.baseUrl}/actions`);
+  }
+
+  // -- Wiederverwendbare Templates ----------------------------------------
+
+  listTemplates(): Observable<TemplateListResponse> {
+    return this.http.get<TemplateListResponse>(`${this.baseUrl}/templates`);
+  }
+
+  getTemplate(id: string): Observable<TemplateDetail> {
+    return this.http.get<TemplateDetail>(`${this.baseUrl}/templates/${encodeURIComponent(id)}`);
+  }
+
+  saveTemplate(id: string, name: string, subject: string, body: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(
+      `${this.baseUrl}/templates/${encodeURIComponent(id)}`,
+      { name, subject, body },
+    );
   }
 }

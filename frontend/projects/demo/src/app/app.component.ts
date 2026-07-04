@@ -4,12 +4,13 @@ import {
   WorkflowBuilderComponent,
   WorkflowRunnerComponent,
   WorkflowService,
+  WorkflowTemplateManagerComponent,
 } from '@apollo29/workflow-client';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [WorkflowRunnerComponent, WorkflowBuilderComponent],
+  imports: [WorkflowRunnerComponent, WorkflowBuilderComponent, WorkflowTemplateManagerComponent],
   template: `
     <main class="demo">
       <h1>Workflow-Demo</h1>
@@ -17,9 +18,12 @@ import {
       <nav class="tabs">
         <button type="button" [class.active]="view() === 'runner'" (click)="view.set('runner')">Runner</button>
         <button type="button" [class.active]="view() === 'editor'" (click)="view.set('editor')">Editor</button>
+        <button type="button" [class.active]="view() === 'templates'" (click)="view.set('templates')">Templates</button>
       </nav>
 
-      @if (view() === 'runner') {
+      @if (view() === 'templates') {
+        <wf-template-manager />
+      } @else if (view() === 'runner') {
         @if (instanceId(); as id) {
           <p class="meta">Instanz: <code>{{ id }}</code></p>
           <wf-runner [instanceId]="id" (completed)="onCompleted($event)" />
@@ -52,7 +56,7 @@ import {
 export class AppComponent {
   private readonly service = inject(WorkflowService);
 
-  readonly view = signal<'runner' | 'editor'>('runner');
+  readonly view = signal<'runner' | 'editor' | 'templates'>('runner');
   readonly instanceId = signal<string | null>(null);
   readonly starting = signal(false);
   readonly error = signal<string | null>(null);

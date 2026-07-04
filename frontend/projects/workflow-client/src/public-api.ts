@@ -10,3 +10,4 @@ export * from './lib/workflow-editor.component';
 export * from './lib/definition-mapping';
 export * from './lib/html-editor.component';
 export * from './lib/workflow-builder.component';
+export * from './lib/workflow-template-manager.component';

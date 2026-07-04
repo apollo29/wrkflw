@@ -5,6 +5,23 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-04
+
+### Added
+- **Wiederverwendbare Templates (Referenz):** zentrale Verwaltung wiederverwendbarer
+  (E-Mail-)Templates.
+  - Backend: Tabelle `wf_template`, Port `TemplateRepositoryInterface` +
+    `PdoTemplateRepository`, `TemplateController` mit `GET /templates`,
+    `GET /templates/{id}`, `POST /templates/{id}`. `SendEmailAction` löst ein
+    referenziertes Template (neues Config-Feld `templateId`, Typ `template-ref`) beim
+    Versand auf — es liefert Betreff + Body (die inline-Felder dienen als Fallback,
+    falls das Template fehlt). Container-Wiring in `examples/bootstrap.php`.
+  - Frontend (client 1.6.0): `WorkflowService`-Methoden `listTemplates`/`getTemplate`/
+    `saveTemplate`; `WorkflowTemplateManagerComponent` (`wf-template-manager`) zum
+    Anlegen/Bearbeiten (Name, Betreff, HTML-Body via WYSIWYG). Der Builder rendert das
+    `template-ref`-Feld als Vorlagen-Dropdown mit Hinweis. Demo: Tab **Templates**,
+    Proxy `/templates`.
+
 ## [1.7.0] - 2026-07-04
 
 ### Added

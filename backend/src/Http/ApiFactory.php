@@ -14,6 +14,7 @@ use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
 use WorkflowEngine\Action\ActionRegistry;
+use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\DefinitionValidator;
 use WorkflowEngine\Engine\WorkflowEngine;
@@ -49,6 +50,13 @@ final class ApiFactory
         ['GET', '/actions', 'list'],
     ];
 
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, TemplateController-Aktion */
+    private const TEMPLATE_ROUTES = [
+        ['GET', '/templates', 'list'],
+        ['GET', '/templates/{id}', 'get'],
+        ['POST', '/templates/{id}', 'save'],
+    ];
+
     /**
      * @return App<\Psr\Container\ContainerInterface|null>
      */
@@ -57,12 +65,16 @@ final class ApiFactory
         WorkflowRepositoryInterface $repo,
         ?MiddlewareInterface $auth = null,
         ?ActionRegistry $actions = null,
+        ?TemplateRepositoryInterface $templates = null,
     ): App {
         $app = AppFactory::create();
         self::addWorkflowRoutes($app, new WorkflowController($engine, $repo));
         self::addDefinitionRoutes($app, new DefinitionController($repo, new DefinitionValidator()));
         if ($actions !== null) {
             self::addActionRoutes($app, new ActionController($actions));
+        }
+        if ($templates !== null) {
+            self::addTemplateRoutes($app, new TemplateController($templates));
         }
         self::finalize($app, $auth);
 
@@ -84,6 +96,7 @@ final class ApiFactory
         self::addWorkflowRoutes($app, WorkflowController::class);
         self::addDefinitionRoutes($app, DefinitionController::class);
         self::addActionRoutes($app, ActionController::class);
+        self::addTemplateRoutes($app, TemplateController::class);
         self::finalize($app, $auth);
 
         return $app;
@@ -117,6 +130,17 @@ final class ApiFactory
     private static function addActionRoutes(App $app, ActionController|string $controller): void
     {
         foreach (self::ACTION_ROUTES as [$method, $pattern, $action]) {
+            $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
+            $app->map([$method], $pattern, $handler);
+        }
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function addTemplateRoutes(App $app, TemplateController|string $controller): void
+    {
+        foreach (self::TEMPLATE_ROUTES as [$method, $pattern, $action]) {
             $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
             $app->map([$method], $pattern, $handler);
         }

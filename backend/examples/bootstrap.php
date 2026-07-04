@@ -109,9 +109,14 @@ function buildContainer(\PDO $pdo): ContainerInterface
         DataProviderInterface::class => \DI\autowire(AppDataProvider::class),
         ExpressionEvaluatorInterface::class => \DI\create(SymfonyExpressionEvaluator::class),
         WorkflowRepositoryInterface::class => \DI\autowire(PdoWorkflowRepository::class),
+        \WorkflowEngine\Contracts\TemplateRepositoryInterface::class =>
+            \DI\autowire(\WorkflowEngine\Persistence\PdoTemplateRepository::class),
         ActionRegistry::class => function (ContainerInterface $c): ActionRegistry {
             $registry = new ActionRegistry();
-            $registry->register('send_email', new SendEmailAction($c->get(MailerInterface::class)));
+            $registry->register('send_email', new SendEmailAction(
+                $c->get(MailerInterface::class),
+                $c->get(\WorkflowEngine\Contracts\TemplateRepositoryInterface::class),
+            ));
             // Eigene Aktionen der Host-App hier zusaetzlich registrieren.
             return $registry;
         },
@@ -127,6 +132,7 @@ function buildContainer(\PDO $pdo): ContainerInterface
         WorkflowController::class => \DI\autowire(),
         WorkflowEngine\Http\DefinitionController::class => \DI\autowire(),
         WorkflowEngine\Http\ActionController::class => \DI\autowire(),
+        WorkflowEngine\Http\TemplateController::class => \DI\autowire(),
     ]);
 
     return $builder->build();

@@ -7,6 +7,7 @@ namespace WorkflowEngine\Action;
 use WorkflowEngine\Contracts\ActionInterface;
 use WorkflowEngine\Contracts\ConfigurableActionInterface;
 use WorkflowEngine\Contracts\MailerInterface;
+use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
 
@@ -23,13 +24,19 @@ use WorkflowEngine\Instance\WorkflowInstance;
  */
 final class SendEmailAction implements ActionInterface, ConfigurableActionInterface
 {
-    public function __construct(private readonly MailerInterface $mailer)
-    {
+    public function __construct(
+        private readonly MailerInterface $mailer,
+        private readonly ?TemplateRepositoryInterface $templates = null,
+    ) {
     }
 
     public function configSchema(): array
     {
         return [
+            // Referenz auf ein wiederverwendbares Template; ist es gesetzt und
+            // auffindbar, liefert es Betreff + Body (die inline-Felder dienen dann
+            // nur als Fallback).
+            ['name' => 'templateId', 'label' => 'Vorlage (optional)', 'type' => 'template-ref'],
             ['name' => 'to', 'label' => 'An', 'type' => 'text'],
             ['name' => 'subject', 'label' => 'Betreff', 'type' => 'text'],
             // 'html' signalisiert dem Editor einen WYSIWYG-/Template-Editor; der
@@ -42,10 +49,26 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
     {
         $config = $step->config;
         $to = $this->interpolate($this->stringConfig($config, 'to'), $instance->context);
-        $subject = $this->interpolate($this->stringConfig($config, 'subject'), $instance->context);
-        $body = $this->interpolate($this->stringConfig($config, 'body'), $instance->context);
 
-        $this->mailer->send($to, $subject, $body, $instance->context);
+        $subject = $this->stringConfig($config, 'subject');
+        $body = $this->stringConfig($config, 'body');
+
+        // Referenziertes Template hat Vorrang (zentrale Pflege).
+        $templateId = $this->stringConfig($config, 'templateId');
+        if ($templateId !== '' && $this->templates !== null) {
+            $template = $this->templates->findTemplate($templateId);
+            if ($template !== null) {
+                $subject = $template['subject'];
+                $body = $template['body'];
+            }
+        }
+
+        $this->mailer->send(
+            $to,
+            $this->interpolate($subject, $instance->context),
+            $this->interpolate($body, $instance->context),
+            $instance->context,
+        );
 
         return ['lastEmailTo' => $to];
     }

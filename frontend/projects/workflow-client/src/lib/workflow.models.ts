@@ -107,3 +107,21 @@ export interface ActionCatalogEntry {
 export interface ActionCatalogResponse {
   actions: ActionCatalogEntry[];
 }
+
+/** Kurzeintrag eines wiederverwendbaren Templates (GET /templates). */
+export interface TemplateSummary {
+  id: string;
+  name: string;
+}
+
+export interface TemplateListResponse {
+  templates: TemplateSummary[];
+}
+
+/** Vollständiges Template (GET /templates/{id}). */
+export interface TemplateDetail {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}

@@ -58,9 +58,10 @@ final class ActionApiTest extends TestCase
                 $typeByName[$field['name']] = $field['type'] ?? null;
             }
         }
-        self::assertSame(['to', 'subject', 'body'], $fieldNames);
-        // Der Body ist ein HTML-Template (WYSIWYG im Editor).
+        self::assertSame(['templateId', 'to', 'subject', 'body'], $fieldNames);
+        // Der Body ist ein HTML-Template (WYSIWYG im Editor); templateId referenziert eine Vorlage.
         self::assertSame('html', $typeByName['body'] ?? null);
+        self::assertSame('template-ref', $typeByName['templateId'] ?? null);
 
         // Action ohne Schema -> leere config.
         self::assertSame([], $byKey['mark_vip']['config'] ?? null);

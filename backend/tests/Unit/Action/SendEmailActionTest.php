@@ -10,6 +10,7 @@ use WorkflowEngine\Action\SendEmailAction;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
 use WorkflowEngine\Tests\Support\ArrayMailer;
+use WorkflowEngine\Tests\Support\InMemoryTemplateRepository;
 
 #[CoversClass(SendEmailAction::class)]
 final class SendEmailActionTest extends TestCase
@@ -35,6 +36,40 @@ final class SendEmailActionTest extends TestCase
             'action' => 'send_email',
             'config' => $config,
         ]);
+    }
+
+    public function testReferencedTemplateProvidesSubjectAndBody(): void
+    {
+        $mailer = new ArrayMailer();
+        $templates = new InMemoryTemplateRepository();
+        $templates->saveTemplate('welcome', 'Willkommen', 'Hallo {{name}}!', '<p>Hallo {{name}}</p>');
+        $action = new SendEmailAction($mailer, $templates);
+
+        $action->execute(
+            $this->instance(['name' => 'Mara', 'email' => 'mara@example.com']),
+            $this->step(['templateId' => 'welcome', 'to' => '{{email}}', 'subject' => 'inline', 'body' => 'inline']),
+        );
+
+        $last = $mailer->last();
+        self::assertNotNull($last);
+        self::assertSame('mara@example.com', $last['to']);
+        self::assertSame('Hallo Mara!', $last['subject']);
+        self::assertSame('<p>Hallo Mara</p>', $last['body']);
+    }
+
+    public function testFallsBackToInlineWhenTemplateMissing(): void
+    {
+        $mailer = new ArrayMailer();
+        $action = new SendEmailAction($mailer, new InMemoryTemplateRepository());
+
+        $action->execute(
+            $this->instance(['name' => 'Mara', 'email' => 'm@x.de']),
+            $this->step(['templateId' => 'unknown', 'to' => '{{email}}', 'subject' => 'Hi {{name}}', 'body' => 'B']),
+        );
+
+        $last = $mailer->last();
+        self::assertNotNull($last);
+        self::assertSame('Hi Mara', $last['subject']);
     }
 
     public function testInterpolatesPlaceholdersAndSendsMail(): void

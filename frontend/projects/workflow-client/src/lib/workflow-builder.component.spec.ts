@@ -39,6 +39,7 @@ describe('WorkflowBuilderComponent', () => {
         },
       ],
     });
+    httpMock.expectOne('/templates').flush({ templates: [] });
   });
 
   afterEach(() => httpMock.verify());

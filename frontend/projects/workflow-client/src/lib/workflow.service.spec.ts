@@ -98,6 +98,24 @@ describe('WorkflowService', () => {
     req.flush({ actions: [] });
   });
 
+  it('lists, gets and saves templates', () => {
+    service.listTemplates().subscribe();
+    const listReq = httpMock.expectOne(`${BASE}/templates`);
+    expect(listReq.request.method).toBe('GET');
+    listReq.flush({ templates: [] });
+
+    service.getTemplate('welcome').subscribe();
+    const getReq = httpMock.expectOne(`${BASE}/templates/welcome`);
+    expect(getReq.request.method).toBe('GET');
+    getReq.flush({ id: 'welcome', name: 'W', subject: 'S', body: 'B' });
+
+    service.saveTemplate('welcome', 'W', 'Hallo {{name}}', '<p>Hi</p>').subscribe();
+    const saveReq = httpMock.expectOne(`${BASE}/templates/welcome`);
+    expect(saveReq.request.method).toBe('POST');
+    expect(saveReq.request.body).toEqual({ name: 'W', subject: 'Hallo {{name}}', body: '<p>Hi</p>' });
+    saveReq.flush({ id: 'welcome' });
+  });
+
   it('getInstance() and history() use GET', () => {
     service.getInstance('i1').subscribe();
     const stateReq = httpMock.expectOne(`${BASE}/instances/i1`);

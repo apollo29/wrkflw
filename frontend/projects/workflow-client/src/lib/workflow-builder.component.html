@@ -145,7 +145,18 @@
             </select>
             @for (field of actionSchema(step); track field.name) {
               <div class="wfb__label">{{ field.label }}</div>
-              @if (field.type === 'html') {
+              @if (field.type === 'template-ref') {
+                <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
+                        (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Vorlage">
+                  <option value="">— eigenes (inline) —</option>
+                  @for (t of templates(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+                </select>
+                @if (configValue(step, field.name)) {
+                  <div class="wfb__label" style="margin-top:4px;">
+                    Die Vorlage überschreibt Betreff und Inhalt beim Versand.
+                  </div>
+                }
+              } @else if (field.type === 'html') {
                 <wf-html-editor
                   [placeholders]="fieldSuggestions()"
                   [value]="configValue(step, field.name)"
