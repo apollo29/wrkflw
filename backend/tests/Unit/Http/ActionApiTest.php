@@ -51,12 +51,16 @@ final class ActionApiTest extends TestCase
         $sendEmailConfig = $byKey['send_email']['config'] ?? null;
         self::assertIsArray($sendEmailConfig);
         $fieldNames = [];
+        $typeByName = [];
         foreach ($sendEmailConfig as $field) {
-            if (is_array($field) && isset($field['name'])) {
+            if (is_array($field) && isset($field['name']) && is_string($field['name'])) {
                 $fieldNames[] = $field['name'];
+                $typeByName[$field['name']] = $field['type'] ?? null;
             }
         }
         self::assertSame(['to', 'subject', 'body'], $fieldNames);
+        // Der Body ist ein HTML-Template (WYSIWYG im Editor).
+        self::assertSame('html', $typeByName['body'] ?? null);
 
         // Action ohne Schema -> leere config.
         self::assertSame([], $byKey['mark_vip']['config'] ?? null);

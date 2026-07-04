@@ -5,6 +5,18 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-04
+
+### Added
+- **Templating / WYSIWYG (client 1.3.0):** neuer Config-Feldtyp `html` und ein
+  abhängigkeitsfreier Editor `wf-html-editor` (`HtmlEditorComponent`) mit
+  Formatier-Toolbar (Fett/Kursiv/Unterstrichen/H2/Liste/Link), HTML-Quelltext-
+  Umschalter und **Platzhalter-Einfügung** (`{{feld}}`, gespeist aus den
+  interaktiven Feldern des Workflows plus eigenen Namen). Der Builder rendert das
+  Feld automatisch für Actions, die ein `html`-Config-Feld melden.
+- Backend: `SendEmailAction` meldet `body` jetzt als Typ `html` (HTML-E-Mail-
+  Template mit `{{platzhalter}}`; Interpolation unverändert).
+
 ### Fixed
 - **Builder (client 1.2.2):** CSS-Spezifität der Button-/Input-Varianten korrigiert —
   die Basis-Regeln (`.wfb button`, `.wfb input[…]`) überstimmten die Varianten-

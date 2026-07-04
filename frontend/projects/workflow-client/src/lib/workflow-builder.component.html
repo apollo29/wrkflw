@@ -145,7 +145,13 @@
             </select>
             @for (field of actionSchema(step); track field.name) {
               <div class="wfb__label">{{ field.label }}</div>
-              @if (field.type === 'textarea') {
+              @if (field.type === 'html') {
+                <wf-html-editor
+                  [placeholders]="fieldSuggestions()"
+                  [value]="configValue(step, field.name)"
+                  (valueChange)="setConfig(step, field.name, $event)"
+                ></wf-html-editor>
+              } @else if (field.type === 'textarea') {
                 <textarea rows="4" class="wfb__wide" [ngModel]="configValue(step, field.name)"
                           (ngModelChange)="setConfig(step, field.name, $event)"></textarea>
               } @else {

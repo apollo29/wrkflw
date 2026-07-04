@@ -32,7 +32,9 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
         return [
             ['name' => 'to', 'label' => 'An', 'type' => 'text'],
             ['name' => 'subject', 'label' => 'Betreff', 'type' => 'text'],
-            ['name' => 'body', 'label' => 'Text', 'type' => 'textarea'],
+            // 'html' signalisiert dem Editor einen WYSIWYG-/Template-Editor; der
+            // Body ist ein HTML-Template mit {{platzhalter}} aus dem Kontext.
+            ['name' => 'body', 'label' => 'Inhalt (HTML)', 'type' => 'html'],
         ];
     }
 

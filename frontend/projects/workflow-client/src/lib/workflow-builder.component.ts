@@ -13,6 +13,7 @@ import {
   orderedStepNames,
   toDefinition,
 } from './definition-mapping';
+import { HtmlEditorComponent } from './html-editor.component';
 import { ActionCatalogEntry, ActionField, DefinitionSummary, StepType } from './workflow.models';
 import { WorkflowService } from './workflow.service';
 
@@ -55,7 +56,7 @@ const TYPE_BADGES: Record<StepType, string> = {
 @Component({
   selector: 'wf-builder',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, HtmlEditorComponent],
   templateUrl: './workflow-builder.component.html',
   styleUrl: './workflow-builder.component.css',
 })
