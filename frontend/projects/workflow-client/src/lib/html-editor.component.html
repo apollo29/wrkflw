@@ -1,0 +1,62 @@
+<div class="wfb-html">
+  <div class="wfb-html__toolbar">
+    <button type="button" [class.is-active]="isActive('bold')" (click)="toggle('Bold')" title="Fett"><b>B</b></button>
+    <button type="button" [class.is-active]="isActive('italic')" (click)="toggle('Italic')" title="Kursiv"><i>I</i></button>
+    <button type="button" [class.is-active]="isActive('underline')" (click)="toggle('Underline')" title="Unterstrichen"><u>U</u></button>
+    <button type="button" [class.is-active]="isActive('strike')" (click)="toggle('Strike')" title="Durchgestrichen"><s>S</s></button>
+    <span class="wfb-html__sep"></span>
+    <button type="button" [class.is-active]="isActive('heading', { level: 2 })" (click)="heading(2)" title="Überschrift 2">H2</button>
+    <button type="button" [class.is-active]="isActive('heading', { level: 3 })" (click)="heading(3)" title="Überschrift 3">H3</button>
+    <button type="button" [class.is-active]="isActive('bulletList')" (click)="bulletList()" title="Aufzählung">• Liste</button>
+    <button type="button" [class.is-active]="isActive('orderedList')" (click)="orderedList()" title="Nummeriert">1. Liste</button>
+    <button type="button" [class.is-active]="isActive('blockquote')" (click)="blockquote()" title="Zitat">Zitat</button>
+    <span class="wfb-html__sep"></span>
+    <button type="button" [class.is-active]="isActive('paragraph', { textAlign: 'left' })" (click)="align('left')" title="Linksbündig">⯇</button>
+    <button type="button" [class.is-active]="isActive('paragraph', { textAlign: 'center' })" (click)="align('center')" title="Zentriert">≡</button>
+    <button type="button" [class.is-active]="isActive('paragraph', { textAlign: 'right' })" (click)="align('right')" title="Rechtsbündig">⯈</button>
+    <span class="wfb-html__sep"></span>
+    <button type="button" [class.is-active]="isActive('link')" (click)="setLink()" title="Link">Link</button>
+    <button type="button" (click)="undo()" title="Rückgängig">↶</button>
+    <button type="button" (click)="redo()" title="Wiederholen">↷</button>
+    <button type="button" (click)="clearFormat()" title="Formatierung entfernen">⌫</button>
+    <span class="wfb-html__sep"></span>
+    <select [ngModel]="pick()" (ngModelChange)="onPick($event)" aria-label="Platzhalter einfügen">
+      <option value="">Platzhalter…</option>
+      @for (p of placeholders(); track p) {
+        <option [value]="p">{{ '{{' + p + '}}' }}</option>
+      }
+    </select>
+    <input
+      type="text"
+      class="wfb-html__custom"
+      placeholder="eigener Platzhalter"
+      [ngModel]="custom()"
+      (ngModelChange)="custom.set($event)"
+      (keydown.enter)="addCustom(); $event.preventDefault()"
+      aria-label="Eigener Platzhalter"
+    />
+    <button type="button" (click)="addCustom()">einfügen</button>
+    <span class="wfb-html__spacer"></span>
+    <button type="button" [class.is-active]="showSource()" (click)="toggleSource()">HTML</button>
+    <button type="button" [class.is-active]="showPreview()" (click)="togglePreview()">Vorschau</button>
+  </div>
+
+  <div #host class="wfb-html__area" [class.wfb-html__area--hidden]="showSource()"></div>
+
+  @if (showSource()) {
+    <textarea
+      class="wfb-html__source"
+      rows="10"
+      [ngModel]="value()"
+      (ngModelChange)="value.set($event)"
+      aria-label="HTML-Quelltext"
+    ></textarea>
+  }
+
+  @if (showPreview()) {
+    <div class="wfb-html__preview">
+      <div class="wfb-html__preview-label">Vorschau (Platzhalter mit Beispielwerten)</div>
+      <div class="wfb-html__preview-body" [innerHTML]="previewHtml()"></div>
+    </div>
+  }
+</div>

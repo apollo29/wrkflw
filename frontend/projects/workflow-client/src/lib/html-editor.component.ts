@@ -1,147 +1,167 @@
 import {
+  AfterViewInit,
   Component,
   effect,
   ElementRef,
+  inject,
   input,
   model,
+  OnDestroy,
   signal,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { Editor } from '@tiptap/core';
+import TextAlign from '@tiptap/extension-text-align';
+import StarterKit from '@tiptap/starter-kit';
 
 /**
- * Schlanker, abhängigkeitsfreier WYSIWYG-/Template-Editor für HTML-Inhalte
- * (z. B. E-Mail-Bodies). Bietet einfache Formatierung, einen HTML-Quelltext-
- * Umschalter und das Einfügen von Platzhaltern (`{{feld}}`), die die Engine beim
- * Ausführen aus dem Workflow-Kontext ersetzt.
+ * Reicher WYSIWYG-/Template-Editor für HTML-Inhalte (z. B. E-Mail-Bodies) auf Basis
+ * von TipTap. Bietet Formatierung (fett/kursiv/unterstrichen/durchgestrichen,
+ * Überschriften, Listen, Zitat, Ausrichtung, Link, Undo/Redo), einen HTML-Quelltext-
+ * Umschalter, das Einfügen von Platzhaltern (`{{feld}}`) sowie eine Live-Vorschau mit
+ * Beispielwerten.
  *
- * Zweiweg-Bindung über `[(value)]`; verfügbare Platzhalter über `[placeholders]`.
+ * Zweiweg-Bindung über `[(value)]`; verfügbare Platzhalter über `[placeholders]`;
+ * optionale Beispielwerte für die Vorschau über `[sampleContext]`.
  */
 @Component({
   selector: 'wf-html-editor',
   standalone: true,
   imports: [FormsModule],
-  template: `
-    <div class="wfb-html">
-      <div class="wfb-html__toolbar">
-        <button type="button" (click)="exec('bold')" title="Fett" aria-label="Fett"><b>B</b></button>
-        <button type="button" (click)="exec('italic')" title="Kursiv" aria-label="Kursiv"><i>I</i></button>
-        <button type="button" (click)="exec('underline')" title="Unterstrichen" aria-label="Unterstrichen"><u>U</u></button>
-        <button type="button" (click)="exec('formatBlock', 'H2')" title="Überschrift">H2</button>
-        <button type="button" (click)="exec('insertUnorderedList')" title="Aufzählung">Liste</button>
-        <button type="button" (click)="createLink()" title="Link">Link</button>
-        <span class="wfb-html__sep"></span>
-        <select
-          [ngModel]="pick()"
-          (ngModelChange)="onPick($event)"
-          aria-label="Platzhalter einfügen"
-        >
-          <option value="">Platzhalter…</option>
-          @for (p of placeholders(); track p) {
-            <option [value]="p">{{ '{{' + p + '}}' }}</option>
-          }
-        </select>
-        <input
-          type="text"
-          class="wfb-html__custom"
-          placeholder="eigener Platzhalter"
-          [ngModel]="custom()"
-          (ngModelChange)="custom.set($event)"
-          (keydown.enter)="addCustom(); $event.preventDefault()"
-          aria-label="Eigener Platzhalter"
-        />
-        <button type="button" (click)="addCustom()">einfügen</button>
-        <span class="wfb-html__sep"></span>
-        <button type="button" (click)="toggleSource()">{{ showSource() ? 'Editor' : 'HTML' }}</button>
-      </div>
-
-      @if (showSource()) {
-        <textarea
-          class="wfb-html__source"
-          rows="10"
-          [ngModel]="value()"
-          (ngModelChange)="value.set($event)"
-          aria-label="HTML-Quelltext"
-        ></textarea>
-      } @else {
-        <div
-          #editor
-          class="wfb-html__area"
-          contenteditable="true"
-          role="textbox"
-          aria-multiline="true"
-          aria-label="Inhalt"
-          (input)="onInput()"
-          (blur)="onBlur()"
-        ></div>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      .wfb-html { border: 1px solid var(--wfb-border, #d5d7db); border-radius: var(--wfb-radius, 8px); overflow: hidden; }
-      .wfb-html__toolbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px; background: var(--wfb-bg-soft, #f6f7f9); border-bottom: 1px solid var(--wfb-border, #d5d7db); }
-      .wfb-html__toolbar button { padding: 4px 8px; font-size: 13px; line-height: 1; border: 1px solid var(--wfb-border, #d5d7db); background: var(--wfb-bg, #fff); border-radius: 6px; cursor: pointer; }
-      .wfb-html__toolbar button:hover { background: var(--wfb-bg-soft, #eef0f3); }
-      .wfb-html__custom { width: 130px; }
-      .wfb-html__sep { width: 1px; align-self: stretch; background: var(--wfb-border, #d5d7db); margin: 0 2px; }
-      .wfb-html__area { min-height: 140px; padding: 10px 12px; outline: none; background: var(--wfb-bg, #fff); color: var(--wfb-text, #1f2329); }
-      .wfb-html__area:focus { box-shadow: inset 0 0 0 2px var(--wfb-primary, #2f6feb); }
-      .wfb-html__source { width: 100%; border: 0; padding: 10px 12px; font-family: monospace; font-size: 13px; resize: vertical; }
-    `,
-  ],
+  templateUrl: './html-editor.component.html',
+  styleUrl: './html-editor.component.css',
 })
-export class HtmlEditorComponent {
+export class HtmlEditorComponent implements AfterViewInit, OnDestroy {
   readonly value = model<string>('');
   readonly placeholders = input<string[]>([]);
+  readonly sampleContext = input<Record<string, string>>({});
 
   readonly showSource = signal(false);
+  readonly showPreview = signal(false);
   readonly custom = signal('');
   readonly pick = signal('');
+  readonly refresh = signal(0);
 
-  private readonly editorRef = viewChild<ElementRef<HTMLDivElement>>('editor');
+  private readonly host = viewChild<ElementRef<HTMLDivElement>>('host');
+  private readonly sanitizer = inject(DomSanitizer);
+  private editor: Editor | null = null;
   private editing = false;
+  private settingContent = false;
 
   constructor() {
-    // Externe Wertänderungen (z. B. Laden einer Definition) in den contentEditable
-    // spiegeln — nicht während der Nutzer tippt (Cursor-Sprünge vermeiden).
+    // Externe Wertänderungen (z. B. Laden einer Definition) in den Editor spiegeln.
     effect(() => {
       const v = this.value();
-      const el = this.editorRef()?.nativeElement;
-      if (el && !this.showSource() && !this.editing && el.innerHTML !== v) {
-        el.innerHTML = v;
+      if (this.editor && !this.editing && !this.showSource() && this.editor.getHTML() !== v) {
+        this.settingContent = true;
+        this.editor.commands.setContent(v || '<p></p>');
+        this.settingContent = false;
       }
     });
   }
 
-  onInput(): void {
-    const el = this.editorRef()?.nativeElement;
-    if (el) {
-      this.editing = true;
-      this.value.set(el.innerHTML);
+  ngAfterViewInit(): void {
+    const element = this.host()?.nativeElement;
+    if (!element) {
+      return;
+    }
+    this.editor = new Editor({
+      element,
+      extensions: [
+        StarterKit.configure({ link: { openOnClick: false } }),
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      ],
+      content: this.value() || '<p></p>',
+      onUpdate: ({ editor }) => {
+        if (this.settingContent) {
+          return;
+        }
+        this.editing = true;
+        this.value.set(editor.getHTML());
+        this.refresh.update((n) => n + 1);
+      },
+      onSelectionUpdate: () => this.refresh.update((n) => n + 1),
+      onBlur: () => {
+        this.editing = false;
+      },
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.editor?.destroy();
+  }
+
+  // -- Toolbar ------------------------------------------------------------
+
+  toggle(mark: 'Bold' | 'Italic' | 'Underline' | 'Strike'): void {
+    switch (mark) {
+      case 'Bold':
+        this.editor?.chain().focus().toggleBold().run();
+        break;
+      case 'Italic':
+        this.editor?.chain().focus().toggleItalic().run();
+        break;
+      case 'Underline':
+        this.editor?.chain().focus().toggleUnderline().run();
+        break;
+      case 'Strike':
+        this.editor?.chain().focus().toggleStrike().run();
+        break;
     }
   }
 
-  onBlur(): void {
-    this.editing = false;
+  heading(level: 2 | 3): void {
+    this.editor?.chain().focus().toggleHeading({ level }).run();
   }
 
-  exec(command: string, argument?: string): void {
-    this.editorRef()?.nativeElement.focus();
-    try {
-      document.execCommand(command, false, argument);
-    } catch {
-      // execCommand ist deprecated, in aktuellen Browsern aber funktional.
-    }
-    this.syncFromDom();
+  bulletList(): void {
+    this.editor?.chain().focus().toggleBulletList().run();
   }
 
-  createLink(): void {
-    const url = window.prompt('Link-Adresse (URL)');
-    if (url) {
-      this.exec('createLink', url);
+  orderedList(): void {
+    this.editor?.chain().focus().toggleOrderedList().run();
+  }
+
+  blockquote(): void {
+    this.editor?.chain().focus().toggleBlockquote().run();
+  }
+
+  align(dir: 'left' | 'center' | 'right'): void {
+    this.editor?.chain().focus().setTextAlign(dir).run();
+  }
+
+  undo(): void {
+    this.editor?.chain().focus().undo().run();
+  }
+
+  redo(): void {
+    this.editor?.chain().focus().redo().run();
+  }
+
+  clearFormat(): void {
+    this.editor?.chain().focus().unsetAllMarks().clearNodes().run();
+  }
+
+  setLink(): void {
+    const url = window.prompt('Link-Adresse (URL) – leer = entfernen');
+    if (url === null) {
+      return;
+    }
+    if (url === '') {
+      this.editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+    } else {
+      this.editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }
   }
+
+  isActive(name: string, attrs?: Record<string, unknown>): boolean {
+    this.refresh();
+    return this.editor?.isActive(name, attrs) ?? false;
+  }
+
+  // -- Platzhalter --------------------------------------------------------
 
   onPick(name: string): void {
     if (name) {
@@ -163,30 +183,50 @@ export class HtmlEditorComponent {
     if (name.trim() === '') {
       return;
     }
-    if (this.showSource()) {
+    if (this.showSource() || !this.editor) {
       this.value.set((this.value() ?? '') + token);
       return;
     }
-    const el = this.editorRef()?.nativeElement;
-    if (el && document.activeElement === el) {
-      document.execCommand('insertText', false, token);
-      this.syncFromDom();
-    } else if (el) {
-      el.innerHTML = (el.innerHTML ?? '') + token;
-      this.value.set(el.innerHTML);
-    } else {
-      this.value.set((this.value() ?? '') + token);
-    }
+    this.editor.chain().focus().insertContent(token).run();
   }
+
+  // -- Umschalter & Vorschau ----------------------------------------------
 
   toggleSource(): void {
     this.showSource.update((v) => !v);
   }
 
-  private syncFromDom(): void {
-    const el = this.editorRef()?.nativeElement;
-    if (el) {
-      this.value.set(el.innerHTML);
+  togglePreview(): void {
+    this.showPreview.update((v) => !v);
+  }
+
+  previewHtml(): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(this.resolvePlaceholders(this.value()));
+  }
+
+  private resolvePlaceholders(html: string): string {
+    return html.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => {
+      return this.sampleContext()[key] ?? this.sampleFor(key);
+    });
+  }
+
+  private sampleFor(key: string): string {
+    const k = key.toLowerCase();
+    if (k.includes('email') || k.includes('mail')) {
+      return 'max@example.com';
     }
+    if (k.includes('vorname')) {
+      return 'Max';
+    }
+    if (k.includes('name')) {
+      return 'Max Mustermann';
+    }
+    if (k.includes('betrag') || k.includes('amount') || k.includes('preis') || k.includes('price')) {
+      return '199,00 €';
+    }
+    if (k.includes('datum') || k.includes('date')) {
+      return '01.01.2026';
+    }
+    return `[${key}]`;
   }
 }

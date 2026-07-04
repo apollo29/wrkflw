@@ -12,7 +12,7 @@ describe('HtmlEditorComponent', () => {
     fixture.detectChanges();
   });
 
-  it('inserts a placeholder token into the value', () => {
+  it('inserts a placeholder token into the value (editor mode)', () => {
     component.insertPlaceholder('name');
     expect(component.value()).toContain('{{name}}');
   });
@@ -36,9 +36,26 @@ describe('HtmlEditorComponent', () => {
     expect(component.value()).toBe('');
   });
 
-  it('toggles the source view', () => {
+  it('toggles source and preview views', () => {
     expect(component.showSource()).toBe(false);
     component.toggleSource();
     expect(component.showSource()).toBe(true);
+
+    expect(component.showPreview()).toBe(false);
+    component.togglePreview();
+    expect(component.showPreview()).toBe(true);
+  });
+
+  it('renders a preview with resolved sample values', () => {
+    component.toggleSource();
+    fixture.detectChanges();
+    component.value.set('<p>Hallo {{name}}, {{email}}</p>');
+    component.togglePreview();
+    fixture.detectChanges();
+
+    const body = fixture.nativeElement.querySelector('.wfb-html__preview-body') as HTMLElement;
+    expect(body).toBeTruthy();
+    expect(body.textContent).toContain('Max Mustermann');
+    expect(body.textContent).toContain('max@example.com');
   });
 });

@@ -1,0 +1,107 @@
+.wfb-html {
+  border: 1px solid var(--wfb-border, #d5d7db);
+  border-radius: var(--wfb-radius, 8px);
+  overflow: hidden;
+  background: var(--wfb-bg, #fff);
+  color: var(--wfb-text, #1f2329);
+}
+
+.wfb-html__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 6px;
+  background: var(--wfb-bg-soft, #f6f7f9);
+  border-bottom: 1px solid var(--wfb-border, #d5d7db);
+}
+
+.wfb-html__toolbar button {
+  padding: 4px 8px;
+  min-width: 30px;
+  font-size: 13px;
+  line-height: 1.2;
+  border: 1px solid var(--wfb-border, #d5d7db);
+  background: var(--wfb-bg, #fff);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.wfb-html__toolbar button:hover {
+  background: var(--wfb-bg-soft, #eef0f3);
+}
+
+.wfb-html__toolbar button.is-active {
+  background: var(--wfb-primary, #2f6feb);
+  border-color: var(--wfb-primary, #2f6feb);
+  color: #fff;
+}
+
+.wfb-html__custom {
+  width: 130px;
+}
+
+.wfb-html__sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--wfb-border, #d5d7db);
+  margin: 0 2px;
+}
+
+.wfb-html__spacer {
+  flex: 1;
+}
+
+.wfb-html__area {
+  min-height: 160px;
+  background: var(--wfb-bg, #fff);
+}
+
+.wfb-html__area--hidden {
+  display: none;
+}
+
+.wfb-html__area ::ng-deep .tiptap {
+  min-height: 160px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.wfb-html__area ::ng-deep .tiptap:focus {
+  box-shadow: inset 0 0 0 2px var(--wfb-primary, #2f6feb);
+}
+
+.wfb-html__area ::ng-deep .tiptap p {
+  margin: 0 0 0.6em;
+}
+
+.wfb-html__area ::ng-deep .tiptap blockquote {
+  border-left: 3px solid var(--wfb-border, #d5d7db);
+  margin: 0 0 0.6em;
+  padding-left: 10px;
+  color: var(--wfb-text-muted, #666);
+}
+
+.wfb-html__source {
+  width: 100%;
+  border: 0;
+  padding: 10px 12px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.wfb-html__preview {
+  border-top: 1px solid var(--wfb-border, #d5d7db);
+}
+
+.wfb-html__preview-label {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--wfb-text-muted, #666);
+  background: var(--wfb-bg-soft, #f6f7f9);
+}
+
+.wfb-html__preview-body {
+  padding: 12px;
+}

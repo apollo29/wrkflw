@@ -5,6 +5,19 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-04
+
+### Changed
+- **Reicher WYSIWYG-Editor (client 1.4.0):** `wf-html-editor` intern auf **TipTap**
+  umgestellt — Formatier-Toolbar (Fett/Kursiv/Unterstrichen/Durchgestrichen, H2/H3,
+  Aufzählung/Nummerierung, Zitat, Ausrichtung, Link, Undo/Redo, Format entfernen),
+  HTML-Quelltext-Umschalter, Platzhalter-Einfügung (`{{feld}}`) und neue
+  **Live-Vorschau** mit aufgelösten Beispielwerten (optionaler Input `[sampleContext]`,
+  sonst Heuristik). Die API (`[(value)]` / `[placeholders]`) bleibt unverändert, sodass
+  die Builder-Integration gleich bleibt. TipTap-Abhängigkeiten werden für Consumer
+  automatisch mitinstalliert (`allowedNonPeerDependencies` in `ng-package.json`).
+- Demo-Bundle-Budget angehoben (TipTap-Größe).
+
 ## [1.5.0] - 2026-07-04
 
 ### Added
