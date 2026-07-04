@@ -6,6 +6,12 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Builder (client 1.2.2):** CSS-Spezifität der Button-/Input-Varianten korrigiert —
+  die Basis-Regeln (`.wfb button`, `.wfb input[…]`) überstimmten die Varianten-
+  Klassen (`.wfb__typecard`, `.wfb__step`, `.wfb__load`, …), wodurch u.a. die
+  Typ-Auswahl-Karten auf Button-Höhe gequetscht wurden. Varianten tragen jetzt
+  den `.wfb`-Präfix; Typ-Karten zusätzlich mit `min-height` und vertikal
+  zentriertem Inhalt.
 - **Builder (client 1.2.1):** Die Schritt-Liste links zeigt die Schritte jetzt in
   Ablauf-Reihenfolge (BFS ab Start-Schritt, identisch zur Ablauf-Vorschau) statt
   in der rohen Array-Reihenfolge der Definition; nicht erreichbare Schritte
