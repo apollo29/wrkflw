@@ -88,4 +88,12 @@ interface WorkflowRepositoryInterface
      * @return list<array{kind:string,step:string|null,detail:array<string,mixed>,createdAt:string}>
      */
     public function findHistory(string $instanceId): array;
+
+    /**
+     * Findet alle Definition-Schritte, die ein Template referenzieren
+     * (config.templateId == $templateId) — fuer die Verwendungs-Anzeige.
+     *
+     * @return list<array{definitionId:string,version:int,step:string}>
+     */
+    public function findTemplateUsage(string $templateId): array;
 }

@@ -116,6 +116,18 @@ describe('WorkflowService', () => {
     saveReq.flush({ id: 'welcome' });
   });
 
+  it('deletes a template and queries its usage', () => {
+    service.deleteTemplate('welcome').subscribe();
+    const delReq = httpMock.expectOne(`${BASE}/templates/welcome`);
+    expect(delReq.request.method).toBe('DELETE');
+    delReq.flush({ id: 'welcome', deleted: true });
+
+    service.templateUsage('welcome').subscribe();
+    const usageReq = httpMock.expectOne(`${BASE}/templates/welcome/usage`);
+    expect(usageReq.request.method).toBe('GET');
+    usageReq.flush({ templateId: 'welcome', usage: [] });
+  });
+
   it('getInstance() and history() use GET', () => {
     service.getInstance('i1').subscribe();
     const stateReq = httpMock.expectOne(`${BASE}/instances/i1`);

@@ -22,4 +22,6 @@ interface TemplateRepositoryInterface
     public function findTemplate(string $id): ?array;
 
     public function saveTemplate(string $id, string $name, string $subject, string $body): void;
+
+    public function deleteTemplate(string $id): void;
 }

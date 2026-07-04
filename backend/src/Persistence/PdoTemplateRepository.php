@@ -64,6 +64,11 @@ final class PdoTemplateRepository implements TemplateRepositoryInterface
         )->execute([':id' => $id, ':name' => $name, ':subject' => $subject, ':body' => $body]);
     }
 
+    public function deleteTemplate(string $id): void
+    {
+        $this->pdo->prepare('DELETE FROM wf_template WHERE id = :id')->execute([':id' => $id]);
+    }
+
     /**
      * @param array<mixed,mixed> $row
      */

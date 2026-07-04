@@ -82,4 +82,26 @@ describe('WorkflowBuilderComponent', () => {
 
     expect(component.error()).toContain('ghost');
   });
+
+  it('lazily loads a template for the inline preview', () => {
+    expect(component.templatePreview('welcome')).toBeNull();
+
+    httpMock.expectOne('/templates/welcome').flush({
+      id: 'welcome',
+      name: 'Willkommen',
+      subject: 'Hallo',
+      body: '<p>Hi</p>',
+    });
+
+    const cached = component.templatePreview('welcome');
+    expect(cached?.subject).toBe('Hallo');
+
+    // Zweiter Zugriff löst keinen weiteren Request aus (Cache).
+    httpMock.expectNone('/templates/welcome');
+  });
+
+  it('returns null for an empty template id without a request', () => {
+    expect(component.templatePreview('')).toBeNull();
+    httpMock.expectNone('/templates/');
+  });
 });

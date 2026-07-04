@@ -19,6 +19,7 @@ import {
   ActionField,
   DefinitionSummary,
   StepType,
+  TemplateDetail,
   TemplateSummary,
 } from './workflow.models';
 import { WorkflowService } from './workflow.service';
@@ -282,6 +283,33 @@ export class WorkflowBuilderComponent implements OnInit {
 
   setConfig(step: BuilderStep, name: string, value: string): void {
     step.config[name] = value;
+  }
+
+  // -- Template-Vorschau (template-ref) -----------------------------------
+
+  private readonly templateDetails = signal<Record<string, TemplateDetail>>({});
+  private readonly loadingTemplates = new Set<string>();
+
+  /**
+   * Liefert das vollständige Template zur ID (Betreff + Body) für die Inline-Vorschau.
+   * Lädt es einmalig nach und cached es; bis dahin `null`.
+   */
+  templatePreview(id: string): TemplateDetail | null {
+    if (!id) {
+      return null;
+    }
+    const cached = this.templateDetails()[id];
+    if (cached) {
+      return cached;
+    }
+    if (!this.loadingTemplates.has(id)) {
+      this.loadingTemplates.add(id);
+      this.service.getTemplate(id).subscribe({
+        next: (t) => this.templateDetails.update((m) => ({ ...m, [id]: t })),
+        error: () => this.loadingTemplates.delete(id),
+      });
+    }
+    return null;
   }
 
   // -- Timer --------------------------------------------------------------

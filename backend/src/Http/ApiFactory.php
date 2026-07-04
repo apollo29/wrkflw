@@ -53,8 +53,10 @@ final class ApiFactory
     /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, TemplateController-Aktion */
     private const TEMPLATE_ROUTES = [
         ['GET', '/templates', 'list'],
+        ['GET', '/templates/{id}/usage', 'usage'],
         ['GET', '/templates/{id}', 'get'],
         ['POST', '/templates/{id}', 'save'],
+        ['DELETE', '/templates/{id}', 'delete'],
     ];
 
     /**
@@ -74,7 +76,7 @@ final class ApiFactory
             self::addActionRoutes($app, new ActionController($actions));
         }
         if ($templates !== null) {
-            self::addTemplateRoutes($app, new TemplateController($templates));
+            self::addTemplateRoutes($app, new TemplateController($templates, $repo));
         }
         self::finalize($app, $auth);
 

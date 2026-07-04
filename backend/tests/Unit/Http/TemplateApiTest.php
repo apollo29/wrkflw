@@ -10,6 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 use Slim\App;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use WorkflowEngine\Action\ActionRegistry;
+use WorkflowEngine\Definition\WorkflowDefinition;
 use WorkflowEngine\Engine\SymfonyExpressionEvaluator;
 use WorkflowEngine\Engine\WorkflowEngine;
 use WorkflowEngine\Http\ApiFactory;
@@ -21,15 +22,16 @@ use WorkflowEngine\Tests\Support\InMemoryWorkflowRepository;
 final class TemplateApiTest extends TestCase
 {
     private InMemoryTemplateRepository $templates;
+    private InMemoryWorkflowRepository $repo;
     /** @var App<\Psr\Container\ContainerInterface|null> */
     private App $app;
 
     protected function setUp(): void
     {
-        $repo = new InMemoryWorkflowRepository();
+        $this->repo = new InMemoryWorkflowRepository();
         $this->templates = new InMemoryTemplateRepository();
-        $engine = new WorkflowEngine($repo, new ActionRegistry(), new SymfonyExpressionEvaluator());
-        $this->app = ApiFactory::create($engine, $repo, null, null, $this->templates);
+        $engine = new WorkflowEngine($this->repo, new ActionRegistry(), new SymfonyExpressionEvaluator());
+        $this->app = ApiFactory::create($engine, $this->repo, null, null, $this->templates);
     }
 
     public function testSaveListGetRoundtrip(): void
@@ -58,6 +60,36 @@ final class TemplateApiTest extends TestCase
     public function testGetUnknownReturns404(): void
     {
         self::assertSame(404, $this->send('GET', '/templates/ghost')->getStatusCode());
+    }
+
+    public function testDeleteRemovesTemplate(): void
+    {
+        $this->send('POST', '/templates/tmp', ['name' => 'Tmp', 'subject' => 'S', 'body' => 'B']);
+        self::assertSame(200, $this->send('GET', '/templates/tmp')->getStatusCode());
+
+        $del = $this->send('DELETE', '/templates/tmp');
+        self::assertSame(200, $del->getStatusCode());
+        self::assertTrue($this->decode($del)['deleted'] ?? false);
+
+        self::assertSame(404, $this->send('GET', '/templates/tmp')->getStatusCode());
+    }
+
+    public function testUsageListsReferencingSteps(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'flow',
+            'startStep' => 'mail',
+            'steps' => [
+                'mail' => ['type' => 'automatic', 'action' => 'send_email', 'config' => ['templateId' => 'welcome']],
+            ],
+        ]));
+
+        $usage = $this->decode($this->send('GET', '/templates/welcome/usage'))['usage'] ?? null;
+        self::assertIsArray($usage);
+        self::assertCount(1, $usage);
+        self::assertIsArray($usage[0]);
+        self::assertSame('flow', $usage[0]['definitionId'] ?? null);
+        self::assertSame('mail', $usage[0]['step'] ?? null);
     }
 
     /**

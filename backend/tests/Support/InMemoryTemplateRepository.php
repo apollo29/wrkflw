@@ -33,4 +33,9 @@ final class InMemoryTemplateRepository implements TemplateRepositoryInterface
     {
         $this->templates[$id] = ['id' => $id, 'name' => $name, 'subject' => $subject, 'body' => $body];
     }
+
+    public function deleteTemplate(string $id): void
+    {
+        unset($this->templates[$id]);
+    }
 }

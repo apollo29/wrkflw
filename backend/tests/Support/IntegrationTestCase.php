@@ -81,7 +81,7 @@ abstract class IntegrationTestCase extends TestCase
     {
         // Frisch: bestehende Tabellen entfernen (FK-Reihenfolge beachten).
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-        foreach (['wf_history', 'wf_instance', 'wf_definition'] as $table) {
+        foreach (['wf_history', 'wf_instance', 'wf_definition', 'wf_template'] as $table) {
             $pdo->exec("DROP TABLE IF EXISTS {$table}");
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');

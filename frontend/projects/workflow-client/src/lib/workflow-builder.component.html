@@ -155,6 +155,12 @@
                   <div class="wfb__label" style="margin-top:4px;">
                     Die Vorlage überschreibt Betreff und Inhalt beim Versand.
                   </div>
+                  @if (templatePreview(configValue(step, field.name)); as tpl) {
+                    <div class="wfb__tpl-preview">
+                      <div class="wfb__tpl-subject">Betreff: {{ tpl.subject }}</div>
+                      <div class="wfb__tpl-body" [innerHTML]="tpl.body"></div>
+                    </div>
+                  }
                 }
               } @else if (field.type === 'html') {
                 <wf-html-editor

@@ -289,6 +289,41 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
         return $entries;
     }
 
+    public function findTemplateUsage(string $templateId): array
+    {
+        $stmt = $this->pdo->query('SELECT id, version, definition FROM wf_definition');
+        if ($stmt === false) {
+            return [];
+        }
+
+        $usage = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $data = $this->decodeObject($this->reqString($row, 'definition'));
+            $steps = $data['steps'] ?? null;
+            if (!is_array($steps)) {
+                continue;
+            }
+            foreach ($steps as $stepName => $step) {
+                if (!is_array($step)) {
+                    continue;
+                }
+                $config = $step['config'] ?? null;
+                if (is_array($config) && ($config['templateId'] ?? null) === $templateId) {
+                    $usage[] = [
+                        'definitionId' => $this->reqString($row, 'id'),
+                        'version' => $this->reqInt($row, 'version'),
+                        'step' => (string) $stepName,
+                    ];
+                }
+            }
+        }
+
+        return $usage;
+    }
+
     /**
      * @param array<mixed,mixed> $row
      */

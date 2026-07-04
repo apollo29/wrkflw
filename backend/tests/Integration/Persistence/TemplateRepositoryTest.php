@@ -44,4 +44,15 @@ final class TemplateRepositoryTest extends IntegrationTestCase
         self::assertSame('Neu', $updated['subject']);
         self::assertCount(1, $this->repo->listTemplates());
     }
+
+    public function testDeleteRemovesTemplate(): void
+    {
+        $this->repo->saveTemplate('tmp', 'Tmp', 'S', 'B');
+        self::assertNotNull($this->repo->findTemplate('tmp'));
+
+        $this->repo->deleteTemplate('tmp');
+
+        self::assertNull($this->repo->findTemplate('tmp'));
+        self::assertSame([], $this->repo->listTemplates());
+    }
 }

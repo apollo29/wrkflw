@@ -7,15 +7,18 @@ namespace WorkflowEngine\Http;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use WorkflowEngine\Contracts\TemplateRepositoryInterface;
+use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 
 /**
- * Verwaltung wiederverwendbarer Templates (Liste, lesen, anlegen/aktualisieren).
- * Liefert ausschliesslich JSON.
+ * Verwaltung wiederverwendbarer Templates (Liste, lesen, anlegen/aktualisieren,
+ * loeschen, Verwendungs-Anzeige). Liefert ausschliesslich JSON.
  */
 final class TemplateController
 {
-    public function __construct(private readonly TemplateRepositoryInterface $templates)
-    {
+    public function __construct(
+        private readonly TemplateRepositoryInterface $templates,
+        private readonly WorkflowRepositoryInterface $workflows,
+    ) {
     }
 
     /**
@@ -61,6 +64,34 @@ final class TemplateController
         $this->templates->saveTemplate($id, $name, $subject, $content);
 
         return $this->json($response, ['id' => $id], 201);
+    }
+
+    /**
+     * DELETE /templates/{id}
+     *
+     * @param array<string,string> $args
+     */
+    public function delete(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = $args['id'] ?? '';
+        $this->templates->deleteTemplate($id);
+
+        return $this->json($response, ['id' => $id, 'deleted' => true]);
+    }
+
+    /**
+     * GET /templates/{id}/usage — welche Workflow-Schritte referenzieren dieses Template.
+     *
+     * @param array<string,string> $args
+     */
+    public function usage(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = $args['id'] ?? '';
+
+        return $this->json($response, [
+            'templateId' => $id,
+            'usage' => $this->workflows->findTemplateUsage($id),
+        ]);
     }
 
     // ---------------------------------------------------------------- intern

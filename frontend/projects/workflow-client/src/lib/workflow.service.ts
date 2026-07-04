@@ -13,6 +13,7 @@ import {
   SaveDefinitionResponse,
   TemplateDetail,
   TemplateListResponse,
+  TemplateUsageResponse,
 } from './workflow.models';
 
 /**
@@ -104,6 +105,19 @@ export class WorkflowService {
     return this.http.post<{ id: string }>(
       `${this.baseUrl}/templates/${encodeURIComponent(id)}`,
       { name, subject, body },
+    );
+  }
+
+  deleteTemplate(id: string): Observable<{ id: string; deleted: boolean }> {
+    return this.http.delete<{ id: string; deleted: boolean }>(
+      `${this.baseUrl}/templates/${encodeURIComponent(id)}`,
+    );
+  }
+
+  /** Welche Workflow-Schritte referenzieren dieses Template. */
+  templateUsage(id: string): Observable<TemplateUsageResponse> {
+    return this.http.get<TemplateUsageResponse>(
+      `${this.baseUrl}/templates/${encodeURIComponent(id)}/usage`,
     );
   }
 }

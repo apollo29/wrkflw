@@ -185,6 +185,24 @@ final class PdoWorkflowRepositoryTest extends IntegrationTestCase
         self::assertNotSame('', $history[0]['createdAt']);
     }
 
+    public function testFindTemplateUsageScansDefinitions(): void
+    {
+        $this->repo->saveDefinition(
+            'flow',
+            'Flow',
+            '{"startStep":"m","steps":{"m":{"type":"automatic","action":"send_email","config":{"templateId":"welcome"}}}}'
+        );
+        $this->repo->saveDefinition('other', 'Other', '{"startStep":"a","steps":{"a":{"type":"automatic"}}}');
+
+        $usage = $this->repo->findTemplateUsage('welcome');
+        self::assertCount(1, $usage);
+        self::assertSame('flow', $usage[0]['definitionId']);
+        self::assertSame('m', $usage[0]['step']);
+        self::assertSame(1, $usage[0]['version']);
+
+        self::assertSame([], $this->repo->findTemplateUsage('unused'));
+    }
+
     private function seedDefinition(string $id, int $version, string $json, bool $active): void
     {
         $stmt = $this->pdo()->prepare(

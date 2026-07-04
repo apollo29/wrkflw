@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-04
+
+### Added
+- **Template-Verwaltung: Löschen, Verwendungs-Anzeige & Builder-Vorschau.**
+  - Backend: `TemplateRepositoryInterface::deleteTemplate()` + `DELETE /templates/{id}`;
+    neuer Port `WorkflowRepositoryInterface::findTemplateUsage()` scannt alle Definitionen
+    nach Schritten mit `config.templateId` und liefert `{definitionId, version, step}` über
+    `GET /templates/{id}/usage`. Umgesetzt in `PdoTemplateRepository` /
+    `PdoWorkflowRepository` samt Integrationstests.
+  - Frontend (client 1.7.0): `WorkflowService.deleteTemplate()` / `templateUsage()`;
+    `WorkflowTemplateManagerComponent` zeigt „Verwendet in …" beim Laden eines Templates
+    und bietet „Löschen" (mit Bestätigung, warnt bei referenzierenden Schritten). Der
+    `WorkflowBuilderComponent` rendert im `template-ref`-Dropdown eine Inline-Vorschau
+    (Betreff + HTML-Body) der gewählten Vorlage.
+
 ## [1.8.0] - 2026-07-04
 
 ### Added

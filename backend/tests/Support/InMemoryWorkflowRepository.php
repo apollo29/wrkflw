@@ -165,6 +165,22 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         ];
     }
 
+    public function findTemplateUsage(string $templateId): array
+    {
+        $usage = [];
+        foreach ($this->definitions as $id => $versions) {
+            foreach ($versions as $version => $def) {
+                foreach ($def->steps as $name => $step) {
+                    if (($step->config['templateId'] ?? null) === $templateId) {
+                        $usage[] = ['definitionId' => $id, 'version' => $version, 'step' => $name];
+                    }
+                }
+            }
+        }
+
+        return $usage;
+    }
+
     public function findHistory(string $instanceId): array
     {
         $entries = [];

@@ -125,3 +125,15 @@ export interface TemplateDetail {
   subject: string;
   body: string;
 }
+
+/** Ein Schritt, der ein Template referenziert (GET /templates/{id}/usage). */
+export interface TemplateUsageEntry {
+  definitionId: string;
+  version: number;
+  step: string;
+}
+
+export interface TemplateUsageResponse {
+  templateId: string;
+  usage: TemplateUsageEntry[];
+}
