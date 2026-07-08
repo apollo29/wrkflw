@@ -104,4 +104,28 @@ describe('WorkflowBuilderComponent', () => {
     expect(component.templatePreview('')).toBeNull();
     httpMock.expectNone('/templates/');
   });
+
+  it('lists distinct workflow options for the workflow-ref field', () => {
+    component.definitions.set([
+      { id: 'a', version: 1, name: 'Alpha alt', active: false },
+      { id: 'a', version: 2, name: 'Alpha', active: true },
+      { id: 'b', version: 1, name: 'Beta', active: true },
+    ]);
+
+    const options = component.workflowOptions();
+    expect(options).toEqual([
+      { id: 'a', name: 'Alpha' },
+      { id: 'b', name: 'Beta' },
+    ]);
+  });
+
+  it('reads and writes a boolean config value', () => {
+    component.addStep('automatic');
+    const step = component.model().steps[0];
+    expect(component.configBool(step, 'waitForCompletion')).toBeFalse();
+
+    component.setConfigBool(step, 'waitForCompletion', true);
+    expect(component.configBool(step, 'waitForCompletion')).toBeTrue();
+    expect(step.config['waitForCompletion']).toBe(true);
+  });
 });

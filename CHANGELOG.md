@@ -5,6 +5,25 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-07-08
+
+### Added
+- **Verknüpfte Workflows:** ein Schritt kann einen weiteren Workflow anstoßen.
+  - Neue eingebaute Action `start_workflow` (`SubWorkflowAction`) mit Config
+    `workflowId` (Ziel-Definition) und `waitForCompletion`. Der Kind-Workflow erbt den
+    (um interne `__`-Schlüssel bereinigten) Eltern-Kontext.
+  - `waitForCompletion=false` (feuer-und-vergiss): das Kind startet, der Eltern-Schritt
+    läuft sofort weiter; die Kind-Instanz-ID liegt unter `startedWorkflow`.
+  - `waitForCompletion=true` (Sub-Workflow): läuft das Kind synchron durch, geht der
+    Eltern-Schritt direkt weiter; hält das Kind an, hält auch der Eltern-Workflow
+    (`waiting_event`) und wird beim Abschluss des Kindes fortgesetzt. Das Kind-Ergebnis
+    (inkl. Status + Kontext) liegt unter `subWorkflow`, sodass Transitionen darauf
+    verzweigen können.
+  - Neuer Port `WorkflowStarterInterface` (von der Engine implementiert); die Engine weckt
+    wartende Eltern über eine `__parent`-Verknüpfung, mit Tiefen-Guard gegen Endlos-Ketten.
+  - Frontend (client 1.8.0): der Builder rendert die neuen Feldtypen `workflow-ref`
+    (Dropdown der Definitionen) und `boolean` (Checkbox).
+
 ## [1.9.0] - 2026-07-04
 
 ### Added

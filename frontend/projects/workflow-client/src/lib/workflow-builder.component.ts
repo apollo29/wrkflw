@@ -285,6 +285,30 @@ export class WorkflowBuilderComponent implements OnInit {
     step.config[name] = value;
   }
 
+  configBool(step: BuilderStep, name: string): boolean {
+    return step.config[name] === true;
+  }
+
+  setConfigBool(step: BuilderStep, name: string, value: boolean): void {
+    step.config[name] = value;
+  }
+
+  /**
+   * Auswahlbare Ziel-Workflows (fuer den 'workflow-ref'-Feldtyp): je Definition-ID
+   * ein Eintrag (aktiver/neuester Name), nach Name sortiert.
+   */
+  workflowOptions(): { id: string; name: string }[] {
+    const byId = new Map<string, string>();
+    for (const d of this.definitions()) {
+      if (!byId.has(d.id) || d.active) {
+        byId.set(d.id, d.name || d.id);
+      }
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   // -- Template-Vorschau (template-ref) -----------------------------------
 
   private readonly templateDetails = signal<Record<string, TemplateDetail>>({});

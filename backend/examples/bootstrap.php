@@ -117,6 +117,11 @@ function buildContainer(\PDO $pdo): ContainerInterface
                 $c->get(MailerInterface::class),
                 $c->get(\WorkflowEngine\Contracts\TemplateRepositoryInterface::class),
             ));
+            // Verknuepfte Workflows: die Action startet weitere Workflows ueber die Engine.
+            // Lazy aufgeloest, um den Zirkelbezug Action -> Engine -> Registry zu brechen.
+            $registry->register('start_workflow', new \WorkflowEngine\Action\SubWorkflowAction(
+                static fn (): \WorkflowEngine\Contracts\WorkflowStarterInterface => $c->get(WorkflowEngine::class),
+            ));
             // Eigene Aktionen der Host-App hier zusaetzlich registrieren.
             return $registry;
         },

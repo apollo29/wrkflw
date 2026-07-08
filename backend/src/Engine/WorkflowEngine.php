@@ -7,6 +7,7 @@ namespace WorkflowEngine\Engine;
 use WorkflowEngine\Action\ActionRegistry;
 use WorkflowEngine\Contracts\ExpressionEvaluatorInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
+use WorkflowEngine\Contracts\WorkflowStarterInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Definition\Transition;
 use WorkflowEngine\Definition\WorkflowDefinition;
@@ -22,7 +23,7 @@ use WorkflowEngine\Instance\WorkflowInstance;
  * "Halt" bedeutet: interaktiver Schritt (wartet auf Event), Timer-Schritt
  * (wartet auf Zeitpunkt) oder Endzustand (completed/failed).
  */
-final class WorkflowEngine
+final class WorkflowEngine implements WorkflowStarterInterface
 {
     private const STEP_LIMIT = 1000;
 
@@ -80,6 +81,20 @@ final class WorkflowEngine
     }
 
     /**
+     * PORT {@see WorkflowStarterInterface}: startet einen verknuepften Workflow.
+     * Duenner Delegate auf start(); der Anfangs-Kontext (inkl. evtl. Eltern-Verweis)
+     * wird vom Aufrufer (start_workflow-Action) vorbereitet.
+     */
+    public function startWorkflow(
+        string $definitionId,
+        array $context = [],
+        ?string $subjectType = null,
+        ?string $subjectId = null,
+    ): WorkflowInstance {
+        return $this->start($definitionId, $context, $subjectType, $subjectId);
+    }
+
+    /**
      * Arbeitet automatische und faellige Timer-Schritte ab, bis ein Halt erreicht ist.
      * Wird von start(), handleEvent() und dem Cron-Runner benutzt.
      */
@@ -133,6 +148,20 @@ final class WorkflowEngine
 
                     return;
                 }
+
+                // Verknuepfter Workflow im Warten-Modus: haelt das Kind an, wartet auch
+                // der Eltern-Schritt, bis das Kind fertig ist (weckt via notifyParent).
+                if (array_key_exists(WorkflowStarterInterface::AWAIT_WORKFLOW, $result)) {
+                    $childId = $result[WorkflowStarterInterface::AWAIT_WORKFLOW];
+                    $instance->status = WorkflowInstance::WAITING_EVENT;
+                    $instance->wakeAt = null;
+                    $this->repo->saveInstance($instance);
+                    $this->repo->logHistory($instance->id, 'wait_subworkflow', $step->name, [
+                        'childId' => $childId,
+                    ]);
+
+                    return;
+                }
             }
 
             // 4) Naechste Transition ohne Event-Bindung bestimmen.
@@ -142,6 +171,7 @@ final class WorkflowEngine
                 $instance->wakeAt = null;
                 $this->repo->saveInstance($instance);
                 $this->repo->logHistory($instance->id, 'complete', $step->name);
+                $this->notifyParentIfLinked($instance);
 
                 return;
             }
@@ -278,6 +308,96 @@ final class WorkflowEngine
         $instance->lastError = $msg;
         $this->repo->saveInstance($instance);
         $this->repo->logHistory($instance->id, 'error', $instance->currentStep, ['message' => $msg]);
+        $this->notifyParentIfLinked($instance);
+    }
+
+    /**
+     * Ist die soeben beendete Instanz ein Kind-Workflow, dessen Eltern auf sie wartet,
+     * wird der Eltern-Workflow fortgesetzt (verknuepfte Workflows, Warten-Modus).
+     */
+    private function notifyParentIfLinked(WorkflowInstance $child): void
+    {
+        $parentLink = $child->context[WorkflowStarterInterface::PARENT_LINK] ?? null;
+        if (!is_array($parentLink)) {
+            return;
+        }
+        $parentId = $parentLink['instanceId'] ?? null;
+        if (!is_string($parentId)) {
+            return;
+        }
+
+        $parent = $this->repo->findInstance($parentId);
+        if ($parent === null || $parent->isFinished()) {
+            return;
+        }
+        // Nur fortsetzen, wenn der Eltern-Workflow wirklich auf genau dieses Kind wartet.
+        if (($parent->context[WorkflowStarterInterface::AWAIT_WORKFLOW] ?? null) !== $child->id) {
+            return;
+        }
+
+        $this->resumeFromSubWorkflow($parent, $child);
+    }
+
+    /**
+     * Setzt einen wartenden Eltern-Workflow fort, nachdem sein Kind fertig ist: schreibt
+     * das Kind-Ergebnis in den Kontext und geht ueber die regulaere (event-lose)
+     * Transition des aktuellen Schritts weiter.
+     */
+    private function resumeFromSubWorkflow(WorkflowInstance $parent, WorkflowInstance $child): void
+    {
+        $def = $this->repo->findDefinition($parent->definitionId, $parent->definitionVersion);
+        $step = $def->step($parent->currentStep);
+
+        unset($parent->context[WorkflowStarterInterface::AWAIT_WORKFLOW]);
+        $parent->mergeContext([
+            'subWorkflow' => [
+                'id' => $child->id,
+                'definitionId' => $child->definitionId,
+                'status' => $child->status,
+                'context' => $this->publicContext($child->context),
+            ],
+        ]);
+        $parent->status = WorkflowInstance::RUNNING;
+        $parent->wakeAt = null;
+        $this->repo->saveInstance($parent);
+        $this->repo->logHistory($parent->id, 'subworkflow_done', $step->name, [
+            'childId' => $child->id,
+            'status' => $child->status,
+        ]);
+
+        // Ueber die naechste event-lose Transition weiter (Schritt nicht erneut ausfuehren).
+        $next = $this->selectTransition($step, $parent, event: null);
+        if ($next === null) {
+            $parent->status = WorkflowInstance::COMPLETED;
+            $parent->wakeAt = null;
+            $this->repo->saveInstance($parent);
+            $this->repo->logHistory($parent->id, 'complete', $step->name);
+            $this->notifyParentIfLinked($parent);
+
+            return;
+        }
+
+        $this->moveTo($parent, $step, $next);
+        $this->advance($parent, $def);
+    }
+
+    /**
+     * Entfernt engine-interne Schluessel (Prefix "__") aus einem Kontext.
+     *
+     * @param array<string,mixed> $context
+     *
+     * @return array<string,mixed>
+     */
+    private function publicContext(array $context): array
+    {
+        $out = [];
+        foreach ($context as $key => $value) {
+            if (!str_starts_with($key, '__')) {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out;
     }
 
     private function isEventApplied(WorkflowInstance $instance, string $eventId): bool

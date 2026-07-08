@@ -145,7 +145,19 @@
             </select>
             @for (field of actionSchema(step); track field.name) {
               <div class="wfb__label">{{ field.label }}</div>
-              @if (field.type === 'template-ref') {
+              @if (field.type === 'workflow-ref') {
+                <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
+                        (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Workflow">
+                  <option value="">— Workflow wählen —</option>
+                  @for (w of workflowOptions(); track w.id) { <option [value]="w.id">{{ w.name }}</option> }
+                </select>
+              } @else if (field.type === 'boolean') {
+                <label class="wfb__check">
+                  <input type="checkbox" [ngModel]="configBool(step, field.name)"
+                         (ngModelChange)="setConfigBool(step, field.name, $event)" />
+                  Ja
+                </label>
+              } @else if (field.type === 'template-ref') {
                 <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
                         (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Vorlage">
                   <option value="">— eigenes (inline) —</option>
