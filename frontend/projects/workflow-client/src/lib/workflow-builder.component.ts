@@ -17,6 +17,7 @@ import { HtmlEditorComponent } from './html-editor.component';
 import {
   ActionCatalogEntry,
   ActionField,
+  DataCatalogEntry,
   DefinitionSummary,
   StepType,
   TemplateDetail,
@@ -28,8 +29,11 @@ import { WorkflowService } from './workflow.service';
 /** Action-Key hinter dem Builder-Schritt-Typ „Workflow" (verknüpfte Workflows). */
 const START_WORKFLOW_ACTION = 'start_workflow';
 
-/** Builder-Schritt-Art inkl. der Pseudo-Art „workflow" (automatic + start_workflow). */
-type StepKind = StepType | 'workflow';
+/** Action-Key hinter dem Builder-Schritt-Typ „Datencheck". */
+const CHECK_DATA_ACTION = 'check_data';
+
+/** Builder-Schritt-Art inkl. der Pseudo-Arten „workflow"/„datacheck". */
+type StepKind = StepType | 'workflow' | 'datacheck';
 
 const OPERATORS: { op: ConditionOp; label: string }[] = [
   { op: '==', label: 'ist' },
@@ -81,6 +85,7 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
   readonly templates = signal<TemplateSummary[]>([]);
+  readonly dataEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
   readonly selected = signal<number>(-1);
   readonly status = signal<WorkflowLifecycle>('active');
@@ -147,6 +152,18 @@ export class WorkflowBuilderComponent implements OnInit {
     return TYPE_BADGES[type];
   }
 
+  /** Badge-Text inkl. der Pseudo-Arten „workflow"/„datacheck". */
+  badgeText(step: BuilderStep): string {
+    const kind = this.stepKind(step);
+    if (kind === 'workflow') {
+      return 'Workflow · stößt einen anderen Workflow an';
+    }
+    if (kind === 'datacheck') {
+      return 'Datencheck · liest einen Wert aus einer Tabelle';
+    }
+    return this.typeBadge(step.type);
+  }
+
   /** Kompilierter when-Ausdruck für die Vorschau-Zeile unter dem Assistenten. */
   compiledCondition(t: BuilderTransition): string {
     return t.mode === 'assistant' ? compileCondition(t.condition) : t.raw;
@@ -169,6 +186,10 @@ export class WorkflowBuilderComponent implements OnInit {
     });
     this.service.listTemplates().subscribe({
       next: (res) => this.templates.set(res.templates),
+      error: (err: unknown) => this.error.set(this.apiError(err)),
+    });
+    this.service.dataCatalog().subscribe({
+      next: (res) => this.dataEntities.set(res.entities),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
   }
@@ -335,9 +356,20 @@ export class WorkflowBuilderComponent implements OnInit {
     return step.type === 'automatic' && step.action === START_WORKFLOW_ACTION;
   }
 
-  /** Anzeige-Art des Schritts inkl. der Pseudo-Art „workflow". */
+  /** Ist der Schritt ein „Datencheck"-Schritt (liest einen Wert aus einer Tabelle)? */
+  isDataCheckStep(step: BuilderStep): boolean {
+    return step.type === 'automatic' && step.action === CHECK_DATA_ACTION;
+  }
+
+  /** Anzeige-Art des Schritts inkl. der Pseudo-Arten „workflow"/„datacheck". */
   stepKind(step: BuilderStep): StepKind {
-    return this.isWorkflowStep(step) ? 'workflow' : step.type;
+    if (this.isWorkflowStep(step)) {
+      return 'workflow';
+    }
+    if (this.isDataCheckStep(step)) {
+      return 'datacheck';
+    }
+    return step.type;
   }
 
   /** Icon-Symbol-Referenz für eine Schritt-Art. */
@@ -349,22 +381,33 @@ export class WorkflowBuilderComponent implements OnInit {
         return '#wfb-i-timer';
       case 'workflow':
         return '#wfb-i-flow';
+      case 'datacheck':
+        return '#wfb-i-db';
       default:
         return '#wfb-i-auto';
     }
+  }
+
+  /** Felder der im Datencheck gewählten Entity (für den 'field-ref'-Feldtyp). */
+  entityFields(step: BuilderStep): string[] {
+    const entity = this.configValue(step, 'entity');
+    return this.dataEntities().find((e) => e.entity === entity)?.fields ?? [];
   }
 
   stepIcon(step: BuilderStep): string {
     return this.kindIcon(this.stepKind(step));
   }
 
-  /** Setzt die Schritt-Art aus dem Typ-Dropdown (inkl. „workflow"). */
+  /** Setzt die Schritt-Art aus dem Typ-Dropdown (inkl. „workflow"/„datacheck"). */
   setKind(step: BuilderStep, kind: string): void {
     if (kind === 'workflow') {
       step.type = 'automatic';
       step.action = START_WORKFLOW_ACTION;
+    } else if (kind === 'datacheck') {
+      step.type = 'automatic';
+      step.action = CHECK_DATA_ACTION;
     } else {
-      if (step.action === START_WORKFLOW_ACTION) {
+      if (step.action === START_WORKFLOW_ACTION || step.action === CHECK_DATA_ACTION) {
         step.action = null;
       }
       step.type = kind as StepType;
@@ -374,10 +417,19 @@ export class WorkflowBuilderComponent implements OnInit {
 
   /** Fügt einen „Workflow"-Schritt hinzu (automatic + start_workflow). */
   addWorkflowStep(): void {
+    this.addActionStep(START_WORKFLOW_ACTION);
+  }
+
+  /** Fügt einen „Datencheck"-Schritt hinzu (automatic + check_data). */
+  addDataCheckStep(): void {
+    this.addActionStep(CHECK_DATA_ACTION);
+  }
+
+  private addActionStep(action: string): void {
     this.addStep('automatic');
     const step = this.selectedStep();
     if (step) {
-      step.action = START_WORKFLOW_ACTION;
+      step.action = action;
       this.bump();
     }
   }

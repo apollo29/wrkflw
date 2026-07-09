@@ -5,6 +5,20 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-09
+
+### Added
+- **Datencheck-Schritt: Wert in einer Tabelle prüfen (Issue #2).**
+  - Neue eingebaute Action `check_data`: liest über den `DataProviderInterface`-Port einen
+    Feldwert eines Datensatzes (`entity`, `id` mit `{{platzhalter}}`, `field`) in den Kontext
+    (`as`, plus `<as>Found`). Der Vergleich läuft danach ganz normal über die
+    Übergangs-Bedingungen (Assistent).
+  - Neuer Port `DataCatalogInterface` + Endpunkt `GET /data-catalog` liefern die abfragbaren
+    Tabellen/Felder (Host-Whitelist), damit der Editor Dropdowns anbieten kann.
+  - Frontend (client 1.12.0): neue Builder-Schritt-Karte **Datencheck** (Zucker über
+    `automatic + check_data`) mit Feldtypen `entity-ref` (Tabelle) und `field-ref` (Feld der
+    gewählten Tabelle).
+
 ## [1.13.0] - 2026-07-09
 
 ### Added

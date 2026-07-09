@@ -115,6 +115,17 @@ export interface ActionCatalogResponse {
   actions: ActionCatalogEntry[];
 }
 
+/** Eine abfragbare Entität/Tabelle mit ihren Feldern (GET /data-catalog). */
+export interface DataCatalogEntry {
+  entity: string;
+  label: string;
+  fields: string[];
+}
+
+export interface DataCatalogResponse {
+  entities: DataCatalogEntry[];
+}
+
 /** Template-Typ: E-Mail (send_email) oder Seite (interaktiver Schritt). */
 export type TemplateType = 'email' | 'page';
 

@@ -98,6 +98,13 @@ describe('WorkflowService', () => {
     req.flush({ actions: [] });
   });
 
+  it('dataCatalog() requests the data catalog', () => {
+    service.dataCatalog().subscribe();
+    const req = httpMock.expectOne(`${BASE}/data-catalog`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ entities: [] });
+  });
+
   it('lists, gets and saves templates', () => {
     service.listTemplates().subscribe();
     const listReq = httpMock.expectOne(`${BASE}/templates`);

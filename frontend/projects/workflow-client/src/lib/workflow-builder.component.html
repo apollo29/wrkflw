@@ -20,6 +20,11 @@
       <circle cx="12" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
       <path d="M6 4h4a2 2 0 0 1 2 2v4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
     </symbol>
+    <symbol id="wfb-i-db" viewBox="0 0 16 16">
+      <ellipse cx="8" cy="4" rx="5" ry="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M3 4v8c0 1.1 2.24 2 5 2s5-.9 5-2V4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M3 8c0 1.1 2.24 2 5 2s5-.9 5-2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    </symbol>
     <symbol id="wfb-i-save" viewBox="0 0 16 16">
       <path d="M3 2h8l3 3v9H3V2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
       <path d="M5 2v4h5V2M5 10h6v4" fill="none" stroke="currentColor" stroke-width="1.4"/>
@@ -76,6 +81,7 @@
                   [class.wfb__chip--interactive]="stepKind(s) === 'interactive'"
                   [class.wfb__chip--timer]="stepKind(s) === 'timer'"
                   [class.wfb__chip--workflow]="stepKind(s) === 'workflow'"
+                  [class.wfb__chip--datacheck]="stepKind(s) === 'datacheck'"
                   [class.wfb__chip--active]="selectedStep()?.name === name">
               <svg class="wfb__icon" aria-hidden="true">
                 <use [attr.href]="stepIcon(s)"/>
@@ -142,8 +148,9 @@
                   [class.wfb__badge--automatic]="stepKind(step) === 'automatic'"
                   [class.wfb__badge--interactive]="stepKind(step) === 'interactive'"
                   [class.wfb__badge--timer]="stepKind(step) === 'timer'"
-                  [class.wfb__badge--workflow]="stepKind(step) === 'workflow'">
-              {{ stepKind(step) === 'workflow' ? 'Workflow · stößt einen anderen Workflow an' : typeBadge(step.type) }}
+                  [class.wfb__badge--workflow]="stepKind(step) === 'workflow'"
+                  [class.wfb__badge--datacheck]="stepKind(step) === 'datacheck'">
+              {{ badgeText(step) }}
             </span>
           </div>
 
@@ -154,11 +161,12 @@
               <option value="interactive">Interaktiv</option>
               <option value="timer">Timer</option>
               <option value="workflow">Workflow</option>
+              <option value="datacheck">Datencheck</option>
             </select>
           </div>
 
           @if (step.type === 'automatic') {
-            @if (!isWorkflowStep(step)) {
+            @if (!isWorkflowStep(step) && !isDataCheckStep(step)) {
               <div class="wfb__label">Aktion</div>
               <select class="wfb__wide" [ngModel]="step.action ?? ''" (ngModelChange)="setAction(step, $event)" aria-label="Aktion">
                 <option value="">— keine —</option>
@@ -173,6 +181,18 @@
                         (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Workflow">
                   <option value="">— Workflow wählen —</option>
                   @for (w of workflowOptions(); track w.id) { <option [value]="w.id">{{ w.name }}</option> }
+                </select>
+              } @else if (field.type === 'entity-ref') {
+                <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
+                        (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Tabelle">
+                  <option value="">— Tabelle wählen —</option>
+                  @for (e of dataEntities(); track e.entity) { <option [value]="e.entity">{{ e.label }}</option> }
+                </select>
+              } @else if (field.type === 'field-ref') {
+                <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
+                        (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Feld">
+                  <option value="">— Feld wählen —</option>
+                  @for (f of entityFields(step); track f) { <option [value]="f">{{ f }}</option> }
                 </select>
               } @else if (field.type === 'boolean') {
                 <label class="wfb__check">
@@ -339,6 +359,7 @@
       <span><svg class="wfb__icon"><use href="#wfb-i-inter"/></svg> Interaktiv</span>
       <span><svg class="wfb__icon"><use href="#wfb-i-timer"/></svg> Timer</span>
       <span><svg class="wfb__icon"><use href="#wfb-i-flow"/></svg> Workflow</span>
+      <span><svg class="wfb__icon"><use href="#wfb-i-db"/></svg> Datencheck</span>
     </div>
     <div #typePicker>
       <div class="wfb__picker-label">„Schritt hinzufügen" — Typ wählen</div>
@@ -366,6 +387,12 @@
             <svg class="wfb__icon"><use href="#wfb-i-flow"/></svg> Workflow
           </span>
           <span class="wfb__typecard-desc">Stößt einen anderen Workflow an (optional wartend).</span>
+        </button>
+        <button type="button" class="wfb__typecard" (click)="addDataCheckStep()">
+          <span class="wfb__typecard-title">
+            <svg class="wfb__icon"><use href="#wfb-i-db"/></svg> Datencheck
+          </span>
+          <span class="wfb__typecard-desc">Liest einen Wert aus einer Tabelle in den Kontext.</span>
         </button>
       </div>
     </div>

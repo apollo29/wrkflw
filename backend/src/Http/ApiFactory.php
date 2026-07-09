@@ -14,6 +14,7 @@ use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
 use WorkflowEngine\Action\ActionRegistry;
+use WorkflowEngine\Contracts\DataCatalogInterface;
 use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\DefinitionValidator;
@@ -50,6 +51,11 @@ final class ApiFactory
         ['GET', '/actions', 'list'],
     ];
 
+    /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, DataCatalogController-Aktion */
+    private const DATACATALOG_ROUTES = [
+        ['GET', '/data-catalog', 'list'],
+    ];
+
     /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, TemplateController-Aktion */
     private const TEMPLATE_ROUTES = [
         ['GET', '/templates', 'list'],
@@ -68,6 +74,7 @@ final class ApiFactory
         ?MiddlewareInterface $auth = null,
         ?ActionRegistry $actions = null,
         ?TemplateRepositoryInterface $templates = null,
+        ?DataCatalogInterface $catalog = null,
     ): App {
         $app = AppFactory::create();
         self::addWorkflowRoutes($app, new WorkflowController($engine, $repo));
@@ -77,6 +84,9 @@ final class ApiFactory
         }
         if ($templates !== null) {
             self::addTemplateRoutes($app, new TemplateController($templates, $repo));
+        }
+        if ($catalog !== null) {
+            self::addDataCatalogRoutes($app, new DataCatalogController($catalog));
         }
         self::finalize($app, $auth);
 
@@ -99,6 +109,7 @@ final class ApiFactory
         self::addDefinitionRoutes($app, DefinitionController::class);
         self::addActionRoutes($app, ActionController::class);
         self::addTemplateRoutes($app, TemplateController::class);
+        self::addDataCatalogRoutes($app, DataCatalogController::class);
         self::finalize($app, $auth);
 
         return $app;
@@ -143,6 +154,17 @@ final class ApiFactory
     private static function addTemplateRoutes(App $app, TemplateController|string $controller): void
     {
         foreach (self::TEMPLATE_ROUTES as [$method, $pattern, $action]) {
+            $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
+            $app->map([$method], $pattern, $handler);
+        }
+    }
+
+    /**
+     * @param App<\Psr\Container\ContainerInterface|null> $app
+     */
+    private static function addDataCatalogRoutes(App $app, DataCatalogController|string $controller): void
+    {
+        foreach (self::DATACATALOG_ROUTES as [$method, $pattern, $action]) {
             $handler = is_string($controller) ? "{$controller}:{$action}" : [$controller, $action];
             $app->map([$method], $pattern, $handler);
         }

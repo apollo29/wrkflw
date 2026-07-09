@@ -40,6 +40,9 @@ describe('WorkflowBuilderComponent', () => {
       ],
     });
     httpMock.expectOne('/templates').flush({ templates: [] });
+    httpMock.expectOne('/data-catalog').flush({
+      entities: [{ entity: 'order', label: 'Bestellung', fields: ['id', 'status', 'total'] }],
+    });
   });
 
   afterEach(() => httpMock.verify());
@@ -159,6 +162,21 @@ describe('WorkflowBuilderComponent', () => {
     expect(component.isFieldHiddenByTemplate(step, { name: 'body', label: 'Inhalt', type: 'html' })).toBeTrue();
     // Andere Felder (z. B. Empfänger) bleiben sichtbar.
     expect(component.isFieldHiddenByTemplate(step, to)).toBeFalse();
+  });
+
+  it('adds a data-check step and lists fields of the chosen entity', () => {
+    component.newDefinition();
+    component.addDataCheckStep();
+    const step = component.model().steps[0];
+
+    expect(component.isDataCheckStep(step)).toBeTrue();
+    expect(component.stepKind(step)).toBe('datacheck');
+    expect(step.action).toBe('check_data');
+
+    // Ohne gewählte Tabelle keine Felder; nach Auswahl die Katalog-Felder.
+    expect(component.entityFields(step)).toEqual([]);
+    component.setConfig(step, 'entity', 'order');
+    expect(component.entityFields(step)).toEqual(['id', 'status', 'total']);
   });
 
   it('reads and writes a boolean config value', () => {

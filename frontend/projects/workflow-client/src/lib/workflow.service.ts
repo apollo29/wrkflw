@@ -5,6 +5,7 @@ import { WORKFLOW_API_BASE_URL } from './workflow.config';
 import {
   ActionCatalogResponse,
   CurrentStep,
+  DataCatalogResponse,
   DefinitionListResponse,
   DefinitionResponse,
   HistoryResponse,
@@ -92,6 +93,11 @@ export class WorkflowService {
   /** Katalog der verfügbaren Actions inkl. Config-Schema (GET /actions). */
   listActions(): Observable<ActionCatalogResponse> {
     return this.http.get<ActionCatalogResponse>(`${this.baseUrl}/actions`);
+  }
+
+  /** Katalog abfragbarer Entitäten/Felder für den Datencheck-Schritt (GET /data-catalog). */
+  dataCatalog(): Observable<DataCatalogResponse> {
+    return this.http.get<DataCatalogResponse>(`${this.baseUrl}/data-catalog`);
   }
 
   // -- Wiederverwendbare Templates ----------------------------------------

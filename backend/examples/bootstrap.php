@@ -43,10 +43,20 @@ final class AppMailer implements MailerInterface
 }
 
 /* ---- 2) Adapter der Host-App: Datenzugriff ------------------------------ */
-final class AppDataProvider implements DataProviderInterface
+final class AppDataProvider implements DataProviderInterface, \WorkflowEngine\Contracts\DataCatalogInterface
 {
     public function __construct(private \PDO $pdo)
     {
+    }
+
+    public function entities(): array
+    {
+        // Katalog fuer den Datencheck-Schritt (dieselbe Whitelist wie table()).
+        return [
+            ['entity' => 'order', 'label' => 'Bestellung', 'fields' => ['id', 'status', 'total']],
+            ['entity' => 'user', 'label' => 'Benutzer', 'fields' => ['id', 'name', 'email', 'vip']],
+            ['entity' => 'invoice', 'label' => 'Rechnung', 'fields' => ['id', 'paid', 'amount']],
+        ];
     }
 
     public function get(string $entity, string|int $id): ?array
@@ -129,9 +139,16 @@ function buildContainer(\PDO $pdo): ContainerInterface
             $registry->register('start_workflow', new \WorkflowEngine\Action\SubWorkflowAction(
                 static fn (): \WorkflowEngine\Contracts\WorkflowStarterInterface => $c->get(WorkflowEngine::class),
             ));
+            // Datencheck: liest einen Wert aus einer Host-Tabelle in den Kontext.
+            $registry->register('check_data', new \WorkflowEngine\Action\CheckDataAction(
+                $c->get(DataProviderInterface::class),
+            ));
             // Eigene Aktionen der Host-App hier zusaetzlich registrieren.
             return $registry;
         },
+        \WorkflowEngine\Contracts\DataCatalogInterface::class =>
+            static fn (ContainerInterface $c): \WorkflowEngine\Contracts\DataCatalogInterface
+                => $c->get(DataProviderInterface::class),
         WorkflowEngine::class => \DI\autowire()->constructor(
             \DI\get(WorkflowRepositoryInterface::class),
             \DI\get(ActionRegistry::class),
@@ -145,6 +162,7 @@ function buildContainer(\PDO $pdo): ContainerInterface
         WorkflowEngine\Http\DefinitionController::class => \DI\autowire(),
         WorkflowEngine\Http\ActionController::class => \DI\autowire(),
         WorkflowEngine\Http\TemplateController::class => \DI\autowire(),
+        WorkflowEngine\Http\DataCatalogController::class => \DI\autowire(),
     ]);
 
     return $builder->build();
