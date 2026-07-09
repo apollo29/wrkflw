@@ -5,6 +5,8 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-07-09
+
 ### Added
 - **Datenbank-Migrationen.** Neues Verzeichnis `backend/migrations/` mit inkrementellen,
   idempotenten SQL-Migrationen; `bin/migrate.php` wendet nach dem Basis-Schema alle
