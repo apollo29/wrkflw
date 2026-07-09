@@ -5,6 +5,8 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-07-09
+
 ### Added
 - **Demo: Datencheck end-to-end.** Beispiel-„Host-Daten" (`examples/demo-data.sql`:
   Tabellen `orders`/`users`/`invoices` mit Beispielzeilen) + Bin-Skript
