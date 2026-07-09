@@ -23,13 +23,17 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
     public function findDefinition(string $id, ?int $version = null): WorkflowDefinition
     {
         if ($version === null) {
+            // Ohne Versionsangabe: die ausgelieferte Version (aktuell UND aktiv).
+            // Entwuerfe/inaktive Definitionen werden so nicht gestartet/getriggert.
             $stmt = $this->pdo->prepare(
-                'SELECT version, definition FROM wf_definition
-                 WHERE id = :id AND active = 1
-                 ORDER BY version DESC LIMIT 1'
+                "SELECT version, definition FROM wf_definition
+                 WHERE id = :id AND active = 1 AND status = 'active'
+                 ORDER BY version DESC LIMIT 1"
             );
             $stmt->execute([':id' => $id]);
         } else {
+            // Mit expliziter Version: exakt diese Zeile (fuer laufende Instanzen),
+            // unabhaengig vom Status.
             $stmt = $this->pdo->prepare(
                 'SELECT version, definition FROM wf_definition WHERE id = :id AND version = :v'
             );
@@ -51,7 +55,9 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
 
     public function listDefinitions(): array
     {
-        $stmt = $this->pdo->query('SELECT id, version, name, active FROM wf_definition ORDER BY id ASC, version ASC');
+        $stmt = $this->pdo->query(
+            'SELECT id, version, name, active, status FROM wf_definition ORDER BY id ASC, version ASC'
+        );
         if ($stmt === false) {
             return [];
         }
@@ -66,6 +72,7 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
                 'version' => $this->reqInt($row, 'version'),
                 'name' => $this->reqString($row, 'name'),
                 'active' => $this->reqInt($row, 'active') === 1,
+                'status' => $this->reqString($row, 'status'),
             ];
         }
 
@@ -92,29 +99,36 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
         return is_array($row) ? $this->reqString($row, 'definition') : null;
     }
 
-    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int
+    public function saveDefinition(string $id, string $name, string $json, string $status = 'active'): int
     {
+        $status = in_array($status, ['active', 'inactive', 'draft'], true) ? $status : 'active';
+
         $this->pdo->beginTransaction();
         try {
-            $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(version), 0) + 1 FROM wf_definition WHERE id = :id');
-            $stmt->execute([':id' => $id]);
-            $next = $stmt->fetchColumn();
-            $version = is_numeric($next) ? (int) $next : 1;
-
-            if ($activate) {
+            if ($status === 'active') {
+                $version = $this->nextVersion($id);
+                // Bisherige aktuelle Version zuruecksetzen, neue anlegen.
                 $this->pdo->prepare('UPDATE wf_definition SET active = 0 WHERE id = :id')->execute([':id' => $id]);
+                $this->pdo->prepare(
+                    "INSERT INTO wf_definition (id, version, name, definition, active, status)
+                     VALUES (:id, :v, :name, :def, 1, 'active')"
+                )->execute([':id' => $id, ':v' => $version, ':name' => $name, ':def' => $json]);
+            } else {
+                // Entwurf/inaktiv: KEINE neue Version — die aktuelle in-place ueberschreiben.
+                $version = $this->currentVersion($id);
+                if ($version === null) {
+                    $version = $this->nextVersion($id);
+                    $this->pdo->prepare(
+                        'INSERT INTO wf_definition (id, version, name, definition, active, status)
+                         VALUES (:id, :v, :name, :def, 1, :status)'
+                    )->execute([':id' => $id, ':v' => $version, ':name' => $name, ':def' => $json, ':status' => $status]);
+                } else {
+                    $this->pdo->prepare(
+                        'UPDATE wf_definition SET name = :name, definition = :def, active = 1, status = :status
+                         WHERE id = :id AND version = :v'
+                    )->execute([':id' => $id, ':v' => $version, ':name' => $name, ':def' => $json, ':status' => $status]);
+                }
             }
-
-            $this->pdo->prepare(
-                'INSERT INTO wf_definition (id, version, name, definition, active)
-                 VALUES (:id, :v, :name, :def, :active)'
-            )->execute([
-                ':id' => $id,
-                ':v' => $version,
-                ':name' => $name,
-                ':def' => $json,
-                ':active' => $activate ? 1 : 0,
-            ]);
 
             $this->pdo->commit();
 
@@ -126,6 +140,25 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
 
             throw $e;
         }
+    }
+
+    private function nextVersion(string $id): int
+    {
+        $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(version), 0) + 1 FROM wf_definition WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $next = $stmt->fetchColumn();
+
+        return is_numeric($next) ? (int) $next : 1;
+    }
+
+    /** Die aktuelle (editierbare) Version einer id, oder null wenn es noch keine gibt. */
+    private function currentVersion(string $id): ?int
+    {
+        $stmt = $this->pdo->prepare('SELECT version FROM wf_definition WHERE id = :id AND active = 1 LIMIT 1');
+        $stmt->execute([':id' => $id]);
+        $value = $stmt->fetchColumn();
+
+        return is_numeric($value) ? (int) $value : null;
     }
 
     public function saveInstance(WorkflowInstance $i): void

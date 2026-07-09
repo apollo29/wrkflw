@@ -67,6 +67,9 @@ final class DefinitionController
         $name = $body['name'] ?? null;
         $name = is_string($name) && $name !== '' ? $name : $id;
 
+        $status = $body['status'] ?? 'active';
+        $status = in_array($status, ['active', 'inactive', 'draft'], true) ? $status : 'active';
+
         // id/name in die Definition einsetzen, dann strukturell + semantisch pruefen.
         $definition = $this->assoc($rawDefinition);
         $definition['id'] = $id;
@@ -83,10 +86,15 @@ final class DefinitionController
             $id,
             $name,
             json_encode($definition, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            true,
+            $status,
         );
 
-        return $this->json($response, ['id' => $id, 'version' => $version, 'active' => true], 201);
+        return $this->json($response, [
+            'id' => $id,
+            'version' => $version,
+            'active' => $status === 'active',
+            'status' => $status,
+        ], 201);
     }
 
     // ---------------------------------------------------------------- intern

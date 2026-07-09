@@ -21,6 +21,7 @@ import {
   StepType,
   TemplateDetail,
   TemplateSummary,
+  WorkflowLifecycle,
 } from './workflow.models';
 import { WorkflowService } from './workflow.service';
 
@@ -82,6 +83,7 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly templates = signal<TemplateSummary[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
   readonly selected = signal<number>(-1);
+  readonly status = signal<WorkflowLifecycle>('active');
   readonly viewMode = signal<'visual' | 'json'>('visual');
   readonly jsonText = signal<string>('');
   readonly busy = signal<boolean>(false);
@@ -181,12 +183,16 @@ export class WorkflowBuilderComponent implements OnInit {
   newDefinition(): void {
     this.model.set(emptyModel());
     this.selected.set(-1);
+    this.status.set('active');
     this.viewMode.set('visual');
     this.resetMessages();
   }
 
   loadDefinition(id: string): void {
     this.resetMessages();
+    // Status der aktuellen Version aus der Liste übernehmen.
+    const current = this.definitions().find((d) => d.id === id && d.active);
+    this.status.set(current?.status ?? 'active');
     this.service.getDefinition(id).subscribe({
       next: (res) => {
         this.model.set(fromDefinition(res.definition));
@@ -521,10 +527,11 @@ export class WorkflowBuilderComponent implements OnInit {
     }
 
     this.busy.set(true);
-    this.service.saveDefinition(id, name, definition).subscribe({
+    this.service.saveDefinition(id, name, definition, this.status()).subscribe({
       next: (res) => {
         this.busy.set(false);
-        this.message.set(`Gespeichert: ${res.id} v${res.version}.`);
+        const label = res.status === 'active' ? 'aktiv' : res.status === 'draft' ? 'Entwurf' : 'inaktiv';
+        this.message.set(`Gespeichert: ${res.id} v${res.version} (${label}).`);
         this.reloadDefinitions();
       },
       error: (err: unknown) => {

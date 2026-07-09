@@ -38,6 +38,13 @@
              [ngModel]="model().id" (ngModelChange)="model().id = $event" aria-label="Workflow-ID" />
       <input type="text" class="wfb__bar-name" placeholder="Anzeigename"
              [ngModel]="model().name" (ngModelChange)="model().name = $event" aria-label="Anzeigename" />
+      <select class="wfb__status" [class.wfb__status--draft]="status() !== 'active'"
+              [ngModel]="status()" (ngModelChange)="status.set($event)" aria-label="Status"
+              title="Aktiv: neue Version, wird ausgeführt. Entwurf/Inaktiv: keine neue Version, wird nicht gestartet.">
+        <option value="active">Aktiv</option>
+        <option value="draft">Entwurf</option>
+        <option value="inactive">Inaktiv</option>
+      </select>
     }
     <span class="wfb__segment">
       <button type="button" [class.is-active]="viewMode() === 'visual'" (click)="showVisual()">Visuell</button>
@@ -114,7 +121,12 @@
         <div class="wfb__side-label" style="margin-top:16px;">Vorhandene laden</div>
         <div class="wfb__steplist">
           @for (def of definitions(); track def.id + ':' + def.version) {
-            <button type="button" class="wfb__load" (click)="loadDefinition(def.id)">{{ def.id }} v{{ def.version }}</button>
+            <button type="button" class="wfb__load" (click)="loadDefinition(def.id)">
+              {{ def.id }} v{{ def.version }}
+              @if (def.status !== 'active') {
+                <small class="wfb__load-status">{{ def.status === 'draft' ? 'Entwurf' : 'inaktiv' }}</small>
+              }
+            </button>
           }
           <button type="button" class="wfb__load" (click)="newDefinition()">+ Neuer Workflow</button>
         </div>

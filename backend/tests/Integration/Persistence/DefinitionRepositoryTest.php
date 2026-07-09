@@ -55,4 +55,44 @@ final class DefinitionRepositoryTest extends IntegrationTestCase
     {
         self::assertNull($this->repo->findDefinitionJson('nope'));
     }
+
+    public function testDraftDoesNotCreateNewVersionAndIsNotServed(): void
+    {
+        self::assertSame(1, $this->repo->saveDefinition('flow', 'Flow', self::DEF));
+
+        // Als Entwurf speichern: gleiche Version, kein Inkrement.
+        self::assertSame(1, $this->repo->saveDefinition('flow', 'Flow Entwurf', self::DEF, 'draft'));
+        self::assertSame(1, $this->repo->saveDefinition('flow', 'Flow Entwurf 2', self::DEF, 'draft'));
+
+        // Nur eine Version vorhanden, Status = draft.
+        $defs = $this->repo->listDefinitions();
+        self::assertCount(1, $defs);
+        self::assertSame('draft', $defs[0]['status']);
+
+        // Entwurf wird nicht ausgeliefert/getriggert.
+        try {
+            $this->repo->findDefinition('flow');
+            self::fail('Entwurf sollte nicht ausgeliefert werden.');
+        } catch (\WorkflowEngine\Exception\WorkflowException) {
+            // erwartet
+        }
+
+        // Editor lädt die aktuelle Version dennoch (inkl. Entwurf).
+        $json = $this->repo->findDefinitionJson('flow');
+        self::assertNotNull($json);
+    }
+
+    public function testActivatingAfterDraftCreatesNewVersionAndServes(): void
+    {
+        $this->repo->saveDefinition('flow', 'Flow', self::DEF, 'draft');
+        self::assertSame(2, $this->repo->saveDefinition('flow', 'Flow live', self::DEF, 'active'));
+
+        $def = $this->repo->findDefinition('flow');
+        self::assertSame(2, $def->version);
+
+        $active = array_values(array_filter($this->repo->listDefinitions(), static fn (array $d): bool => $d['active']));
+        self::assertCount(1, $active);
+        self::assertSame(2, $active[0]['version']);
+        self::assertSame('active', $active[0]['status']);
+    }
 }

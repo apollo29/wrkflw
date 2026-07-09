@@ -24,7 +24,7 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
     /** @var list<array{instanceId:string,kind:string,step:?string,detail:array<string,mixed>}> */
     private array $history = [];
 
-    /** @var array<string,array<int,array{name:string,active:bool,json:?string}>> */
+    /** @var array<string,array<int,array{name:string,active:bool,status:string,json:?string}>> */
     private array $definitionMeta = [];
 
     public function addDefinition(WorkflowDefinition $def): void
@@ -33,6 +33,7 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         $this->definitionMeta[$def->id][$def->version] = [
             'name' => $def->name,
             'active' => true,
+            'status' => 'active',
             'json' => null,
         ];
     }
@@ -48,6 +49,7 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
                     'version' => $version,
                     'name' => $meta['name'],
                     'active' => $meta['active'],
+                    'status' => $meta['status'],
                 ];
             }
         }
@@ -66,24 +68,24 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
         return $versions[$version]['json'] ?? null;
     }
 
-    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int
+    public function saveDefinition(string $id, string $name, string $json, string $status = 'active'): int
     {
-        $existing = array_keys($this->definitions[$id] ?? []);
-        $version = ($existing === [] ? 0 : max($existing)) + 1;
+        $status = in_array($status, ['active', 'inactive', 'draft'], true) ? $status : 'active';
 
-        if ($activate && isset($this->definitionMeta[$id])) {
-            foreach ($this->definitionMeta[$id] as $v => $meta) {
+        if ($status === 'active') {
+            $version = $this->nextVersion($id);
+            foreach ($this->definitionMeta[$id] ?? [] as $v => $meta) {
                 $meta['active'] = false;
                 $this->definitionMeta[$id][$v] = $meta;
             }
+            $this->store($id, $version, $name, $json, 'active');
+
+            return $version;
         }
 
-        /** @var array<string,mixed> $data */
-        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        $data['id'] = $id;
-        $data['version'] = $version;
-        $this->definitions[$id][$version] = WorkflowDefinition::fromArray($data);
-        $this->definitionMeta[$id][$version] = ['name' => $name, 'active' => $activate, 'json' => $json];
+        // Entwurf/inaktiv: keine neue Version — die aktuelle in-place ueberschreiben.
+        $version = $this->currentVersion($id) ?? $this->nextVersion($id);
+        $this->store($id, $version, $name, $json, $status);
 
         return $version;
     }
@@ -100,7 +102,52 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
                 ?? throw new WorkflowException("Definition '{$id}' v{$version} nicht gefunden.");
         }
 
-        return $versions[max(array_keys($versions))];
+        // Ohne Version: nur die ausgelieferte (aktuell UND aktiv) Version.
+        $served = null;
+        foreach ($this->definitionMeta[$id] ?? [] as $v => $meta) {
+            if ($meta['active'] && $meta['status'] === 'active') {
+                $served = $served === null ? $v : max($served, $v);
+            }
+        }
+        if ($served === null) {
+            throw new WorkflowException("Definition '{$id}' nicht gefunden.");
+        }
+
+        return $versions[$served];
+    }
+
+    private function nextVersion(string $id): int
+    {
+        $existing = array_keys($this->definitions[$id] ?? []);
+
+        return ($existing === [] ? 0 : max($existing)) + 1;
+    }
+
+    /** Die aktuelle (editierbare) Version einer id, oder null. */
+    private function currentVersion(string $id): ?int
+    {
+        foreach ($this->definitionMeta[$id] ?? [] as $v => $meta) {
+            if ($meta['active']) {
+                return $v;
+            }
+        }
+
+        return null;
+    }
+
+    private function store(string $id, int $version, string $name, string $json, string $status): void
+    {
+        /** @var array<string,mixed> $data */
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $data['id'] = $id;
+        $data['version'] = $version;
+        $this->definitions[$id][$version] = WorkflowDefinition::fromArray($data);
+        $this->definitionMeta[$id][$version] = [
+            'name' => $name,
+            'active' => true,
+            'status' => $status,
+            'json' => $json,
+        ];
     }
 
     public function saveInstance(WorkflowInstance $instance): void

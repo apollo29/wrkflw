@@ -22,8 +22,10 @@ interface WorkflowRepositoryInterface
 
     /**
      * Alle Definition-Versionen als Kurzuebersicht (fuer Verwaltung/Editor).
+     * `active` markiert die aktuelle Version; `status` ist der Lebenszyklus
+     * ('active'|'inactive'|'draft').
      *
-     * @return list<array{id:string,version:int,name:string,active:bool}>
+     * @return list<array{id:string,version:int,name:string,active:bool,status:string}>
      */
     public function listDefinitions(): array;
 
@@ -34,11 +36,17 @@ interface WorkflowRepositoryInterface
     public function findDefinitionJson(string $id, ?int $version = null): ?string;
 
     /**
-     * Speichert eine neue Definition-Version (auto-inkrementiert). Wird $activate
-     * gesetzt, werden andere Versionen derselben id deaktiviert. Gibt die neue
-     * Versionsnummer zurueck.
+     * Speichert eine Definition und gibt die betroffene Versionsnummer zurueck.
+     *
+     * - $status = 'active': legt eine NEUE Version an (auto-inkrementiert), macht sie
+     *   zur aktuellen und ausgelieferten Version (andere werden deaktiviert).
+     * - $status = 'inactive'|'draft': legt KEINE neue Version an, sondern ueberschreibt
+     *   die aktuelle Version in-place; die Definition wird dadurch nicht mehr
+     *   ausgeliefert/getriggert (nur active=1 AND status='active' wird gestartet).
+     *
+     * @param string $status 'active'|'inactive'|'draft' (Unbekanntes faellt auf 'active')
      */
-    public function saveDefinition(string $id, string $name, string $json, bool $activate = true): int;
+    public function saveDefinition(string $id, string $name, string $json, string $status = 'active'): int;
 
     public function saveInstance(WorkflowInstance $instance): void;
 

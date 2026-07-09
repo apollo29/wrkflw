@@ -9,7 +9,11 @@ CREATE TABLE IF NOT EXISTS wf_definition (
     name          VARCHAR(255) NOT NULL,
     -- Vollstaendige Definition als JSON: startStep, steps, transitions ...
     definition    JSON         NOT NULL,
+    -- active = die aktuelle (editierbare) Version dieser id (genau eine pro id).
     active        TINYINT(1)   NOT NULL DEFAULT 1,
+    -- Lebenszyklus: 'active' (ausgeliefert/getriggert), 'inactive' oder 'draft'
+    -- (nicht ausgeliefert). Nur active=1 AND status='active' wird gestartet/getriggert.
+    status        VARCHAR(16)  NOT NULL DEFAULT 'active',
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id, version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

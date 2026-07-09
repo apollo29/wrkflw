@@ -15,6 +15,7 @@ import {
   TemplateListResponse,
   TemplateType,
   TemplateUsageResponse,
+  WorkflowLifecycle,
 } from './workflow.models';
 
 /**
@@ -80,10 +81,11 @@ export class WorkflowService {
     id: string,
     name: string,
     definition: Record<string, unknown>,
+    status: WorkflowLifecycle = 'active',
   ): Observable<SaveDefinitionResponse> {
     return this.http.post<SaveDefinitionResponse>(
       `${this.baseUrl}/workflows/${encodeURIComponent(id)}`,
-      { name, definition },
+      { name, definition, status },
     );
   }
 

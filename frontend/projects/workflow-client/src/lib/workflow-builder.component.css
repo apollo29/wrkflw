@@ -212,6 +212,10 @@
 .wfb__check { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .wfb__check input { width: auto; }
 
+.wfb__status { font-size: 12.5px; }
+.wfb__status--draft { border-color: var(--_timer-bd); color: var(--_timer-fg); background: var(--_timer-bg); }
+.wfb__load-status { color: var(--_timer-fg); font-size: 10.5px; margin-left: 4px; }
+
 .wfb__tpl-preview { margin-top: 6px; border: 1px solid var(--_border); border-radius: calc(var(--_radius) - 2px); overflow: hidden; }
 .wfb__tpl-subject { font-size: 12.5px; padding: 6px 8px; background: var(--_bg-soft); border-bottom: 1px solid var(--_border); color: var(--_text); }
 .wfb__tpl-body { padding: 8px; background: #fff; max-height: 260px; overflow: auto; }

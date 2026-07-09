@@ -5,6 +5,20 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-07-09
+
+### Added
+- **Workflow-Status: aktiv / inaktiv / entwurf (Issue #1).**
+  - Neue Spalte `wf_definition.status` (Migration `002_wf_definition_status.sql`,
+    idempotent). `active` markiert die aktuelle (editierbare) Version; ausgeliefert/
+    getriggert wird nur `active=1 AND status='active'`.
+  - `saveDefinition(id, name, json, status)`: **aktiv** → neue Version (wie bisher);
+    **entwurf/inaktiv** → keine neue Version, die aktuelle wird in-place überschrieben und
+    die Definition nicht mehr gestartet/getriggert. Laufende Instanzen (feste Version)
+    bleiben unberührt. `GET/POST /workflows` liefern/akzeptieren `status`.
+  - Frontend (client 1.11.0): Status-Auswahl (Aktiv/Entwurf/Inaktiv) in der Builder-Top-Bar;
+    der Status wird beim Laden übernommen und in der Definitionsliste angezeigt.
+
 ## [1.12.0] - 2026-07-09
 
 ### Added

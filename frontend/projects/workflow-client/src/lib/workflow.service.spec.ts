@@ -81,14 +81,14 @@ describe('WorkflowService', () => {
     getReq.flush({ id: 'onboarding', definition: { startStep: 'a', steps: {} } });
   });
 
-  it('saveDefinition() posts name and definition', () => {
+  it('saveDefinition() posts name, definition and status', () => {
     const definition = { startStep: 'a', steps: { a: { type: 'automatic' } } };
-    service.saveDefinition('onboarding', 'Onboarding', definition).subscribe();
+    service.saveDefinition('onboarding', 'Onboarding', definition, 'draft').subscribe();
 
     const req = httpMock.expectOne(`${BASE}/workflows/onboarding`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ name: 'Onboarding', definition });
-    req.flush({ id: 'onboarding', version: 2, active: true });
+    expect(req.request.body).toEqual({ name: 'Onboarding', definition, status: 'draft' });
+    req.flush({ id: 'onboarding', version: 2, active: false, status: 'draft' });
   });
 
   it('listActions() requests the action catalog', () => {

@@ -67,12 +67,16 @@ export interface HistoryResponse {
   history: HistoryEntry[];
 }
 
+/** Lebenszyklus einer Workflow-Definition. */
+export type WorkflowLifecycle = 'active' | 'inactive' | 'draft';
+
 /** Kurzeintrag einer Definition-Version (GET /workflows). */
 export interface DefinitionSummary {
   id: string;
   version: number;
   name: string;
   active: boolean;
+  status: WorkflowLifecycle;
 }
 
 export interface DefinitionListResponse {
@@ -85,11 +89,12 @@ export interface DefinitionResponse {
   definition: Record<string, unknown>;
 }
 
-/** Antwort beim Anlegen einer neuen Version (POST /workflows/{id}). */
+/** Antwort beim Speichern (POST /workflows/{id}). */
 export interface SaveDefinitionResponse {
   id: string;
   version: number;
   active: boolean;
+  status: WorkflowLifecycle;
 }
 
 /** Ein Config-Feld einer Action (aus dem Action-Katalog). */

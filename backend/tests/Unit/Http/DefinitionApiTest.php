@@ -103,6 +103,25 @@ final class DefinitionApiTest extends TestCase
         self::assertSame('waiting_event', $this->decode($start)['status']);
     }
 
+    public function testDraftSaveKeepsVersionAndIsNotStartable(): void
+    {
+        // Aktiv anlegen (v1), dann als Entwurf speichern -> gleiche Version.
+        $this->send('POST', '/workflows/myflow', ['definition' => self::VALID_DEFINITION]);
+        $draft = $this->send('POST', '/workflows/myflow', [
+            'definition' => self::VALID_DEFINITION,
+            'status' => 'draft',
+        ]);
+        self::assertSame(201, $draft->getStatusCode());
+        $body = $this->decode($draft);
+        self::assertSame(1, $body['version']);
+        self::assertSame('draft', $body['status']);
+        self::assertFalse($body['active']);
+
+        // Entwurf wird nicht gestartet.
+        $start = $this->send('POST', '/workflows/myflow/instances', ['context' => []]);
+        self::assertSame(404, $start->getStatusCode());
+    }
+
     // ---------------------------------------------------------------- Helpers
 
     /**

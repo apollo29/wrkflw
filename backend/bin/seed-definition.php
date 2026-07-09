@@ -43,9 +43,10 @@ $pdo = new PDO($dsn, getenv('DB_USER') ?: 'root', getenv('DB_PASS') ?: '', [
 ]);
 
 $stmt = $pdo->prepare(
-    'INSERT INTO wf_definition (id, version, name, definition, active)
-     VALUES (:id, :v, :name, :def, 1)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), definition = VALUES(definition), active = 1'
+    "INSERT INTO wf_definition (id, version, name, definition, active, status)
+     VALUES (:id, :v, :name, :def, 1, 'active')
+     ON DUPLICATE KEY UPDATE
+         name = VALUES(name), definition = VALUES(definition), active = 1, status = 'active'"
 );
 $stmt->execute([
     ':id' => $def->id,
