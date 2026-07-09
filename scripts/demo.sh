@@ -40,7 +40,10 @@ done
 echo "2/5  Backend-Abhaengigkeiten sicherstellen ..."
 [ -d "$ROOT/backend/vendor" ] || (cd "$ROOT/backend" && composer install --no-interaction)
 
-echo "3/5  Beispiele seeden (Templates + Definitionen) ..."
+echo "3/5  Schema/Migrationen anwenden + Beispiele seeden ..."
+# schema.sql laeuft nur beim ersten Volume-Start als Init-Skript; migrate.php zieht
+# bestehende Datenbanken (fehlende Tabellen/Spalten) idempotent nach.
+(cd "$ROOT/backend" && php bin/migrate.php)
 (cd "$ROOT/backend" && php bin/seed-template.php examples/welcome-page.template.json)
 (cd "$ROOT/backend" && php bin/seed-definition.php examples/onboarding.json)
 (cd "$ROOT/backend" && php bin/seed-definition.php examples/newsletter.json)

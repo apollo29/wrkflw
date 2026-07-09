@@ -5,6 +5,14 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Datenbank-Migrationen.** Neues Verzeichnis `backend/migrations/` mit inkrementellen,
+  idempotenten SQL-Migrationen; `bin/migrate.php` wendet nach dem Basis-Schema alle
+  `migrations/*.sql` (sortiert) an, sodass auch bestehende Datenbanken nachgezogen werden.
+  Erste Migration `001_wf_template_type.sql` ergänzt die Spalte `wf_template.type`
+  (`ADD COLUMN IF NOT EXISTS`, Default `email`) für DBs, die vor der Einführung des
+  Template-Typs angelegt wurden. `scripts/demo.sh` ruft `migrate.php` vor dem Seeding auf.
+
 ## [1.11.1] - 2026-07-09
 
 ### Added
