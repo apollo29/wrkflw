@@ -28,10 +28,17 @@ use WorkflowEngine\Persistence\PdoWorkflowRepository;
 /* ---- 1) Adapter der Host-App: Mailer ------------------------------------ */
 final class AppMailer implements MailerInterface
 {
-    public function send(string $to, string $subject, string $body, array $vars = []): void
+    /** @param string $defaultFrom Standard-Mailbox, wenn die Nachricht kein From setzt. */
+    public function __construct(private readonly string $defaultFrom = 'no-reply@example.com')
     {
+    }
+
+    public function send(\WorkflowEngine\Contracts\EmailMessage $message): void
+    {
+        $from = $message->from !== '' ? $message->from : $this->defaultFrom;
         // Hier echten Versand anbinden (Symfony Mailer, PHPMailer, Queue ...).
-        error_log("[MAIL] -> {$to} | {$subject}");
+        $cc = $message->cc === [] ? '' : ' cc=' . implode(',', $message->cc);
+        error_log("[MAIL] {$from} -> {$message->to}{$cc} | {$message->subject}");
     }
 }
 

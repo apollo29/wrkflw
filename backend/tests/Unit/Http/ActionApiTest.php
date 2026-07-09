@@ -58,7 +58,7 @@ final class ActionApiTest extends TestCase
                 $typeByName[$field['name']] = $field['type'] ?? null;
             }
         }
-        self::assertSame(['templateId', 'to', 'subject', 'body'], $fieldNames);
+        self::assertSame(['templateId', 'to', 'from', 'cc', 'bcc', 'subject', 'body'], $fieldNames);
         // Der Body ist ein HTML-Template (WYSIWYG im Editor); templateId referenziert eine Vorlage.
         self::assertSame('html', $typeByName['body'] ?? null);
         self::assertSame('template-ref', $typeByName['templateId'] ?? null);

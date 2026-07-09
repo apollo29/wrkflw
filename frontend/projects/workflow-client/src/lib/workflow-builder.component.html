@@ -154,6 +154,7 @@
               </select>
             }
             @for (field of actionSchema(step); track field.name) {
+              @if (!isFieldHiddenByTemplate(step, field)) {
               <div class="wfb__label">{{ field.label }}</div>
               @if (field.type === 'workflow-ref') {
                 <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
@@ -196,6 +197,7 @@
               } @else {
                 <input type="text" class="wfb__wide" [ngModel]="configValue(step, field.name)"
                        (ngModelChange)="setConfig(step, field.name, $event)" />
+              }
               }
             }
           }

@@ -282,6 +282,17 @@ export class WorkflowBuilderComponent implements OnInit {
     return this.actions().find((a) => a.key === step.action)?.config ?? [];
   }
 
+  /**
+   * Bei gewählter Vorlage (templateId gesetzt) sind die Inline-Felder Betreff/Inhalt
+   * überflüssig — die Vorlage liefert beide. Sie werden dann ausgeblendet.
+   */
+  isFieldHiddenByTemplate(step: BuilderStep, field: ActionField): boolean {
+    return (
+      (field.name === 'subject' || field.name === 'body') &&
+      this.configValue(step, 'templateId') !== ''
+    );
+  }
+
   configValue(step: BuilderStep, name: string): string {
     const value = step.config[name];
     return value === undefined || value === null ? '' : String(value);

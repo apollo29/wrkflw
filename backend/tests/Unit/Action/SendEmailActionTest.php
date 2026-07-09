@@ -93,6 +93,46 @@ final class SendEmailActionTest extends TestCase
         self::assertSame('Hallo Mara, schoen dich zu sehen.', $last['body']);
     }
 
+    public function testSetsFromCcAndBcc(): void
+    {
+        $mailer = new ArrayMailer();
+        $action = new SendEmailAction($mailer);
+
+        $action->execute(
+            $this->instance(['email' => 'm@x.de', 'boss' => 'chef@x.de']),
+            $this->step([
+                'to' => '{{email}}',
+                'from' => 'team@x.de',
+                'cc' => '{{boss}}, audit@x.de',
+                'bcc' => 'archive@x.de',
+                'subject' => 'S',
+                'body' => 'B',
+            ]),
+        );
+
+        $last = $mailer->last();
+        self::assertNotNull($last);
+        self::assertSame('team@x.de', $last['from']);
+        self::assertSame(['chef@x.de', 'audit@x.de'], $last['cc']);
+        self::assertSame(['archive@x.de'], $last['bcc']);
+    }
+
+    public function testEmptyFromAndBlankAddressesAreOmitted(): void
+    {
+        $mailer = new ArrayMailer();
+        $action = new SendEmailAction($mailer);
+
+        $action->execute(
+            $this->instance(['email' => 'm@x.de']),
+            $this->step(['to' => '{{email}}', 'cc' => ' , ,', 'subject' => 'S', 'body' => 'B']),
+        );
+
+        $last = $mailer->last();
+        self::assertNotNull($last);
+        self::assertSame('', $last['from']);
+        self::assertSame([], $last['cc']);
+    }
+
     public function testReturnsLastEmailToForContextMerge(): void
     {
         $mailer = new ArrayMailer();

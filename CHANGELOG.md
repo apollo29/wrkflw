@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-07-09
+
+### Added
+- **send_email: Absender, CC und BCC (Issue #3).** Neue Config-Felder `from`
+  (leer = Standard-Mailbox des Host-Mailers), `cc` und `bcc` (mit Komma/Semikolon
+  getrennte, interpolierte Adressen).
+- Frontend (client 1.10.0): der Builder blendet die Inline-Felder **Betreff/Inhalt**
+  aus, sobald eine Vorlage gewählt ist (Issue #3) — die Vorlage liefert beide.
+
+### Changed (Breaking für Host-Adapter)
+- **`MailerInterface::send()`** nimmt jetzt ein `EmailMessage`-Wertobjekt
+  (`to, subject, body, from, cc[], bcc[], vars`) statt Einzelparameter. Host-Mailer-Adapter
+  müssen einmalig auf `send(EmailMessage $message)` umgestellt werden (siehe `AppMailer`
+  in `examples/bootstrap.php`).
+
 ## [1.11.2] - 2026-07-09
 
 ### Added

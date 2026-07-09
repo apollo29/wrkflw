@@ -4,28 +4,34 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Tests\Support;
 
+use WorkflowEngine\Contracts\EmailMessage;
 use WorkflowEngine\Contracts\MailerInterface;
 
 /**
  * Test-Double: sammelt versendete Mails im Speicher statt sie zu verschicken.
+ *
+ * @phpstan-type Mail array{to:string,from:string,cc:list<string>,bcc:list<string>,subject:string,body:string,vars:array<string,mixed>}
  */
 final class ArrayMailer implements MailerInterface
 {
-    /** @var list<array{to:string,subject:string,body:string,vars:array<string,mixed>}> */
+    /** @var list<Mail> */
     private array $messages = [];
 
-    public function send(string $to, string $subject, string $body, array $vars = []): void
+    public function send(EmailMessage $message): void
     {
         $this->messages[] = [
-            'to' => $to,
-            'subject' => $subject,
-            'body' => $body,
-            'vars' => $vars,
+            'to' => $message->to,
+            'from' => $message->from,
+            'cc' => $message->cc,
+            'bcc' => $message->bcc,
+            'subject' => $message->subject,
+            'body' => $message->body,
+            'vars' => $message->vars,
         ];
     }
 
     /**
-     * @return list<array{to:string,subject:string,body:string,vars:array<string,mixed>}>
+     * @return list<Mail>
      */
     public function messages(): array
     {
@@ -33,7 +39,7 @@ final class ArrayMailer implements MailerInterface
     }
 
     /**
-     * @return array{to:string,subject:string,body:string,vars:array<string,mixed>}|null
+     * @return Mail|null
      */
     public function last(): ?array
     {

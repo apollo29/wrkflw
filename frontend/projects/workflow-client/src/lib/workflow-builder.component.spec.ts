@@ -119,6 +119,21 @@ describe('WorkflowBuilderComponent', () => {
     ]);
   });
 
+  it('hides subject/body once an email template is selected', () => {
+    component.addStep('automatic');
+    const step = component.model().steps[0];
+    const subject = { name: 'subject', label: 'Betreff', type: 'text' };
+    const to = { name: 'to', label: 'An', type: 'text' };
+
+    expect(component.isFieldHiddenByTemplate(step, subject)).toBeFalse();
+
+    component.setConfig(step, 'templateId', 'welcome');
+    expect(component.isFieldHiddenByTemplate(step, subject)).toBeTrue();
+    expect(component.isFieldHiddenByTemplate(step, { name: 'body', label: 'Inhalt', type: 'html' })).toBeTrue();
+    // Andere Felder (z. B. Empfänger) bleiben sichtbar.
+    expect(component.isFieldHiddenByTemplate(step, to)).toBeFalse();
+  });
+
   it('reads and writes a boolean config value', () => {
     component.addStep('automatic');
     const step = component.model().steps[0];

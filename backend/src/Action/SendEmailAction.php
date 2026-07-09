@@ -6,6 +6,7 @@ namespace WorkflowEngine\Action;
 
 use WorkflowEngine\Contracts\ActionInterface;
 use WorkflowEngine\Contracts\ConfigurableActionInterface;
+use WorkflowEngine\Contracts\EmailMessage;
 use WorkflowEngine\Contracts\MailerInterface;
 use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Definition\Step;
@@ -38,6 +39,10 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
             // nur als Fallback).
             ['name' => 'templateId', 'label' => 'Vorlage (optional)', 'type' => 'template-ref'],
             ['name' => 'to', 'label' => 'An', 'type' => 'text'],
+            // Leer = Standard-Mailbox des Host-Mailers.
+            ['name' => 'from', 'label' => 'Absender (leer = Standard)', 'type' => 'text'],
+            ['name' => 'cc', 'label' => 'CC (mit Komma getrennt)', 'type' => 'text'],
+            ['name' => 'bcc', 'label' => 'BCC (mit Komma getrennt)', 'type' => 'text'],
             ['name' => 'subject', 'label' => 'Betreff', 'type' => 'text'],
             // 'html' signalisiert dem Editor einen WYSIWYG-/Template-Editor; der
             // Body ist ein HTML-Template mit {{platzhalter}} aus dem Kontext.
@@ -48,7 +53,8 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
     public function execute(WorkflowInstance $instance, Step $step): array
     {
         $config = $step->config;
-        $to = $this->interpolate($this->stringConfig($config, 'to'), $instance->context);
+        $context = $instance->context;
+        $to = $this->interpolate($this->stringConfig($config, 'to'), $context);
 
         $subject = $this->stringConfig($config, 'subject');
         $body = $this->stringConfig($config, 'body');
@@ -63,14 +69,39 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
             }
         }
 
-        $this->mailer->send(
-            $to,
-            $this->interpolate($subject, $instance->context),
-            $this->interpolate($body, $instance->context),
-            $instance->context,
-        );
+        $this->mailer->send(new EmailMessage(
+            to: $to,
+            subject: $this->interpolate($subject, $context),
+            body: $this->interpolate($body, $context),
+            from: $this->interpolate($this->stringConfig($config, 'from'), $context),
+            cc: $this->addressList($this->stringConfig($config, 'cc'), $context),
+            bcc: $this->addressList($this->stringConfig($config, 'bcc'), $context),
+            vars: $context,
+        ));
 
         return ['lastEmailTo' => $to];
+    }
+
+    /**
+     * Zerlegt eine mit Komma/Semikolon getrennte Adressliste und interpoliert jede
+     * Adresse; leere Eintraege werden verworfen.
+     *
+     * @param array<string,mixed> $context
+     *
+     * @return list<string>
+     */
+    private function addressList(string $raw, array $context): array
+    {
+        $parts = preg_split('/[,;]/', $raw) ?: [];
+        $out = [];
+        foreach ($parts as $part) {
+            $address = trim($this->interpolate($part, $context));
+            if ($address !== '') {
+                $out[] = $address;
+            }
+        }
+
+        return $out;
     }
 
     /**
