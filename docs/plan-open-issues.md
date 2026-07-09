@@ -1,4 +1,14 @@
-# Plan: offene Issues (#1–#4)
+# Plan: offene Issues (#1–#4) — ✅ ERLEDIGT
+
+> **Status: abgeschlossen (2026-07-09).** Alle vier Issues sind umgesetzt und released;
+> die GitHub-Issues sind geschlossen.
+>
+> - **#3** send_email (from/cc/bcc + Vorlagen-UX) → **v1.12.0** / client 1.10.0
+> - **#4** Seiten-Vorlagen → geschlossen (bereits durch v1.11.0 erfüllt)
+> - **#1** Workflow-Status (aktiv/inaktiv/entwurf) → **v1.13.0** / client 1.11.0
+> - **#2** Datencheck-Schritt → **v1.14.0** / client 1.12.0
+>
+> Das Folgende ist der ursprüngliche Arbeitsplan (zur Nachvollziehbarkeit belassen).
 
 Arbeitsplan für die vier offenen GitHub-Issues. Pro Issue eine PLAN-Phase = eigene
 Session (Plan-Modus → Tests zuerst → implementieren → `composer test`/`stan`/`cs` +

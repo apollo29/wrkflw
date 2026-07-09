@@ -5,6 +5,14 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Demo: Datencheck end-to-end.** Beispiel-„Host-Daten" (`examples/demo-data.sql`:
+  Tabellen `orders`/`users`/`invoices` mit Beispielzeilen) + Bin-Skript
+  `bin/seed-demo-data.php`, sowie ein Beispiel-Workflow `examples/order-check.json`
+  (`ordercheck`), der den Datencheck-Schritt nutzt und je nach Bestellstatus verzweigt.
+  `scripts/demo.sh` seedet beides; der Demo-Runner startet `ordercheck` mit `orderId=1`
+  (paid) bzw. `orderId=2` (pending) aus dem Standard-Kontext.
+
 ## [1.14.0] - 2026-07-09
 
 ### Added

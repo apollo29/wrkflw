@@ -44,9 +44,12 @@ echo "3/5  Schema/Migrationen anwenden + Beispiele seeden ..."
 # schema.sql laeuft nur beim ersten Volume-Start als Init-Skript; migrate.php zieht
 # bestehende Datenbanken (fehlende Tabellen/Spalten) idempotent nach.
 (cd "$ROOT/backend" && php bin/migrate.php)
+# Beispiel-„Host-Daten" (orders/users/invoices) fuer den Datencheck-Schritt.
+(cd "$ROOT/backend" && php bin/seed-demo-data.php)
 (cd "$ROOT/backend" && php bin/seed-template.php examples/welcome-page.template.json)
 (cd "$ROOT/backend" && php bin/seed-definition.php examples/onboarding.json)
 (cd "$ROOT/backend" && php bin/seed-definition.php examples/newsletter.json)
+(cd "$ROOT/backend" && php bin/seed-definition.php examples/order-check.json)
 
 echo "4/5  REST-API starten (http://127.0.0.1:${API_PORT}) ..."
 (cd "$ROOT/backend" && php -S "127.0.0.1:${API_PORT}" -t api api/index.php) &
@@ -58,6 +61,8 @@ cd "$ROOT/frontend"
 npx ng build workflow-client
 echo ""
 echo "Demo läuft: http://localhost:4200  (API: http://127.0.0.1:${API_PORT})"
-echo "Tab 'Runner': Workflow wählen (z. B. 'newsletter' zeigt Seitenvorlage +"
-echo "  verknüpften Onboarding-Workflow). Tab 'Editor'/'Templates' zum Bearbeiten."
+echo "Tab 'Runner': Workflow wählen —"
+echo "  • 'newsletter'  → Seitenvorlage + verknüpfter Onboarding-Workflow"
+echo "  • 'ordercheck'  → Datencheck (orders-Tabelle): orderId=1 (paid) vs. orderId=2 (pending)"
+echo "Tab 'Editor'/'Templates' zum Bearbeiten (inkl. Schritt-Typen Workflow/Datencheck, Status)."
 npx ng serve demo --proxy-config projects/demo/proxy.conf.json

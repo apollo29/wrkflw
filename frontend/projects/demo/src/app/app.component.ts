@@ -96,7 +96,7 @@ export class AppComponent implements OnInit {
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly selectedDef = signal<string>('');
   readonly contextText = signal<string>(
-    '{\n  "name": "Mara",\n  "email": "mara@example.com",\n  "plan": "enterprise"\n}',
+    '{\n  "name": "Mara",\n  "email": "mara@example.com",\n  "plan": "enterprise",\n  "orderId": 1\n}',
   );
   readonly instanceId = signal<string | null>(null);
   readonly starting = signal(false);

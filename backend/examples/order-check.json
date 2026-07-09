@@ -1,0 +1,40 @@
+{
+  "id": "ordercheck",
+  "version": 1,
+  "name": "Bestellprüfung",
+  "startStep": "check",
+  "steps": {
+    "check": {
+      "type": "automatic",
+      "action": "check_data",
+      "config": { "entity": "order", "id": "{{orderId}}", "field": "status", "as": "orderStatus" },
+      "transitions": [
+        { "to": "notify_paid", "when": "context['orderStatus'] == 'paid'" },
+        { "to": "await_payment" }
+      ]
+    },
+    "notify_paid": {
+      "type": "automatic",
+      "action": "send_email",
+      "config": {
+        "to": "{{email}}",
+        "subject": "Zahlung erhalten",
+        "body": "Danke — deine Bestellung ist bezahlt."
+      },
+      "transitions": [ { "to": "done" } ]
+    },
+    "await_payment": {
+      "type": "interactive",
+      "ui": {
+        "title": "Zahlung ausstehend",
+        "description": "Bestellung ist noch nicht bezahlt. Bestätige, sobald die Zahlung eingegangen ist.",
+        "events": ["confirm"]
+      },
+      "transitions": [ { "event": "confirm", "to": "done" } ]
+    },
+    "done": {
+      "type": "automatic",
+      "transitions": []
+    }
+  }
+}
