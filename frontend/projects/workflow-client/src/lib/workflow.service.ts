@@ -13,6 +13,7 @@ import {
   SaveDefinitionResponse,
   TemplateDetail,
   TemplateListResponse,
+  TemplateType,
   TemplateUsageResponse,
 } from './workflow.models';
 
@@ -93,18 +94,25 @@ export class WorkflowService {
 
   // -- Wiederverwendbare Templates ----------------------------------------
 
-  listTemplates(): Observable<TemplateListResponse> {
-    return this.http.get<TemplateListResponse>(`${this.baseUrl}/templates`);
+  listTemplates(type?: TemplateType): Observable<TemplateListResponse> {
+    const query = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.http.get<TemplateListResponse>(`${this.baseUrl}/templates${query}`);
   }
 
   getTemplate(id: string): Observable<TemplateDetail> {
     return this.http.get<TemplateDetail>(`${this.baseUrl}/templates/${encodeURIComponent(id)}`);
   }
 
-  saveTemplate(id: string, name: string, subject: string, body: string): Observable<{ id: string }> {
+  saveTemplate(
+    id: string,
+    name: string,
+    subject: string,
+    body: string,
+    type: TemplateType = 'email',
+  ): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(
       `${this.baseUrl}/templates/${encodeURIComponent(id)}`,
-      { name, subject, body },
+      { name, subject, body, type },
     );
   }
 

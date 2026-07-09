@@ -36,6 +36,8 @@ export interface BuilderStep {
   title: string;
   description: string;
   fields: BuilderField[];
+  /** Referenz auf eine 'page'-Vorlage (nur interaktive Schritte), ui.templateId. */
+  pageTemplateId: string;
   delaySeconds: number | null;
   transitions: BuilderTransition[];
 }
@@ -136,6 +138,7 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
         type: asString(field['type'], 'text'),
       };
     }),
+    pageTemplateId: asString(ui['templateId']),
     delaySeconds: typeof delay === 'number' ? delay : null,
     transitions: asArray(raw['transitions']).map((t) => transitionFromJson(asRecord(t))),
   };
@@ -178,12 +181,16 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     const events = Array.from(
       new Set(step.transitions.map((t) => t.event).filter((e): e is string => !!e)),
     );
-    out['ui'] = {
+    const ui: Record<string, unknown> = {
       title: step.title,
       description: step.description,
       fields: step.fields,
       events,
     };
+    if (step.pageTemplateId) {
+      ui['templateId'] = step.pageTemplateId;
+    }
+    out['ui'] = ui;
   }
 
   if (step.type === 'timer' && step.delaySeconds !== null) {
@@ -248,6 +255,7 @@ export function emptyStep(name: string, type: StepType): BuilderStep {
     title: type === 'interactive' ? name : '',
     description: '',
     fields: [],
+    pageTemplateId: '',
     delaySeconds: type === 'timer' ? 3600 : null,
     transitions: [],
   };

@@ -37,6 +37,8 @@ export interface StepUi {
   description?: string;
   fields?: UiField[];
   events?: string[];
+  /** Optionale Referenz auf eine 'page'-Vorlage, die der Runner anzeigt. */
+  templateId?: string;
 }
 
 /** Aktueller Schritt inkl. UI-Metadaten (GET /instances/{id}/current-step). */
@@ -108,10 +110,14 @@ export interface ActionCatalogResponse {
   actions: ActionCatalogEntry[];
 }
 
+/** Template-Typ: E-Mail (send_email) oder Seite (interaktiver Schritt). */
+export type TemplateType = 'email' | 'page';
+
 /** Kurzeintrag eines wiederverwendbaren Templates (GET /templates). */
 export interface TemplateSummary {
   id: string;
   name: string;
+  type: TemplateType;
 }
 
 export interface TemplateListResponse {
@@ -122,6 +128,7 @@ export interface TemplateListResponse {
 export interface TemplateDetail {
   id: string;
   name: string;
+  type: TemplateType;
   subject: string;
   body: string;
 }

@@ -15,6 +15,7 @@
   --_auto-bg: #eff6ff;   --_auto-bd: #bfdbfe;  --_auto-fg: #1d4ed8;
   --_inter-bg: #f5f3ff;  --_inter-bd: #ddd6fe; --_inter-fg: #6d28d9;
   --_timer-bg: #fffbeb;  --_timer-bd: #fde68a; --_timer-fg: #b45309;
+  --_flow-bg: #ecfdf5;   --_flow-bd: #a7f3d0;  --_flow-fg: #047857;
 
   display: block;
   color: var(--_text);
@@ -134,6 +135,7 @@
 .wfb__chip--automatic { background: var(--_auto-bg); border-color: var(--_auto-bd); color: var(--_auto-fg); }
 .wfb__chip--interactive { background: var(--_inter-bg); border-color: var(--_inter-bd); color: var(--_inter-fg); }
 .wfb__chip--timer { background: var(--_timer-bg); border-color: var(--_timer-bd); color: var(--_timer-fg); }
+.wfb__chip--workflow { background: var(--_flow-bg); border-color: var(--_flow-bd); color: var(--_flow-fg); }
 .wfb__chip--active { outline: 2px solid var(--_primary); outline-offset: 1px; }
 
 /* ── Spalten-Layout ── */
@@ -202,6 +204,7 @@
 .wfb__badge--automatic { background: var(--_auto-bg); color: var(--_auto-fg); }
 .wfb__badge--interactive { background: var(--_inter-bg); color: var(--_inter-fg); }
 .wfb__badge--timer { background: var(--_timer-bg); color: var(--_timer-fg); }
+.wfb__badge--workflow { background: var(--_flow-bg); color: var(--_flow-fg); }
 
 .wfb__label { font-size: 12.5px; color: var(--_muted); display: block; margin: 12px 0 6px; }
 .wfb__row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

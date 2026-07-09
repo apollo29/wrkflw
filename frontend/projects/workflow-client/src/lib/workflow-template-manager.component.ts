@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HtmlEditorComponent } from './html-editor.component';
-import { TemplateSummary, TemplateUsageEntry } from './workflow.models';
+import { TemplateSummary, TemplateType, TemplateUsageEntry } from './workflow.models';
 import { WorkflowService } from './workflow.service';
 
 /**
@@ -18,6 +18,10 @@ import { WorkflowService } from './workflow.service';
     <div class="wf-tpl">
       <div class="wf-tpl__list">
         <div class="wf-tpl__label">Templates</div>
+        <div class="wf-tpl__seg">
+          <button type="button" [class.is-active]="filterType() === 'email'" (click)="setFilter('email')">E-Mail</button>
+          <button type="button" [class.is-active]="filterType() === 'page'" (click)="setFilter('page')">Seite</button>
+        </div>
         <button type="button" (click)="newTemplate()">+ Neu</button>
         <ul>
           @for (t of templates(); track t.id) {
@@ -37,10 +41,12 @@ import { WorkflowService } from './workflow.service';
         <label>Name
           <input type="text" [ngModel]="nameText()" (ngModelChange)="nameText.set($event)" />
         </label>
-        <label>Betreff
-          <input type="text" [ngModel]="subjectText()" (ngModelChange)="subjectText.set($event)" placeholder="Hallo {{ '{{name}}' }}" />
-        </label>
-        <label>Inhalt (HTML)</label>
+        @if (filterType() === 'email') {
+          <label>Betreff
+            <input type="text" [ngModel]="subjectText()" (ngModelChange)="subjectText.set($event)" placeholder="Hallo {{ '{{name}}' }}" />
+          </label>
+        }
+        <label>{{ filterType() === 'page' ? 'Seiteninhalt (HTML)' : 'Inhalt (HTML)' }}</label>
         <wf-html-editor
           [placeholders]="placeholders"
           [value]="bodyText()"
@@ -89,6 +95,9 @@ import { WorkflowService } from './workflow.service';
       .wf-tpl__usage { border-top: 1px solid #eee; padding-top: 8px; }
       .wf-tpl__usage ul { list-style: none; padding: 0; margin: 4px 0; font-size: 13px; }
       .wf-tpl__usage small { color: #999; }
+      .wf-tpl__seg { display: flex; gap: 4px; margin: 6px 0; }
+      .wf-tpl__seg button { flex: 1; font-size: 12px; }
+      .wf-tpl__seg button.is-active { font-weight: 600; border-color: #1d4ed8; color: #1d4ed8; }
     `,
   ],
 })
@@ -107,16 +116,27 @@ export class WorkflowTemplateManagerComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly usage = signal<TemplateUsageEntry[]>([]);
   readonly usageLoaded = signal(false);
+  readonly filterType = signal<TemplateType>('email');
 
   ngOnInit(): void {
     this.loadList();
   }
 
   loadList(): void {
-    this.service.listTemplates().subscribe({
+    this.service.listTemplates(this.filterType()).subscribe({
       next: (res) => this.templates.set(res.templates),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
+  }
+
+  /** Wechselt zwischen E-Mail- und Seiten-Vorlagen und lädt die Liste neu. */
+  setFilter(type: TemplateType): void {
+    if (this.filterType() === type) {
+      return;
+    }
+    this.filterType.set(type);
+    this.newTemplate();
+    this.loadList();
   }
 
   newTemplate(): void {
@@ -139,6 +159,7 @@ export class WorkflowTemplateManagerComponent implements OnInit {
         this.nameText.set(t.name);
         this.subjectText.set(t.subject);
         this.bodyText.set(t.body);
+        this.filterType.set(t.type);
       },
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
@@ -196,7 +217,9 @@ export class WorkflowTemplateManagerComponent implements OnInit {
     }
 
     this.busy.set(true);
-    this.service.saveTemplate(id, this.nameText().trim() || id, this.subjectText(), this.bodyText()).subscribe({
+    this.service
+      .saveTemplate(id, this.nameText().trim() || id, this.subjectText(), this.bodyText(), this.filterType())
+      .subscribe({
       next: (res) => {
         this.busy.set(false);
         this.message.set(`Gespeichert: ${res.id}.`);

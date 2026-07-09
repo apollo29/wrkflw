@@ -26,7 +26,7 @@ describe('WorkflowTemplateManagerComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
 
     fixture.detectChanges();
-    httpMock.expectOne('/templates').flush({ templates: [] });
+    httpMock.expectOne('/templates?type=email').flush({ templates: [] });
   });
 
   afterEach(() => httpMock.verify());
@@ -45,10 +45,13 @@ describe('WorkflowTemplateManagerComponent', () => {
       name: 'Willkommen',
       subject: 'Hallo {{name}}',
       body: '<p>Hallo {{name}}</p>',
+      type: 'email',
     });
     saveReq.flush({ id: 'welcome' });
 
-    httpMock.expectOne('/templates').flush({ templates: [{ id: 'welcome', name: 'Willkommen' }] });
+    httpMock
+      .expectOne('/templates?type=email')
+      .flush({ templates: [{ id: 'welcome', name: 'Willkommen', type: 'email' }] });
     expect(component.message()).toContain('welcome');
   });
 
@@ -57,6 +60,7 @@ describe('WorkflowTemplateManagerComponent', () => {
     httpMock.expectOne('/templates/welcome').flush({
       id: 'welcome',
       name: 'Willkommen',
+      type: 'email',
       subject: 'Hallo {{name}}',
       body: '<p>Hi</p>',
     });
@@ -89,7 +93,7 @@ describe('WorkflowTemplateManagerComponent', () => {
     expect(delReq.request.method).toBe('DELETE');
     delReq.flush({ id: 'welcome', deleted: true });
 
-    httpMock.expectOne('/templates').flush({ templates: [] });
+    httpMock.expectOne('/templates?type=email').flush({ templates: [] });
     expect(component.message()).toContain('welcome');
     expect(component.idText()).toBe('');
   });
@@ -101,5 +105,16 @@ describe('WorkflowTemplateManagerComponent', () => {
     component.remove();
 
     httpMock.expectNone('/templates/welcome');
+  });
+
+  it('switches to page templates and reloads the filtered list', () => {
+    component.setFilter('page');
+
+    httpMock
+      .expectOne('/templates?type=page')
+      .flush({ templates: [{ id: 'home', name: 'Startseite', type: 'page' }] });
+
+    expect(component.filterType()).toBe('page');
+    expect(component.templates().length).toBe(1);
   });
 });

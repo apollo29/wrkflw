@@ -11,14 +11,17 @@ use WorkflowEngine\Contracts\TemplateRepositoryInterface;
  */
 final class InMemoryTemplateRepository implements TemplateRepositoryInterface
 {
-    /** @var array<string,array{id:string,name:string,subject:string,body:string}> */
+    /** @var array<string,array{id:string,name:string,type:string,subject:string,body:string}> */
     private array $templates = [];
 
-    public function listTemplates(): array
+    public function listTemplates(?string $type = null): array
     {
         $out = [];
         foreach ($this->templates as $t) {
-            $out[] = ['id' => $t['id'], 'name' => $t['name']];
+            if ($type !== null && $t['type'] !== $type) {
+                continue;
+            }
+            $out[] = ['id' => $t['id'], 'name' => $t['name'], 'type' => $t['type']];
         }
 
         return $out;
@@ -29,9 +32,20 @@ final class InMemoryTemplateRepository implements TemplateRepositoryInterface
         return $this->templates[$id] ?? null;
     }
 
-    public function saveTemplate(string $id, string $name, string $subject, string $body): void
-    {
-        $this->templates[$id] = ['id' => $id, 'name' => $name, 'subject' => $subject, 'body' => $body];
+    public function saveTemplate(
+        string $id,
+        string $name,
+        string $subject,
+        string $body,
+        string $type = 'email',
+    ): void {
+        $this->templates[$id] = [
+            'id' => $id,
+            'name' => $name,
+            'type' => $type,
+            'subject' => $subject,
+            'body' => $body,
+        ];
     }
 
     public function deleteTemplate(string $id): void

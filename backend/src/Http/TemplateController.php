@@ -22,11 +22,15 @@ final class TemplateController
     }
 
     /**
-     * GET /templates
+     * GET /templates — optional per ?type=email|page gefiltert.
      */
     public function list(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        return $this->json($response, ['templates' => $this->templates->listTemplates()]);
+        $params = $request->getQueryParams();
+        $typeParam = $params['type'] ?? null;
+        $type = is_string($typeParam) && $typeParam !== '' ? $this->normalizeType($typeParam) : null;
+
+        return $this->json($response, ['templates' => $this->templates->listTemplates($type)]);
     }
 
     /**
@@ -60,8 +64,9 @@ final class TemplateController
         $name = $this->stringField($body, 'name', $id);
         $subject = $this->stringField($body, 'subject', '');
         $content = $this->stringField($body, 'body', '');
+        $type = $this->normalizeType($this->stringField($body, 'type', 'email'));
 
-        $this->templates->saveTemplate($id, $name, $subject, $content);
+        $this->templates->saveTemplate($id, $name, $subject, $content, $type);
 
         return $this->json($response, ['id' => $id], 201);
     }
@@ -121,6 +126,12 @@ final class TemplateController
         $value = $data[$key] ?? null;
 
         return is_string($value) ? $value : $default;
+    }
+
+    /** Erlaubte Template-Typen; alles andere faellt auf 'email' zurueck. */
+    private function normalizeType(string $type): string
+    {
+        return $type === 'page' ? 'page' : 'email';
     }
 
     /**

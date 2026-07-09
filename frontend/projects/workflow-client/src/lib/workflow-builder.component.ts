@@ -24,6 +24,12 @@ import {
 } from './workflow.models';
 import { WorkflowService } from './workflow.service';
 
+/** Action-Key hinter dem Builder-Schritt-Typ „Workflow" (verknüpfte Workflows). */
+const START_WORKFLOW_ACTION = 'start_workflow';
+
+/** Builder-Schritt-Art inkl. der Pseudo-Art „workflow" (automatic + start_workflow). */
+type StepKind = StepType | 'workflow';
+
 const OPERATORS: { op: ConditionOp; label: string }[] = [
   { op: '==', label: 'ist' },
   { op: '!=', label: 'ist nicht' },
@@ -291,6 +297,72 @@ export class WorkflowBuilderComponent implements OnInit {
 
   setConfigBool(step: BuilderStep, name: string, value: boolean): void {
     step.config[name] = value;
+  }
+
+  // -- Template-Filter nach Typ ------------------------------------------
+
+  /** E-Mail-Vorlagen (für den 'template-ref'-Feldtyp der send_email-Action). */
+  emailTemplates(): TemplateSummary[] {
+    return this.templates().filter((t) => t.type === 'email');
+  }
+
+  /** Seiten-Vorlagen (für die 'Seitenvorlage' interaktiver Schritte). */
+  pageTemplates(): TemplateSummary[] {
+    return this.templates().filter((t) => t.type === 'page');
+  }
+
+  // -- Workflow-Schritt (Builder-Zucker über automatic + start_workflow) --
+
+  /** Ist der Schritt ein „Workflow"-Schritt (verknüpft einen anderen Workflow)? */
+  isWorkflowStep(step: BuilderStep): boolean {
+    return step.type === 'automatic' && step.action === START_WORKFLOW_ACTION;
+  }
+
+  /** Anzeige-Art des Schritts inkl. der Pseudo-Art „workflow". */
+  stepKind(step: BuilderStep): StepKind {
+    return this.isWorkflowStep(step) ? 'workflow' : step.type;
+  }
+
+  /** Icon-Symbol-Referenz für eine Schritt-Art. */
+  kindIcon(kind: StepKind): string {
+    switch (kind) {
+      case 'interactive':
+        return '#wfb-i-inter';
+      case 'timer':
+        return '#wfb-i-timer';
+      case 'workflow':
+        return '#wfb-i-flow';
+      default:
+        return '#wfb-i-auto';
+    }
+  }
+
+  stepIcon(step: BuilderStep): string {
+    return this.kindIcon(this.stepKind(step));
+  }
+
+  /** Setzt die Schritt-Art aus dem Typ-Dropdown (inkl. „workflow"). */
+  setKind(step: BuilderStep, kind: string): void {
+    if (kind === 'workflow') {
+      step.type = 'automatic';
+      step.action = START_WORKFLOW_ACTION;
+    } else {
+      if (step.action === START_WORKFLOW_ACTION) {
+        step.action = null;
+      }
+      step.type = kind as StepType;
+    }
+    this.bump();
+  }
+
+  /** Fügt einen „Workflow"-Schritt hinzu (automatic + start_workflow). */
+  addWorkflowStep(): void {
+    this.addStep('automatic');
+    const step = this.selectedStep();
+    if (step) {
+      step.action = START_WORKFLOW_ACTION;
+      this.bump();
+    }
   }
 
   /**

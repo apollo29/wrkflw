@@ -29,10 +29,11 @@ final class TemplateRepositoryTest extends IntegrationTestCase
         $this->repo->saveTemplate('welcome', 'Willkommen', 'Hallo {{name}}', '<p>Hi {{name}}</p>');
 
         $list = $this->repo->listTemplates();
-        self::assertSame([['id' => 'welcome', 'name' => 'Willkommen']], $list);
+        self::assertSame([['id' => 'welcome', 'name' => 'Willkommen', 'type' => 'email']], $list);
 
         $tpl = $this->repo->findTemplate('welcome');
         self::assertNotNull($tpl);
+        self::assertSame('email', $tpl['type']);
         self::assertSame('Hallo {{name}}', $tpl['subject']);
         self::assertSame('<p>Hi {{name}}</p>', $tpl['body']);
 
@@ -43,6 +44,24 @@ final class TemplateRepositoryTest extends IntegrationTestCase
         self::assertSame('Willkommen v2', $updated['name']);
         self::assertSame('Neu', $updated['subject']);
         self::assertCount(1, $this->repo->listTemplates());
+    }
+
+    public function testListFiltersByType(): void
+    {
+        $this->repo->saveTemplate('mail', 'Mail', 'S', '<p>b</p>', 'email');
+        $this->repo->saveTemplate('page', 'Seite', '', '<h1>Hallo</h1>', 'page');
+
+        $pages = $this->repo->listTemplates('page');
+        self::assertSame([['id' => 'page', 'name' => 'Seite', 'type' => 'page']], $pages);
+
+        $emails = $this->repo->listTemplates('email');
+        self::assertSame([['id' => 'mail', 'name' => 'Mail', 'type' => 'email']], $emails);
+
+        self::assertCount(2, $this->repo->listTemplates());
+
+        $page = $this->repo->findTemplate('page');
+        self::assertNotNull($page);
+        self::assertSame('page', $page['type']);
     }
 
     public function testDeleteRemovesTemplate(): void

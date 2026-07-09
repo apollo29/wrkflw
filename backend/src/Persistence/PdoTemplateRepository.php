@@ -17,11 +17,16 @@ final class PdoTemplateRepository implements TemplateRepositoryInterface
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
-    public function listTemplates(): array
+    public function listTemplates(?string $type = null): array
     {
-        $stmt = $this->pdo->query('SELECT id, name FROM wf_template ORDER BY name ASC');
-        if ($stmt === false) {
-            return [];
+        if ($type !== null) {
+            $stmt = $this->pdo->prepare('SELECT id, name, type FROM wf_template WHERE type = :type ORDER BY name ASC');
+            $stmt->execute([':type' => $type]);
+        } else {
+            $stmt = $this->pdo->query('SELECT id, name, type FROM wf_template ORDER BY name ASC');
+            if ($stmt === false) {
+                return [];
+            }
         }
 
         $out = [];
@@ -32,6 +37,7 @@ final class PdoTemplateRepository implements TemplateRepositoryInterface
             $out[] = [
                 'id' => $this->str($row, 'id'),
                 'name' => $this->str($row, 'name'),
+                'type' => $this->str($row, 'type'),
             ];
         }
 
@@ -40,7 +46,7 @@ final class PdoTemplateRepository implements TemplateRepositoryInterface
 
     public function findTemplate(string $id): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT id, name, subject, body FROM wf_template WHERE id = :id');
+        $stmt = $this->pdo->prepare('SELECT id, name, type, subject, body FROM wf_template WHERE id = :id');
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!is_array($row)) {
@@ -50,18 +56,26 @@ final class PdoTemplateRepository implements TemplateRepositoryInterface
         return [
             'id' => $this->str($row, 'id'),
             'name' => $this->str($row, 'name'),
+            'type' => $this->str($row, 'type'),
             'subject' => $this->str($row, 'subject'),
             'body' => $this->str($row, 'body'),
         ];
     }
 
-    public function saveTemplate(string $id, string $name, string $subject, string $body): void
-    {
+    public function saveTemplate(
+        string $id,
+        string $name,
+        string $subject,
+        string $body,
+        string $type = 'email',
+    ): void {
         $this->pdo->prepare(
-            'INSERT INTO wf_template (id, name, subject, body)
-             VALUES (:id, :name, :subject, :body)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), subject = VALUES(subject), body = VALUES(body)'
-        )->execute([':id' => $id, ':name' => $name, ':subject' => $subject, ':body' => $body]);
+            'INSERT INTO wf_template (id, name, type, subject, body)
+             VALUES (:id, :name, :type, :subject, :body)
+             ON DUPLICATE KEY UPDATE
+                 name = VALUES(name), type = VALUES(type),
+                 subject = VALUES(subject), body = VALUES(body)'
+        )->execute([':id' => $id, ':name' => $name, ':type' => $type, ':subject' => $subject, ':body' => $body]);
     }
 
     public function deleteTemplate(string $id): void

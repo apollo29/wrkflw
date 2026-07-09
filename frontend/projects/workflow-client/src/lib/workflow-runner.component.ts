@@ -23,6 +23,9 @@ import { WorkflowService } from './workflow.service';
           <div class="wf-done">Workflow abgeschlossen (Status: {{ s.status }}).</div>
         } @else if (s.interactive) {
           <form class="wf-form" (ngSubmit)="$event.preventDefault()">
+            @if (pageHtml(); as html) {
+              <div class="wf-page" [innerHTML]="html"></div>
+            }
             @if (s.ui.title) {
               <h3 class="wf-title">{{ s.ui.title }}</h3>
             }
@@ -80,8 +83,11 @@ export class WorkflowRunnerComponent implements OnInit {
   readonly step = signal<CurrentStep | null>(null);
   readonly error = signal<string | null>(null);
   readonly busy = signal<boolean>(false);
+  /** Gerenderter HTML-Body der Seitenvorlage (ui.templateId), sonst null. */
+  readonly pageHtml = signal<string | null>(null);
 
   private readonly values = signal<Record<string, unknown>>({});
+  private readonly pageCache: Record<string, string> = {};
   private polling = false;
 
   ngOnInit(): void {
@@ -133,6 +139,7 @@ export class WorkflowRunnerComponent implements OnInit {
 
   private applyStep(id: string, s: CurrentStep): void {
     this.step.set(s);
+    this.updatePage(s);
     if (s.finished) {
       this.completed.emit(s);
       return;
@@ -149,6 +156,7 @@ export class WorkflowRunnerComponent implements OnInit {
       this.service.currentStep(id).subscribe({
         next: (s) => {
           this.step.set(s);
+          this.updatePage(s);
           if (s.finished) {
             this.polling = false;
             this.completed.emit(s);
@@ -164,6 +172,37 @@ export class WorkflowRunnerComponent implements OnInit {
         },
       });
     }, 800);
+  }
+
+  /**
+   * Lädt und rendert die Seitenvorlage (ui.templateId) eines interaktiven Schritts;
+   * ersetzt {{platzhalter}} aus dem Kontext. Ohne Vorlage wird nichts angezeigt.
+   */
+  private updatePage(s: CurrentStep): void {
+    const id = s.interactive ? s.ui.templateId : undefined;
+    if (!id) {
+      this.pageHtml.set(null);
+      return;
+    }
+    const cached = this.pageCache[id];
+    if (cached !== undefined) {
+      this.pageHtml.set(this.interpolate(cached, s.context));
+      return;
+    }
+    this.service.getTemplate(id).subscribe({
+      next: (t) => {
+        this.pageCache[id] = t.body;
+        this.pageHtml.set(this.interpolate(t.body, s.context));
+      },
+      error: () => this.pageHtml.set(null),
+    });
+  }
+
+  private interpolate(template: string, context: Record<string, unknown>): string {
+    return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => {
+      const value = context[key];
+      return value === undefined || value === null ? '' : String(value);
+    });
   }
 
   private message(err: unknown): string {

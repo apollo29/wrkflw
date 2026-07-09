@@ -5,6 +5,23 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-07-09
+
+### Added
+- **Seiten-Vorlagen für interaktive Schritte.** Templates haben nun einen Typ
+  (`email` | `page`).
+  - Backend: Spalte `wf_template.type` (Default `email`); `listTemplates(?type)` filtert,
+    `saveTemplate(..., type)` und `findTemplate` liefern/erwarten den Typ.
+    `GET /templates?type=page` filtert die Liste, `POST /templates/{id}` nimmt `type`.
+  - Frontend (client 1.9.0): der Template-Manager hat einen Umschalter **E-Mail / Seite**
+    (Betreff nur bei E-Mail). Interaktive Schritte bekommen im Builder ein Feld
+    **Seitenvorlage** (nur `page`-Vorlagen, gespeichert als `ui.templateId`); der Runner
+    rendert deren HTML (mit `{{platzhalter}}` aus dem Kontext) oberhalb der Felder.
+    Der `send_email`-Vorlagen-Dropdown zeigt nur noch `email`-Vorlagen.
+- **Schritt-Typ „Workflow" im Builder.** Neue Typ-Karte, die einen anderen Workflow
+  anstößt — Builder-Zucker über einen automatischen Schritt mit `action=start_workflow`
+  (Ziel-Workflow + „Auf Abschluss warten" direkt als Felder). Keine Engine-Änderung.
+
 ## [1.10.0] - 2026-07-08
 
 ### Added

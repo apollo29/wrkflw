@@ -62,6 +62,22 @@ final class TemplateApiTest extends TestCase
         self::assertSame(404, $this->send('GET', '/templates/ghost')->getStatusCode());
     }
 
+    public function testSaveWithTypeAndFilterByType(): void
+    {
+        $this->send('POST', '/templates/mail', ['name' => 'Mail', 'subject' => 'S', 'body' => 'B', 'type' => 'email']);
+        $this->send('POST', '/templates/page', ['name' => 'Seite', 'body' => '<h1>Hi</h1>', 'type' => 'page']);
+
+        $pages = $this->decode($this->send('GET', '/templates?type=page'))['templates'] ?? null;
+        self::assertIsArray($pages);
+        self::assertCount(1, $pages);
+        self::assertIsArray($pages[0]);
+        self::assertSame('page', $pages[0]['id'] ?? null);
+        self::assertSame('page', $pages[0]['type'] ?? null);
+
+        $detail = $this->decode($this->send('GET', '/templates/page'));
+        self::assertSame('page', $detail['type'] ?? null);
+    }
+
     public function testDeleteRemovesTemplate(): void
     {
         $this->send('POST', '/templates/tmp', ['name' => 'Tmp', 'subject' => 'S', 'body' => 'B']);

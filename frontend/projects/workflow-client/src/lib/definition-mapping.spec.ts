@@ -65,6 +65,7 @@ describe('definition-mapping', () => {
           title: 'Frage',
           description: 'Bitte ausfüllen',
           fields: [{ name: 'ok', label: 'OK', type: 'boolean' }],
+          pageTemplateId: '',
           delaySeconds: null,
           transitions: [
             {
@@ -84,6 +85,7 @@ describe('definition-mapping', () => {
           title: '',
           description: '',
           fields: [],
+          pageTemplateId: '',
           delaySeconds: null,
           transitions: [],
         },
@@ -104,6 +106,38 @@ describe('definition-mapping', () => {
     const t = restored.steps[0].transitions[0];
     expect(t.mode).toBe('assistant');
     expect(t.condition).toEqual({ field: 'ok', op: '==', value: 'true' });
+  });
+
+  it('round-trips an interactive page template reference (ui.templateId)', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: {
+        ask: {
+          type: 'interactive',
+          ui: { title: 'Hi', events: ['submit'], templateId: 'welcome-page' },
+          transitions: [{ to: 'ask', event: 'submit' }],
+        },
+      },
+    });
+    expect(model.steps[0].pageTemplateId).toBe('welcome-page');
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect(ui['templateId']).toBe('welcome-page');
+  });
+
+  it('omits ui.templateId when no page template is selected', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: { ask: { type: 'interactive', ui: { events: [] }, transitions: [] } },
+    });
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect('templateId' in ui).toBeFalse();
   });
 
   it('orders steps breadth-first from the start step', () => {

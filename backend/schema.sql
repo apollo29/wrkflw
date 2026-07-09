@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS wf_history (
 CREATE TABLE IF NOT EXISTS wf_template (
     id            VARCHAR(64)   NOT NULL,
     name          VARCHAR(255)  NOT NULL,
+    -- 'email' (Betreff + Body) oder 'page' (HTML-Seite fuer interaktive Schritte).
+    type          VARCHAR(16)   NOT NULL DEFAULT 'email',
     subject       VARCHAR(1024) NOT NULL DEFAULT '',
     body          MEDIUMTEXT    NOT NULL,
     updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -112,8 +112,20 @@ describe('WorkflowService', () => {
     service.saveTemplate('welcome', 'W', 'Hallo {{name}}', '<p>Hi</p>').subscribe();
     const saveReq = httpMock.expectOne(`${BASE}/templates/welcome`);
     expect(saveReq.request.method).toBe('POST');
-    expect(saveReq.request.body).toEqual({ name: 'W', subject: 'Hallo {{name}}', body: '<p>Hi</p>' });
+    expect(saveReq.request.body).toEqual({
+      name: 'W',
+      subject: 'Hallo {{name}}',
+      body: '<p>Hi</p>',
+      type: 'email',
+    });
     saveReq.flush({ id: 'welcome' });
+  });
+
+  it('lists templates filtered by type', () => {
+    service.listTemplates('page').subscribe();
+    const req = httpMock.expectOne(`${BASE}/templates?type=page`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ templates: [] });
   });
 
   it('deletes a template and queries its usage', () => {
