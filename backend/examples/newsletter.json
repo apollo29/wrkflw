@@ -1,0 +1,36 @@
+{
+  "id": "newsletter",
+  "version": 1,
+  "name": "Newsletter-Anmeldung",
+  "startStep": "confirm",
+  "steps": {
+    "confirm": {
+      "type": "interactive",
+      "ui": {
+        "title": "Anmeldung bestätigen",
+        "description": "Ein Klick fehlt noch.",
+        "templateId": "welcome-page",
+        "fields": [
+          { "name": "acceptedTerms", "label": "Ich stimme den Bedingungen zu", "type": "boolean" }
+        ],
+        "events": ["submit"]
+      },
+      "transitions": [
+        { "event": "submit", "to": "kickoff_onboarding", "when": "context['acceptedTerms'] == true" },
+        { "event": "submit", "to": "confirm", "when": "context['acceptedTerms'] != true" }
+      ]
+    },
+    "kickoff_onboarding": {
+      "type": "automatic",
+      "action": "start_workflow",
+      "config": { "workflowId": "onboarding", "waitForCompletion": false },
+      "transitions": [
+        { "to": "done" }
+      ]
+    },
+    "done": {
+      "type": "automatic",
+      "transitions": []
+    }
+  }
+}

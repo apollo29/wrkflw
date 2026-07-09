@@ -1,0 +1,7 @@
+{
+  "id": "welcome-page",
+  "name": "Willkommensseite",
+  "type": "page",
+  "subject": "",
+  "body": "<h2 style=\"margin:0 0 8px\">Willkommen zum Newsletter</h2><p>Schön, dass du dabei bist, {{name}}! Bitte bestätige deine Anmeldung, dann starten wir dein Onboarding.</p>"
+}

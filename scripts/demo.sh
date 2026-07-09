@@ -40,8 +40,10 @@ done
 echo "2/5  Backend-Abhaengigkeiten sicherstellen ..."
 [ -d "$ROOT/backend/vendor" ] || (cd "$ROOT/backend" && composer install --no-interaction)
 
-echo "3/5  Onboarding-Definition seeden ..."
+echo "3/5  Beispiele seeden (Templates + Definitionen) ..."
+(cd "$ROOT/backend" && php bin/seed-template.php examples/welcome-page.template.json)
 (cd "$ROOT/backend" && php bin/seed-definition.php examples/onboarding.json)
+(cd "$ROOT/backend" && php bin/seed-definition.php examples/newsletter.json)
 
 echo "4/5  REST-API starten (http://127.0.0.1:${API_PORT}) ..."
 (cd "$ROOT/backend" && php -S "127.0.0.1:${API_PORT}" -t api api/index.php) &
@@ -53,5 +55,6 @@ cd "$ROOT/frontend"
 npx ng build workflow-client
 echo ""
 echo "Demo läuft: http://localhost:4200  (API: http://127.0.0.1:${API_PORT})"
-echo "Tab 'Runner' spielt das Onboarding, Tab 'Editor' verwaltet Definitionen."
+echo "Tab 'Runner': Workflow wählen (z. B. 'newsletter' zeigt Seitenvorlage +"
+echo "  verknüpften Onboarding-Workflow). Tab 'Editor'/'Templates' zum Bearbeiten."
 npx ng serve demo --proxy-config projects/demo/proxy.conf.json

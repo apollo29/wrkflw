@@ -5,6 +5,18 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-07-09
+
+### Added
+- **Demo-App vervollständigt.** Der Runner-Tab hat jetzt einen Workflow-Auswähler
+  (aus der Definitionsliste) plus editierbaren Start-Kontext (JSON) — statt eines fest
+  verdrahteten Onboarding-Starts — und einen „anderen Workflow starten"-Reset.
+- **Beispiel-Daten für die neuen Features.** Neues Bin-Skript `bin/seed-template.php`
+  (Upsert eines Templates inkl. Typ), eine Seiten-Vorlage `examples/welcome-page.template.json`
+  und ein `examples/newsletter.json`, das eine Seitenvorlage in einem interaktiven Schritt
+  nutzt und anschließend den `onboarding`-Workflow verknüpft anstößt. `scripts/demo.sh`
+  seedet Templates + beide Definitionen und weist auf das Newsletter-Beispiel hin.
+
 ## [1.11.0] - 2026-07-09
 
 ### Added
