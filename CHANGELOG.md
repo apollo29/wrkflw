@@ -5,6 +5,13 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **README aktualisiert** auf den aktuellen Funktionsstand: eingebaute Actions
+  (`send_email`/`start_workflow`/`check_data`), Vorlagen (email/page), Workflow-Status,
+  neue Ports (`DataCatalogInterface`, `TemplateRepositoryInterface`, `WorkflowStarterInterface`,
+  `EmailMessage`), Setup via `migrate.php`/Seed-Skripte, API-Überblick, Demo-Tabs und
+  Frontend-Library-Komponenten.
+
 ## [1.14.1] - 2026-07-09
 
 ### Added
