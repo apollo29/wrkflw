@@ -3,6 +3,24 @@
 Dauerhafte Konventionen für dieses Repo. Kein Ausführungsplan (der steht in `PLAN.md`).
 Claude liest diese Datei zu Beginn jeder Session.
 
+## Wo dieser Code lebt (IMPORTANT)
+
+Dieses Repo liegt zusätzlich als **git subtree** unter `packages/wrkflw/` im Repo
+`fclaenggasse/coach-admin`; dort findet die aktive Entwicklung statt. Beim Arbeiten
+gilt deshalb:
+
+- **In coach-admin:** Engine und Host-App im selben Commit ändern. `composer install`
+  bzw. `npm install` sind nach Engine-Änderungen **nicht** nötig — das Backend hängt
+  per Composer-path-Repo (Symlink) daran, das Frontend per tsconfig-`paths` auf
+  `frontend/projects/workflow-client/src/public-api.ts`.
+- **NEVER** in coach-admin ein `npm install` innerhalb von `packages/wrkflw/frontend/`
+  ausführen — das erzeugt eine zweite Angular-Kopie und bricht das App-Bundle. Die
+  npm-Pakete kommen dort aus dem Workspace im coach-admin-Root.
+- **In diesem Repo eigenständig:** unverändert `composer install` und
+  `cd frontend && npm ci`.
+- Rückweg ins öffentliche Repo: `./scripts/wrkflw-sync.sh push <branch>` (in
+  coach-admin). Releases weiterhin nur hier, über Tags `vX.Y.Z` / `client-vX.Y.Z`.
+
 ## Was das Projekt ist
 
 Eingebettete Workflow-Engine als PHP-Library. Eine **Definition** (JSON, versioniert) ist

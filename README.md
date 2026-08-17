@@ -4,6 +4,17 @@ Eingebettete Workflow-Engine als PHP-Library, mit Slim-REST-API, MariaDB-Persist
 (JSON) und Angular-Client. Hintergrundausführung über Cron + DB-Polling, Integration in
 die Host-App über klar definierte PHP-Interfaces (Dependency Inversion).
 
+> **Wo entwickelt wird.** Die aktive Entwicklung läuft im Repo
+> [fclaenggasse/coach-admin](https://github.com/fclaenggasse/coach-admin) unter
+> `packages/wrkflw/` — dort liegt dieses Repo als **git subtree**, damit Engine und
+> Host-App in einem Commit geändert werden können. Dieses Repo bleibt die
+> veröffentlichte, eigenständige Library: Änderungen kommen per `git subtree push`
+> hier an, Releases laufen unverändert über die Tags `vX.Y.Z` (PHP-Engine) und
+> `client-vX.Y.Z` (npm-Client).
+>
+> Für eigenständige Arbeit an der Library ist dieses Repo weiterhin voll nutzbar
+> (`composer install`, `cd frontend && npm ci`) — siehe «Tests & Qualität».
+
 ## Kernidee
 
 Eine **Definition** (Template, versioniert) beschreibt einen gerichteten Graphen aus

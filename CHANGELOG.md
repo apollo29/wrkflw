@@ -6,6 +6,12 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- **Entwicklung wandert nach coach-admin.** Dieses Repo liegt zusätzlich als git
+  subtree unter `packages/wrkflw/` in `fclaenggasse/coach-admin`; dort werden Engine
+  und Host-App künftig in einem Commit geändert. Dieses Repo bleibt die
+  veröffentlichte, eigenständige Library — Änderungen kommen per `git subtree push`
+  an, Releases laufen unverändert über die Tags `vX.Y.Z` / `client-vX.Y.Z`.
+  Dokumentiert in `README.md` und `CLAUDE.md`.
 - **README aktualisiert** auf den aktuellen Funktionsstand: eingebaute Actions
   (`send_email`/`start_workflow`/`check_data`), Vorlagen (email/page), Workflow-Status,
   neue Ports (`DataCatalogInterface`, `TemplateRepositoryInterface`, `WorkflowStarterInterface`,
