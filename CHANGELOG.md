@@ -3,7 +3,7 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [Unreleased]
+## [1.16.0] - 2026-08-31
 
 ### Changed
 - **Die History speichert keine Werte mehr, nur noch Schluesselnamen.** Ein Workflow
