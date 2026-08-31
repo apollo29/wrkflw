@@ -1,6 +1,11 @@
 import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CurrentStep } from './workflow.models';
+import {
+  workflowFinishedText,
+  workflowStatusLabel,
+  workflowWaitingText,
+} from './workflow.status';
 import { WorkflowService } from './workflow.service';
 
 /**
@@ -31,7 +36,7 @@ import { WorkflowService } from './workflow.service';
             <span class="wf-state__label">Abgeschlossen</span>
             <div class="wf-state__row">
               <span class="wf-dot" aria-hidden="true"></span>
-              <span>Workflow abgeschlossen (Status: {{ s.status }}).</span>
+              <span>{{ finishedText(s.status) }}</span>
             </div>
           </div>
         } @else if (s.interactive) {
@@ -82,10 +87,10 @@ import { WorkflowService } from './workflow.service';
           </form>
         } @else {
           <div class="wf-card wf-state wf-state--auto">
-            <span class="wf-state__label">Läuft im Hintergrund</span>
+            <span class="wf-state__label">{{ statusLabel(s.status) }}</span>
             <div class="wf-state__row">
               <span class="wf-dot" aria-hidden="true"></span>
-              <span>Im Hintergrund … (Status: {{ s.status }})</span>
+              <span>{{ waitingText(s.status) }}</span>
             </div>
           </div>
         }
@@ -125,6 +130,25 @@ export class WorkflowRunnerComponent implements OnInit {
   retry(): void {
     this.error.set(null);
     this.refresh(this.instanceId());
+  }
+
+  /**
+   * Lesbare Texte statt des rohen Status — siehe workflow.status.ts.
+   *
+   * Die Kopfzeile der Karte nennt den Zustand in zwei Worten, der Satz darunter
+   * den Grund. Beide kommen aus derselben Quelle, damit sie nicht auseinander
+   * laufen.
+   */
+  statusLabel(status: string): string {
+    return workflowStatusLabel(status);
+  }
+
+  waitingText(status: string): string {
+    return workflowWaitingText(status);
+  }
+
+  finishedText(status: string): string {
+    return workflowFinishedText(status);
   }
 
   setValue(name: string, value: unknown): void {

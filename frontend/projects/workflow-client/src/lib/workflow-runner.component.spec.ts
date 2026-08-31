@@ -67,6 +67,31 @@ describe('WorkflowRunnerComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('abgeschlossen');
   });
 
+  // Vorher stand hier «Im Hintergrund … (Status: waiting_timer)». Der rohe
+  // Wert ist ein Datenbankfeld und beantwortet die einzige Frage nicht, die
+  // jemand vor dem Bildschirm hat: muss ich jetzt etwas tun?
+  it('nennt den Wartezustand beim Namen statt den rohen Status zu zeigen', () => {
+    fixture.componentRef.setInput('instanceId', 'i2');
+    fixture.detectChanges();
+
+    httpMock.expectOne('/instances/i2/current-step').flush({
+      instanceId: 'i2',
+      status: 'waiting_timer',
+      step: 'send_reminder',
+      type: 'timer',
+      interactive: false,
+      finished: false,
+      ui: {},
+      events: [],
+      context: {},
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('waiting_timer');
+    expect(text).toContain('Termin');
+  });
+
   it('shows an error state when the request fails', () => {
     fixture.componentRef.setInput('instanceId', 'bad');
     fixture.detectChanges();
