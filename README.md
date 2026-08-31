@@ -200,10 +200,32 @@ Die Library `@apollo29/workflow-client` (standalone Components, Signals) liefert
 - `wf-builder` (`WorkflowBuilderComponent`) – der visuelle No-Code-Builder
 - `wf-template-manager` (`WorkflowTemplateManagerComponent`) – Vorlagenverwaltung
 - `wf-html-editor` (`HtmlEditorComponent`) – WYSIWYG-Editor (TipTap) mit Platzhaltern
+- `workflow.status` – lesbare Bezeichnungen der Instanz-Status
+  (`WORKFLOW_STATUS_LABELS`, `workflowStatusLabel()`, `workflowWaitingText()`,
+  `workflowFinishedText()`)
 
 ```html
 <wf-runner [instanceId]="id" />
 ```
+
+### Status-Bezeichnungen
+
+Die rohen Werte (`waiting_timer`) sind Feldnamen aus der Datenbank und gehören nicht
+auf einen Bildschirm, den jemand benutzt: «Status: waiting_timer» sagt der Person
+davor nichts darüber, ob sie etwas tun muss – und genau das ist die einzige Frage,
+die sie hat. Der Runner übersetzt sie deshalb selbst.
+
+Host-Apps, die daneben eine eigene Liste (Filter, Chips, Übersicht) zeigen, sollten
+dieselben Bezeichnungen verwenden, statt eine zweite zu pflegen:
+
+```ts
+import { workflowStatusLabel } from '@apollo29/workflow-client';
+
+label = workflowStatusLabel(instanz.status);   // 'Wartet auf den nächsten Termin'
+```
+
+Ein unbekannter Status fällt auf den rohen Wert zurück – hässlich, aber ehrlich: eine
+neue Engine-Version soll keinen leeren Kasten hinterlassen.
 
 Der interaktive Step liefert seine UI-Beschreibung (`ui.fields`, `events`, optional
 `ui.templateId`) selbst mit – das Frontend muss die einzelnen Workflows nicht kennen.
