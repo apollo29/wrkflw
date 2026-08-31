@@ -69,7 +69,8 @@ final class WorkflowController
             'id' => $instance->id,
             'status' => $instance->status,
             'currentStep' => $instance->currentStep,
-            'context' => $instance->context,
+            // Ohne engine-interne Schluessel (ADR 0006).
+            'context' => ContextKeys::stripInternal($instance->context),
             'lastError' => $instance->lastError,
         ]);
     }
@@ -105,7 +106,8 @@ final class WorkflowController
             'finished' => $instance->isFinished(),
             'ui' => $step->ui,
             'events' => array_keys($events),
-            'context' => $instance->context,
+            // Ohne engine-interne Schluessel (ADR 0006).
+            'context' => ContextKeys::stripInternal($instance->context),
         ]);
     }
 

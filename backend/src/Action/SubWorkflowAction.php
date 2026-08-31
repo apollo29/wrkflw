@@ -9,6 +9,7 @@ use WorkflowEngine\Contracts\ConfigurableActionInterface;
 use WorkflowEngine\Contracts\WorkflowStarterInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Exception\WorkflowException;
+use WorkflowEngine\Instance\ContextKeys;
 use WorkflowEngine\Instance\WorkflowInstance;
 
 /**
@@ -133,14 +134,7 @@ final class SubWorkflowAction implements ActionInterface, ConfigurableActionInte
      */
     private function publicContext(array $context): array
     {
-        $out = [];
-        foreach ($context as $key => $value) {
-            if (!str_starts_with($key, '__')) {
-                $out[$key] = $value;
-            }
-        }
-
-        return $out;
+        return ContextKeys::stripInternal($context);
     }
 
     /**

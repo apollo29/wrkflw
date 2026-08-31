@@ -45,7 +45,16 @@ final class WorkflowInstance
     }
 
     /**
-     * Merge eines Event-Payloads in den Kontext.
+     * Merge in den Kontext — flach, ohne Schutz einzelner Schluessel.
+     *
+     * BEWUSST ungefiltert: dieselbe Methode uebernimmt auch Action-Ergebnisse,
+     * und `SubWorkflowAction` liefert legitim den internen Marker
+     * `__awaitWorkflow` zurueck. Ein Filter hier zerstoerte verknuepfte
+     * Workflows.
+     *
+     * Event-Payloads duerfen deshalb NUR ueber
+     * {@see \WorkflowEngine\Engine\WorkflowEngine::handleEvent()} hereinkommen —
+     * dort sitzt die Grenze (ADR 0006).
      *
      * @param array<string,mixed> $data
      */

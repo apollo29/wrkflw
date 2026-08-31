@@ -12,6 +12,7 @@ use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Definition\Transition;
 use WorkflowEngine\Definition\WorkflowDefinition;
 use WorkflowEngine\Exception\WorkflowException;
+use WorkflowEngine\Instance\ContextKeys;
 use WorkflowEngine\Instance\WorkflowInstance;
 
 /**
@@ -44,6 +45,12 @@ final class WorkflowEngine implements WorkflowStarterInterface
         private readonly ExpressionEvaluatorInterface $expr,
         private readonly int $maxAttempts = 3,
         private readonly int $baseRetryDelaySeconds = 60,
+        /**
+         * Wie streng Event-Payloads gefiltert werden (ADR 0006). Der Default ist
+         * rueckwaertskompatibel; interne Schluessel werden davon unabhaengig
+         * immer verworfen.
+         */
+        private readonly EventPayloadPolicy $eventPayloadPolicy = EventPayloadPolicy::Allow,
     ) {
     }
 
@@ -212,13 +219,27 @@ final class WorkflowEngine implements WorkflowStarterInterface
         $def = $this->repo->findDefinition($instance->definitionId, $instance->definitionVersion);
         $step = $def->step($instance->currentStep);
 
+        $clean = $this->sanitizeEventPayload($step, $payload);
+
         if ($eventId !== null) {
             $this->markEventApplied($instance, $eventId);
         }
-        $instance->mergeContext($payload);
+
+        if ($clean['dropped'] !== [] || $clean['wouldDrop'] !== []) {
+            // Nur Schluesselnamen, nie Werte: ein Payload kann Personendaten tragen.
+            $this->repo->logHistory($instance->id, 'event_payload_rejected', $step->name, [
+                'event' => $event,
+                'dropped' => $clean['dropped'],
+                'wouldDrop' => $clean['wouldDrop'],
+            ]);
+        }
+
+        $instance->mergeContext($clean['payload']);
         $this->repo->logHistory($instance->id, 'event', $step->name, [
             'event' => $event,
-            'payload' => $payload,
+            // Der gefilterte Payload — sonst stuenden die verworfenen Werte
+            // trotzdem in der History.
+            'payload' => $clean['payload'],
         ]);
 
         $next = $this->selectTransition($step, $instance, event: $event);
@@ -382,7 +403,90 @@ final class WorkflowEngine implements WorkflowStarterInterface
     }
 
     /**
-     * Entfernt engine-interne Schluessel (Prefix "__") aus einem Kontext.
+     * Filtert einen Event-Payload an der Grenze zwischen Aussenwelt und
+     * Instanz-Kontext (ADR 0006).
+     *
+     * Zwei Ebenen:
+     *   A) Engine-interne Schluessel ("__") werden IMMER verworfen. Sie steuern
+     *      Idempotenz und die Verknuepfung von Workflows; kaemen sie aus einem
+     *      Payload, liessen sich damit die Idempotenz aushebeln und fremde
+     *      Instanzen fortsetzen.
+     *   B) Je nach Policy zusaetzlich die Whitelist aus `ui.fields`.
+     *
+     * Verworfen wird, nicht abgelehnt: ein zusaetzlicher Schluessel aus einem
+     * aelteren Client soll den Schritt nicht blockieren.
+     *
+     * @param array<string,mixed> $payload
+     *
+     * @return array{payload: array<string,mixed>, dropped: list<string>, wouldDrop: list<string>}
+     */
+    private function sanitizeEventPayload(Step $step, array $payload): array
+    {
+        $kept = [];
+        $dropped = [];
+        foreach ($payload as $key => $value) {
+            $name = (string) $key;
+            if (ContextKeys::isInternal($name)) {
+                $dropped[] = $name;
+                continue;
+            }
+            $kept[$name] = $value;
+        }
+
+        if ($this->eventPayloadPolicy === EventPayloadPolicy::Allow) {
+            return ['payload' => $kept, 'dropped' => $dropped, 'wouldDrop' => []];
+        }
+
+        $allowed = array_fill_keys($this->declaredFieldNames($step), true);
+        $undeclared = array_keys(array_diff_key($kept, $allowed));
+
+        if ($this->eventPayloadPolicy === EventPayloadPolicy::Report) {
+            return ['payload' => $kept, 'dropped' => $dropped, 'wouldDrop' => $undeclared];
+        }
+
+        return [
+            'payload' => array_intersect_key($kept, $allowed),
+            'dropped' => [...$dropped, ...$undeclared],
+            'wouldDrop' => [],
+        ];
+    }
+
+    /**
+     * Die vom Schritt deklarierten Feldnamen.
+     *
+     * `ui` ist ein rohes, ungetyptes Array — der DefinitionValidator fasst es
+     * nicht an. Alles Unbrauchbare zaehlt deshalb als "keine Felder
+     * deklariert", und unter Enforce kommt dann nichts durch (fail closed).
+     *
+     * Intern benannte Felder werden verworfen: sonst risse eine Definition mit
+     * `{"name": "__parent"}` die Ebene A wieder auf.
+     *
+     * @return list<string>
+     */
+    private function declaredFieldNames(Step $step): array
+    {
+        $fields = $step->ui['fields'] ?? null;
+        if (!is_array($fields)) {
+            return [];
+        }
+
+        $names = [];
+        foreach ($fields as $field) {
+            if (!is_array($field)) {
+                continue;
+            }
+            $name = $field['name'] ?? null;
+            if (!is_string($name) || $name === '' || ContextKeys::isInternal($name)) {
+                continue;
+            }
+            $names[] = $name;
+        }
+
+        return $names;
+    }
+
+    /**
+     * Entfernt engine-interne Schluessel aus einem Kontext.
      *
      * @param array<string,mixed> $context
      *
@@ -390,14 +494,7 @@ final class WorkflowEngine implements WorkflowStarterInterface
      */
     private function publicContext(array $context): array
     {
-        $out = [];
-        foreach ($context as $key => $value) {
-            if (!str_starts_with($key, '__')) {
-                $out[$key] = $value;
-            }
-        }
-
-        return $out;
+        return ContextKeys::stripInternal($context);
     }
 
     private function isEventApplied(WorkflowInstance $instance, string $eventId): bool

@@ -5,7 +5,38 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+- **Event-Payloads koennen den Instanz-Kontext nicht mehr frei beschreiben (ADR 0006).**
+  `handleEvent()` merkte den Payload bisher ungefiltert in den Kontext — und aus genau
+  diesem Kontext interpoliert `send_email` seinen Empfaenger und `check_data` seine
+  Datensatz-ID. Geschlossen sind damit drei Wege:
+  - `__appliedEventIds` liess sich per Payload zuruecksetzen und damit die Idempotenz-
+    Zusicherung aus ADR 0005 aushebeln.
+  - `__awaitWorkflow` und `__parent` liessen sich setzen und damit eine **fremde** Instanz
+    ueber ihren interaktiven Schritt hinaus fortsetzen.
+  - Fachliche Schluessel, die der Schritt nie vorgesehen hat, landeten im Kontext (nur
+    unter der neuen Policy `Enforce` gefiltert, siehe unten).
+- **Interne Kontext-Schluessel verlassen die Engine nicht mehr.** `send_email` uebergab
+  den gesamten Kontext als `vars` an den Mailer; `GET /instances/{id}` und
+  `/instances/{id}/current-step` lieferten ihn roh aus. Beide sind jetzt bereinigt.
+
+### Added
+- `WorkflowEngine\Instance\ContextKeys` — die eine autoritative Definition des
+  reservierten Namensraums `__` (`isInternal()`, `stripInternal()`).
+- `WorkflowEngine\Engine\EventPayloadPolicy` — `Allow` (Default) | `Report` | `Enforce`,
+  als letzter Konstruktor-Parameter von `WorkflowEngine`. `Enforce` laesst nur die in
+  `ui.fields` deklarierten Feldnamen durch und ist fail closed: deklariert ein Schritt
+  keine Felder, kommt nichts durch. Der Weg fuer bestehende Anwendungen ist
+  `Allow` -> `Report` -> `Enforce`.
+- History-Art `event_payload_rejected` mit `dropped` und `wouldDrop` — **nur
+  Schluesselnamen, nie Werte**, weil ein Payload Personendaten tragen kann.
+
 ### Changed
+- Der History-Eintrag `event` protokolliert den **gefilterten** Payload. Ohne das stuenden
+  die verworfenen Werte weiterhin in der History.
+- Feldnamen mit `__`-Prefix werden aus der `ui.fields`-Whitelist entfernt: eine Definition
+  darf den reservierten Namensraum nicht wieder oeffnen.
+- **Angekuendigt fuer 2.0:** der Default von `EventPayloadPolicy` wechselt auf `Enforce`.
 - **Entwicklung wandert nach coach-admin.** Dieses Repo liegt zusätzlich als git
   subtree unter `packages/wrkflw/` in `fclaenggasse/coach-admin`; dort werden Engine
   und Host-App künftig in einem Commit geändert. Dieses Repo bleibt die

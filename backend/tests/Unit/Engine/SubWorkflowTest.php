@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Action\ActionRegistry;
 use WorkflowEngine\Action\SubWorkflowAction;
 use WorkflowEngine\Definition\WorkflowDefinition;
+use WorkflowEngine\Engine\EventPayloadPolicy;
 use WorkflowEngine\Engine\SymfonyExpressionEvaluator;
 use WorkflowEngine\Engine\WorkflowEngine;
 use WorkflowEngine\Instance\WorkflowInstance;
@@ -106,6 +107,45 @@ final class SubWorkflowTest extends TestCase
         $status = $sub['status'] ?? null;
         self::assertIsString($status);
         self::assertSame(WorkflowInstance::COMPLETED, $status);
+    }
+
+    /**
+     * Die wichtigste Regressionsgefahr der Payload-Grenze (ADR 0006): der Filter
+     * sitzt an der EVENT-Grenze, nicht in `mergeContext()`. Die Verknuepfung
+     * zweier Workflows laeuft aber ueber genau die internen Schluessel, die er
+     * verwirft (`__awaitWorkflow`, `__parent`) — nur kommen die aus einem
+     * Action-Ergebnis, nicht aus einem Payload.
+     *
+     * Geprueft mit der schaerfsten Policy: greift der Filter zu weit, bleibt der
+     * Eltern-Workflow fuer immer stehen.
+     */
+    public function testWaitForCompletionAlsoWorksUnderEnforcePolicy(): void
+    {
+        $actions = new ActionRegistry();
+        $actions->register('start_workflow', new SubWorkflowAction(fn (): WorkflowEngine => $this->engine));
+        $this->engine = new WorkflowEngine(
+            $this->repo,
+            $actions,
+            new SymfonyExpressionEvaluator(),
+            eventPayloadPolicy: EventPayloadPolicy::Enforce,
+        );
+
+        $this->repo->addDefinition(WorkflowDefinition::fromArray($this->childInteractive()));
+        $this->repo->addDefinition(WorkflowDefinition::fromArray(
+            $this->parent(['workflowId' => 'child', 'waitForCompletion' => true])
+        ));
+
+        $parent = $this->engine->start('parent', ['user' => 'mara']);
+        self::assertSame(WorkflowInstance::WAITING_EVENT, $parent->status);
+
+        $child = $this->childrenOf($parent->id)[0];
+        $this->engine->handleEvent($child->id, 'submit');
+
+        self::assertSame(WorkflowInstance::COMPLETED, $this->reload($child->id)->status);
+
+        $reloaded = $this->reload($parent->id);
+        self::assertSame(WorkflowInstance::COMPLETED, $reloaded->status, 'Der Eltern-Workflow wurde nicht geweckt.');
+        self::assertSame('done', $reloaded->currentStep);
     }
 
     public function testParentCanBranchOnChildResult(): void
