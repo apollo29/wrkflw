@@ -44,6 +44,11 @@ Verworfen wird **still gegenüber dem Aufrufer, sichtbar in der History**: neuer
 `event_payload_rejected` mit den Schlüsselnamen — nie mit Werten, weil ein Payload
 Personendaten trägt.
 
+> Nachtrag: aus demselben Grund protokollieren seither auch `start`, `action` und
+> `event` nur noch Schlüsselnamen (`contextKeys`, `resultKeys`, `payloadKeys`). Es
+> wäre widersprüchlich, verworfene Schlüssel sorgfältig ohne Werte zu protokollieren,
+> während der Eintrag daneben den ganzen Kontext im Klartext ablegt.
+
 ## Verworfene Alternativen
 
 - **Whitelist implizit, sobald ein Schritt `ui.fields` deklariert.** Klingt nach einem Opt-in

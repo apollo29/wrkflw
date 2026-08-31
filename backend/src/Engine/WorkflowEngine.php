@@ -80,7 +80,12 @@ final class WorkflowEngine implements WorkflowStarterInterface
         );
 
         $this->repo->saveInstance($instance);
-        $this->repo->logHistory($instance->id, 'start', $def->startStep, ['context' => $context]);
+        // Nur die Schluesselnamen: der Initial-Kontext traegt Personendaten
+        // (Namen, Adressen, Bemerkungen), und die History ist ein dauerhaftes,
+        // in der Oberflaeche sichtbares Protokoll.
+        $this->repo->logHistory($instance->id, 'start', $def->startStep, [
+            'contextKeys' => array_keys($context),
+        ]);
 
         $this->advance($instance, $def);
 
@@ -148,7 +153,9 @@ final class WorkflowEngine implements WorkflowStarterInterface
                     $instance->mergeContext($result);
                     $this->repo->logHistory($instance->id, 'action', $step->name, [
                         'action' => $step->action,
-                        'result' => $result,
+                        // Nur die Schluessel: SendEmailAction liefert
+                        // `lastEmailTo`, CheckDataAction den gelesenen Feldwert.
+                        'resultKeys' => array_keys($result),
                     ]);
                 } catch (\Throwable $e) {
                     $this->handleActionFailure($instance, $step, $e);
@@ -237,9 +244,10 @@ final class WorkflowEngine implements WorkflowStarterInterface
         $instance->mergeContext($clean['payload']);
         $this->repo->logHistory($instance->id, 'event', $step->name, [
             'event' => $event,
-            // Der gefilterte Payload — sonst stuenden die verworfenen Werte
-            // trotzdem in der History.
-            'payload' => $clean['payload'],
+            // Nur die Schluessel des GEFILTERTEN Payloads: welche Felder gesetzt
+            // wurden, bleibt nachvollziehbar, die Werte wandern nicht ins
+            // Protokoll.
+            'payloadKeys' => array_keys($clean['payload']),
         ]);
 
         $next = $this->selectTransition($step, $instance, event: $event);
