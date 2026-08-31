@@ -265,7 +265,29 @@ Zeilen mit `SELECT … FOR UPDATE SKIP LOCKED` in einer Transaktion und markiert
 als `running`. Dadurch verarbeiten parallele Cron-Läufe dieselbe Instanz nicht doppelt
 (benötigt InnoDB; `SKIP LOCKED` ab MariaDB 10.6).
 
-## Härtung: Retry, Idempotenz, Versionierung
+## Härtung: Payload-Grenze, Retry, Idempotenz, Versionierung
+
+**Event-Payload-Grenze.** Ein Event-Payload ist Eingabe eines Aufrufers, und aus dem
+Instanz-Kontext interpoliert `send_email` seinen Empfänger. Deshalb filtert `handleEvent()`
+in zwei Ebenen (ADR 0006):
+
+1. **Immer:** Schlüssel mit dem Prefix `__` werden verworfen. Der Namensraum gehört der
+   Engine (`__appliedEventIds`, `__parent`, `__awaitWorkflow`); käme er aus einem Payload,
+   liesse sich damit die Idempotenz aushebeln und eine fremde Instanz fortsetzen.
+2. **Geschaltet** über den Konstruktor-Parameter `eventPayloadPolicy`:
+
+   | Wert | Wirkung |
+   |---|---|
+   | `Allow` (Default) | nur Ebene 1 — rückwärtskompatibel |
+   | `Report` | wie `Allow`, schreibt aber mit, was `Enforce` verwerfen würde |
+   | `Enforce` | nur die in `ui.fields` deklarierten Feldnamen; deklariert ein Schritt keine, kommt nichts durch |
+
+Für eine bestehende Anwendung ist der Weg `Allow` → `Report` → `Enforce`: erst eine Release
+lang mitschreiben, dann scharf schalten. **In 2.0 wird `Enforce` der Default.**
+
+Verworfene Schlüssel führen nicht zu einem Fehler — ein zusätzliches Feld aus einem älteren
+Client soll den Schritt nicht blockieren. Sie stehen in der History unter
+`event_payload_rejected`, und zwar **nur mit Namen, nie mit Werten**.
 
 **Retry & Backoff.** Wirft die Action eines automatischen Schritts eine Exception, geht die
 Instanz nicht sofort auf `failed`, sondern wird als `waiting_timer` mit exponentiell

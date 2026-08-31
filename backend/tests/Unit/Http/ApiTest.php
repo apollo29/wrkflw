@@ -84,6 +84,38 @@ final class ApiTest extends TestCase
         self::assertIsArray($data['context']);
     }
 
+    /**
+     * Die API darf den reservierten Namensraum der Engine nicht nach aussen
+     * geben (ADR 0006) — weder die Idempotenz-Liste noch die Marker
+     * verknuepfter Workflows.
+     */
+    public function testShowDoesNotLeakInternalContextKeys(): void
+    {
+        $id = $this->startInstance(['plan' => 'pro', 'email' => 'p@x.de']);
+        $instance = $this->repo->findInstance($id);
+        self::assertNotNull($instance);
+        $instance->set('__appliedEventIds', ['key-1']);
+
+        $data = $this->decode($this->send('GET', "/instances/{$id}"));
+
+        self::assertIsArray($data['context']);
+        self::assertArrayNotHasKey('__appliedEventIds', $data['context']);
+        self::assertSame('pro', $data['context']['plan']);
+    }
+
+    public function testCurrentStepDoesNotLeakInternalContextKeys(): void
+    {
+        $id = $this->startInstance(['plan' => 'pro', 'email' => 'p@x.de']);
+        $instance = $this->repo->findInstance($id);
+        self::assertNotNull($instance);
+        $instance->set('__appliedEventIds', ['key-1']);
+
+        $data = $this->decode($this->send('GET', "/instances/{$id}/current-step"));
+
+        self::assertIsArray($data['context']);
+        self::assertArrayNotHasKey('__appliedEventIds', $data['context']);
+    }
+
     public function testShowUnknownInstanceReturns404(): void
     {
         $response = $this->send('GET', '/instances/nope');

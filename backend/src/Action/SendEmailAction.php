@@ -10,6 +10,7 @@ use WorkflowEngine\Contracts\EmailMessage;
 use WorkflowEngine\Contracts\MailerInterface;
 use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Definition\Step;
+use WorkflowEngine\Instance\ContextKeys;
 use WorkflowEngine\Instance\WorkflowInstance;
 
 /**
@@ -76,7 +77,10 @@ final class SendEmailAction implements ActionInterface, ConfigurableActionInterf
             from: $this->interpolate($this->stringConfig($config, 'from'), $context),
             cc: $this->addressList($this->stringConfig($config, 'cc'), $context),
             bcc: $this->addressList($this->stringConfig($config, 'bcc'), $context),
-            vars: $context,
+            // Ohne die engine-internen Schluessel: `vars` geht an den
+            // Host-Mailer und ins Template-Rendering. Idempotenz-Liste und
+            // Workflow-Marker haben dort nichts verloren (ADR 0006).
+            vars: ContextKeys::stripInternal($context),
         ));
 
         return ['lastEmailTo' => $to];

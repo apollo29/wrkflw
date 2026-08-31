@@ -177,4 +177,29 @@ final class SendEmailActionTest extends TestCase
         self::assertNotNull($last);
         self::assertSame($context, $last['vars']);
     }
+
+    /**
+     * `vars` geht an den Host-Mailer und ins Template-Rendering. Die
+     * Idempotenz-Liste und die Workflow-Marker haben dort nichts verloren
+     * (ADR 0006).
+     */
+    public function testInternalContextKeysAreNotPassedToMailerVars(): void
+    {
+        $mailer = new ArrayMailer();
+        $action = new SendEmailAction($mailer);
+
+        $action->execute(
+            $this->instance([
+                'name' => 'Mara',
+                'email' => 'm@x.de',
+                '__appliedEventIds' => ['key-1'],
+                '__parent' => ['instanceId' => 'p1'],
+            ]),
+            $this->step(['to' => '{{email}}', 'subject' => 'S', 'body' => 'B']),
+        );
+
+        $last = $mailer->last();
+        self::assertNotNull($last);
+        self::assertSame(['name' => 'Mara', 'email' => 'm@x.de'], $last['vars']);
+    }
 }

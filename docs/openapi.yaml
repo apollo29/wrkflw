@@ -135,6 +135,15 @@ paths:
                 payload:
                   type: object
                   additionalProperties: true
+                  description: >
+                    Wird beim Verarbeiten gefiltert (ADR 0006). Schluessel mit dem
+                    Prefix "__" gehoeren der Engine und werden immer verworfen; je
+                    nach konfigurierter EventPayloadPolicy zusaetzlich alles, was der
+                    aktuelle Schritt nicht in ui.fields deklariert. Verworfene
+                    Schluessel fuehren NICHT zu einem Fehler - die Antwort bleibt 200,
+                    und sie stehen in der History unter event_payload_rejected. Das
+                    Schema bleibt deshalb bewusst offen: der Server verwirft, er lehnt
+                    nicht ab.
       responses:
         '200':
           description: Event verarbeitet
