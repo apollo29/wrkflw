@@ -3,6 +3,20 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+- **Frontend-Redesign nach Vorlage „Workflow-Builder Screen-Flow".** Die gesamte
+  `wf-*`-Komponenten-Suite (`wf-builder`, `wf-html-editor`, `wf-runner`,
+  `wf-template-manager`) wurde neu gestaltet: IBM-Plex-Schrift, dichteres Layout
+  (Kopfleiste mit Status-/Ansicht-Segmenten, 320px-Seitenleiste, Typ-farbige
+  Schritt-/Chip-/Karten-Zustände, Übergangs-Karten, Runner-Zustandskarten,
+  Vorlagen-Verwaltung im 300px/1fr-Raster).
+- **Geteilte Design-Tokens (`workflow-theme.css`)** mit vollständiger Hell-/Dunkel-Palette.
+  Dunkelmodus ist host-gesteuert: setzt ein Vorfahre `data-theme="dunkel"`, schalten alle
+  Komponenten um (`:host-context`). Bestehende `--wfb-*`-Overrides bleiben wirksam.
+  Die Demo-App bekommt einen Hell/Dunkel-Umschalter.
+
 ## [1.16.0] - 2026-08-31
 
 ### Changed

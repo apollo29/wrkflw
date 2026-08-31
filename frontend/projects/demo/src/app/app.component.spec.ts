@@ -35,7 +35,7 @@ describe('AppComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Workflow-Demo');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Visueller Workflow-Builder');
 
     const buttonTexts = Array.from(compiled.querySelectorAll('button')).map((b) => b.textContent ?? '');
     expect(buttonTexts.some((t) => t.includes('Runner'))).toBe(true);

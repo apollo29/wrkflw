@@ -62,6 +62,15 @@ const TYPE_BADGES: Record<StepType, string> = {
   timer: 'Timer · wartet',
 };
 
+/** Kurz-Label (Typ-Pille) inkl. der Pseudo-Arten „workflow"/„datacheck". */
+const KIND_LABELS: Record<StepKind, string> = {
+  automatic: 'Automatisch',
+  interactive: 'Interaktiv',
+  timer: 'Timer',
+  workflow: 'Workflow',
+  datacheck: 'Datencheck',
+};
+
 /**
  * No-Code-Builder für Workflow-Definitionen: geführte Schrittliste, Konfigurations-
  * formulare, Bedingungs-Assistent und read-only Ablauf-Vorschau. Erzeugt dieselbe
@@ -76,7 +85,7 @@ const TYPE_BADGES: Record<StepType, string> = {
   standalone: true,
   imports: [FormsModule, HtmlEditorComponent],
   templateUrl: './workflow-builder.component.html',
-  styleUrl: './workflow-builder.component.css',
+  styleUrls: ['./workflow-theme.css', './workflow-builder.component.css'],
 })
 export class WorkflowBuilderComponent implements OnInit {
   private readonly service = inject(WorkflowService);
@@ -150,6 +159,11 @@ export class WorkflowBuilderComponent implements OnInit {
 
   typeBadge(type: StepType): string {
     return TYPE_BADGES[type];
+  }
+
+  /** Kurz-Label (Typ-Pille) inkl. der Pseudo-Arten „workflow"/„datacheck". */
+  kindLabel(step: BuilderStep): string {
+    return KIND_LABELS[this.stepKind(step)];
   }
 
   /** Badge-Text inkl. der Pseudo-Arten „workflow"/„datacheck". */
