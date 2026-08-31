@@ -154,8 +154,11 @@ final class EventPayloadBoundaryTest extends TestCase
         );
     }
 
-    /** Der bestehende `event`-Eintrag darf die verworfenen Werte nicht doch mitschreiben. */
-    public function testEventHistoryLogsOnlyTheAppliedPayload(): void
+    /**
+     * Der `event`-Eintrag nennt nur die angewandten Schluesselnamen: die
+     * verworfenen tauchen nicht auf, und Werte schreibt er seit 1.16.0 keine mehr.
+     */
+    public function testEventHistoryLogsOnlyTheAppliedPayloadKeys(): void
     {
         $this->addCounterFlow();
         $engine = $this->engine();
@@ -165,7 +168,12 @@ final class EventPayloadBoundaryTest extends TestCase
 
         $events = $this->historyOfKind('event');
         self::assertCount(1, $events);
-        self::assertSame(['note' => 'ok'], $events[0]['detail']['payload']);
+        self::assertSame(['note'], $events[0]['detail']['payloadKeys']);
+        self::assertArrayNotHasKey('payload', $events[0]['detail']);
+        self::assertStringNotContainsString(
+            'geheim-sentinel',
+            (string) json_encode($events[0]['detail']),
+        );
     }
 
     // ------------------------------------------------- Ebene B: Feld-Whitelist
