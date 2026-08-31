@@ -10,6 +10,7 @@ use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Engine\WorkflowEngine;
 use WorkflowEngine\Exception\InvalidDefinitionException;
 use WorkflowEngine\Exception\WorkflowException;
+use WorkflowEngine\Instance\ContextKeys;
 
 /**
  * HTTP-Endpunkte der Workflow-Engine. Liefert ausschliesslich JSON.
