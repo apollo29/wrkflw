@@ -3,7 +3,7 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [Unreleased]
+## [1.15.0] - 2026-08-31
 
 ### Security
 - **Event-Payloads koennen den Instanz-Kontext nicht mehr frei beschreiben (ADR 0006).**
