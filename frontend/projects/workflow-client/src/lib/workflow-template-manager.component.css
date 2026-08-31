@@ -1,0 +1,116 @@
+/* ============================================================
+   wf-template-manager — Design nach Vorlage „Vorlagen-Verwaltung".
+   Tokens aus workflow-theme.css (--_* auf :host, hell/dunkel).
+   ============================================================ */
+:host { display: block; font-size: 14px; }
+
+.wf-tpl {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  align-items: stretch;
+  border: 1px solid var(--_border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--_surface);
+}
+
+/* ── Liste ── */
+.wf-tpl__list {
+  border-right: 1px solid var(--_border);
+  background: var(--_surface-2);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.wf-tpl__seg {
+  display: flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--_border); border-radius: 9px; background: var(--_surface);
+}
+.wf-tpl__seg-btn {
+  flex: 1; height: 28px;
+  border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--_muted);
+  font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+}
+.wf-tpl__seg-btn:hover { color: var(--_text); }
+.wf-tpl__seg-btn.is-active { background: var(--_primary); border-color: var(--_primary); color: #fff; }
+
+.wf-tpl__items { display: flex; flex-direction: column; gap: 3px; }
+.wf-tpl__item {
+  display: flex; flex-direction: column; gap: 1px; align-items: flex-start;
+  padding: 9px 10px; border-radius: 9px;
+  border: 1px solid transparent; background: transparent;
+  cursor: pointer; text-align: left; width: 100%;
+  font: inherit;
+}
+.wf-tpl__item:hover { background: var(--_surface); }
+.wf-tpl__item.is-active {
+  background: var(--_surface); border-color: var(--_border);
+  box-shadow: inset 3px 0 0 var(--_primary);
+}
+.wf-tpl__item-name { font-size: 13px; font-weight: 500; color: var(--_text); }
+.wf-tpl__item-id { font-family: var(--_mono); font-size: 10.5px; color: var(--_muted); }
+.wf-tpl__empty { font-size: 12.5px; color: var(--_muted); padding: 6px 2px; }
+
+.wf-tpl__add {
+  height: 32px; padding: 0 12px;
+  border: 1px dashed var(--_border-strong); border-radius: 9px;
+  background: transparent; color: var(--_text);
+  font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+}
+.wf-tpl__add:hover { border-color: var(--_primary); color: var(--_primary); }
+
+/* ── Formular ── */
+.wf-tpl__form { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.wf-tpl__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wf-tpl__field { display: flex; flex-direction: column; gap: 5px; }
+.wf-tpl__label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--_muted);
+}
+.wf-tpl__form input[type='text'] {
+  width: 100%; box-sizing: border-box; height: 34px; padding: 0 9px;
+  border: 1px solid var(--_border); border-radius: 8px;
+  background: var(--_surface); color: var(--_text);
+  font: inherit; font-size: 13px;
+}
+.wf-tpl__form input[type='text']:focus { outline: none; border-color: var(--_primary); }
+.wf-tpl__mono { font-family: var(--_mono) !important; font-size: 12.5px !important; }
+
+/* Verwendungsnachweis */
+.wf-tpl__usage {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 9px;
+  background: var(--_surface-2); border: 1px solid var(--_border);
+  font-size: 12.5px; color: var(--_muted);
+}
+.wf-tpl__usage-lead { color: var(--_text); font-weight: 500; }
+.wf-tpl__usage-item { font-family: var(--_mono); font-size: 12px; }
+.wf-tpl__usage small { color: var(--_muted); }
+
+/* Fußzeile / Aktionen */
+.wf-tpl__footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wf-tpl__spacer { flex: 1; }
+.wf-tpl__ok { margin: 0; font-size: 12.5px; color: var(--_ok-fg); }
+.wf-tpl__error { margin: 0; font-size: 12.5px; color: var(--_err-fg); }
+.wf-tpl__actions { display: flex; gap: 8px; }
+.wf-tpl__save {
+  height: 36px; padding: 0 16px;
+  border: 1px solid var(--_primary); border-radius: 9px;
+  background: var(--_primary); color: #fff;
+  font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.wf-tpl__save:hover { filter: brightness(1.06); }
+.wf-tpl__save:disabled { opacity: 0.55; cursor: not-allowed; }
+.wf-tpl__delete {
+  height: 36px; padding: 0 14px;
+  border: 1px solid var(--_err-bd); border-radius: 9px;
+  background: transparent; color: var(--_err-fg);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.wf-tpl__delete:hover { background: var(--_err-bg); }
+.wf-tpl__delete:disabled { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  .wf-tpl { grid-template-columns: 1fr; }
+  .wf-tpl__list { border-right: 0; border-bottom: 1px solid var(--_border); }
+}

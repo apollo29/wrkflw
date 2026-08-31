@@ -1,0 +1,114 @@
+/* ============================================================
+   Geteilte Design-Tokens für alle wf-* Komponenten.
+   Design nach Vorlage „Workflow-Builder Screen-Flow".
+
+   Diese Datei wird über `styleUrls` in jede Komponente eingebunden;
+   dadurch landen die Tokens auf dem jeweiligen :host und werden von
+   allen Kind-Elementen geerbt (eine Quelle der Wahrheit, kein
+   Host-seitiger CSS-Import nötig).
+
+   Öffentliche Theming-Schnittstelle: der Host kann jeden --wfb-*
+   Wert auf einem Vorfahren setzen und überschreibt damit den Default
+   (die internen --_* verweisen als `var(--wfb-x, default)` darauf).
+
+   Dunkelmodus: host-gesteuert. Setzt ein Vorfahre `data-theme="dunkel"`,
+   greifen die dunklen Defaults (siehe :host-context unten).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:host {
+  /* Schrift */
+  --_font: var(--wfb-font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+  --_mono: var(--wfb-font-mono, 'IBM Plex Mono', ui-monospace, monospace);
+
+  /* Primär / Akzent */
+  --_primary: var(--wfb-primary, #4338ca);
+  --_primary-fg: var(--wfb-primary-fg, #4338ca);
+  --_primary-soft: var(--wfb-primary-soft, #eef2ff);
+  --_primary-bd: var(--wfb-primary-bd, #c7d2fe);
+
+  /* Flächen */
+  --_surface: var(--wfb-bg, #ffffff);
+  --_surface-2: var(--wfb-bg-soft, #fafafa);
+  --_page: var(--wfb-page, #f4f4f5);
+
+  /* Linien */
+  --_border: var(--wfb-border, #e5e5ea);
+  --_border-strong: var(--wfb-border-strong, #d4d4d9);
+
+  /* Text */
+  --_text: var(--wfb-text, #18181b);
+  --_muted: var(--wfb-text-muted, #71717a);
+
+  --_radius: var(--wfb-radius, 10px);
+
+  /* Status */
+  --_ok-bg: var(--wfb-ok-bg, #ecfdf5);
+  --_ok-bd: var(--wfb-ok-bd, #a7f3d0);
+  --_ok-fg: var(--wfb-ok-fg, #047857);
+  --_err-bg: var(--wfb-err-bg, #fef2f2);
+  --_err-bd: var(--wfb-err-bd, #fecaca);
+  --_err-fg: var(--wfb-err-fg, #b91c1c);
+
+  /* Schritt-Typen */
+  --_auto-bg: var(--wfb-auto-bg, #eff6ff);
+  --_auto-bd: var(--wfb-auto-bd, #bfdbfe);
+  --_auto-fg: var(--wfb-auto-fg, #1d4ed8);
+  --_int-bg: var(--wfb-int-bg, #f5f3ff);
+  --_int-bd: var(--wfb-int-bd, #ddd6fe);
+  --_int-fg: var(--wfb-int-fg, #6d28d9);
+  --_tim-bg: var(--wfb-tim-bg, #fffbeb);
+  --_tim-bd: var(--wfb-tim-bd, #fde68a);
+  --_tim-fg: var(--wfb-tim-fg, #b45309);
+  --_wf-bg: var(--wfb-wf-bg, #ecfdf5);
+  --_wf-bd: var(--wfb-wf-bd, #a7f3d0);
+  --_wf-fg: var(--wfb-wf-fg, #047857);
+  --_dc-bg: var(--wfb-dc-bg, #fdf2f8);
+  --_dc-bd: var(--wfb-dc-bd, #fbcfe8);
+  --_dc-fg: var(--wfb-dc-fg, #be185d);
+
+  color: var(--_text);
+  font-family: var(--_font);
+}
+
+/* ── Dunkelmodus (host-gesteuert über [data-theme="dunkel"]) ── */
+:host-context([data-theme='dunkel']) {
+  --_primary: var(--wfb-primary, #6d63f0);
+  --_primary-fg: var(--wfb-primary-fg, #a5b4fc);
+  --_primary-soft: var(--wfb-primary-soft, #1e1b3a);
+  --_primary-bd: var(--wfb-primary-bd, #3730a3);
+
+  --_surface: var(--wfb-bg, #151518);
+  --_surface-2: var(--wfb-bg-soft, #1b1b20);
+  --_page: var(--wfb-page, #0b0b0d);
+
+  --_border: var(--wfb-border, #2a2a31);
+  --_border-strong: var(--wfb-border-strong, #3a3a44);
+
+  --_text: var(--wfb-text, #ececf0);
+  --_muted: var(--wfb-text-muted, #9a9aa6);
+
+  --_ok-bg: var(--wfb-ok-bg, #0e2a20);
+  --_ok-bd: var(--wfb-ok-bd, #065f46);
+  --_ok-fg: var(--wfb-ok-fg, #6ee7b7);
+  --_err-bg: var(--wfb-err-bg, #2c1416);
+  --_err-bd: var(--wfb-err-bd, #7f1d1d);
+  --_err-fg: var(--wfb-err-fg, #fca5a5);
+
+  --_auto-bg: var(--wfb-auto-bg, #111f36);
+  --_auto-bd: var(--wfb-auto-bd, #1e3a8a);
+  --_auto-fg: var(--wfb-auto-fg, #93c5fd);
+  --_int-bg: var(--wfb-int-bg, #1e1936);
+  --_int-bd: var(--wfb-int-bd, #4c1d95);
+  --_int-fg: var(--wfb-int-fg, #c4b5fd);
+  --_tim-bg: var(--wfb-tim-bg, #2a2010);
+  --_tim-bd: var(--wfb-tim-bd, #78350f);
+  --_tim-fg: var(--wfb-tim-fg, #fcd34d);
+  --_wf-bg: var(--wfb-wf-bg, #0e2a20);
+  --_wf-bd: var(--wfb-wf-bd, #065f46);
+  --_wf-fg: var(--wfb-wf-fg, #6ee7b7);
+  --_dc-bg: var(--wfb-dc-bg, #2b1322);
+  --_dc-bd: var(--wfb-dc-bd, #9d174d);
+  --_dc-fg: var(--wfb-dc-fg, #f9a8d4);
+}

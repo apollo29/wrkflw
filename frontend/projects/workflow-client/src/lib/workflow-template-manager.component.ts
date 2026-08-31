@@ -17,89 +17,78 @@ import { WorkflowService } from './workflow.service';
   template: `
     <div class="wf-tpl">
       <div class="wf-tpl__list">
-        <div class="wf-tpl__label">Templates</div>
-        <div class="wf-tpl__seg">
-          <button type="button" [class.is-active]="filterType() === 'email'" (click)="setFilter('email')">E-Mail</button>
-          <button type="button" [class.is-active]="filterType() === 'page'" (click)="setFilter('page')">Seite</button>
+        <div class="wf-tpl__seg" role="group" aria-label="Vorlagen-Typ">
+          <button type="button" class="wf-tpl__seg-btn" [class.is-active]="filterType() === 'email'" (click)="setFilter('email')">E-Mail</button>
+          <button type="button" class="wf-tpl__seg-btn" [class.is-active]="filterType() === 'page'" (click)="setFilter('page')">Seite</button>
         </div>
-        <button type="button" (click)="newTemplate()">+ Neu</button>
-        <ul>
+        <div class="wf-tpl__items">
           @for (t of templates(); track t.id) {
-            <li>
-              <button type="button" (click)="select(t.id)">{{ t.name }} <small>({{ t.id }})</small></button>
-            </li>
+            <button type="button" class="wf-tpl__item" [class.is-active]="t.id === idText()" (click)="select(t.id)">
+              <span class="wf-tpl__item-name">{{ t.name }}</span>
+              <span class="wf-tpl__item-id">{{ t.id }}</span>
+            </button>
           } @empty {
-            <li class="wf-tpl__empty">Noch keine Templates.</li>
+            <div class="wf-tpl__empty">Noch keine Vorlagen.</div>
           }
-        </ul>
+        </div>
+        <button type="button" class="wf-tpl__add" (click)="newTemplate()">+ Vorlage</button>
       </div>
 
       <div class="wf-tpl__form">
-        <label>ID
-          <input type="text" [ngModel]="idText()" (ngModelChange)="idText.set($event)" placeholder="welcome" />
-        </label>
-        <label>Name
-          <input type="text" [ngModel]="nameText()" (ngModelChange)="nameText.set($event)" />
-        </label>
+        <div class="wf-tpl__grid">
+          <label class="wf-tpl__field">
+            <span class="wf-tpl__label">ID</span>
+            <input type="text" class="wf-tpl__mono" [ngModel]="idText()" (ngModelChange)="idText.set($event)" placeholder="welcome" />
+          </label>
+          <label class="wf-tpl__field">
+            <span class="wf-tpl__label">Name</span>
+            <input type="text" [ngModel]="nameText()" (ngModelChange)="nameText.set($event)" />
+          </label>
+        </div>
         @if (filterType() === 'email') {
-          <label>Betreff
+          <label class="wf-tpl__field">
+            <span class="wf-tpl__label">Betreff</span>
             <input type="text" [ngModel]="subjectText()" (ngModelChange)="subjectText.set($event)" placeholder="Hallo {{ '{{name}}' }}" />
           </label>
         }
-        <label>{{ filterType() === 'page' ? 'Seiteninhalt (HTML)' : 'Inhalt (HTML)' }}</label>
+        <label class="wf-tpl__field">
+          <span class="wf-tpl__label">{{ filterType() === 'page' ? 'Seiteninhalt (HTML)' : 'Inhalt (HTML)' }}</span>
+        </label>
         <wf-html-editor
           [placeholders]="placeholders"
           [value]="bodyText()"
           (valueChange)="bodyText.set($event)"
         ></wf-html-editor>
 
-        <div class="wf-tpl__actions">
-          <button type="button" (click)="save()" [disabled]="busy()">Speichern</button>
-          @if (idText().trim() !== '') {
-            <button type="button" class="wf-tpl__delete" (click)="remove()" [disabled]="busy()">Löschen</button>
-          }
-        </div>
-        @if (message(); as msg) { <p class="wf-tpl__ok">{{ msg }}</p> }
-        @if (error(); as err) { <p class="wf-tpl__error" role="alert">{{ err }}</p> }
-
         @if (usageLoaded()) {
           <div class="wf-tpl__usage">
             @if (usage().length > 0) {
-              <div class="wf-tpl__label">Verwendet in {{ usage().length }} Schritt(en):</div>
-              <ul>
-                @for (u of usage(); track u.definitionId + '/' + u.version + '/' + u.step) {
-                  <li>{{ u.definitionId }} <small>v{{ u.version }}</small> → {{ u.step }}</li>
-                }
-              </ul>
+              <span class="wf-tpl__usage-lead">Verwendet in {{ usage().length }} Schritt(en):</span>
+              @for (u of usage(); track u.definitionId + '/' + u.version + '/' + u.step; let last = $last) {
+                <span class="wf-tpl__usage-item">{{ u.definitionId }} <small>v{{ u.version }}</small> / {{ u.step }}</span>
+                @if (!last) { <span aria-hidden="true">·</span> }
+              }
             } @else {
-              <div class="wf-tpl__label">Wird derzeit von keinem Workflow verwendet.</div>
+              <span class="wf-tpl__usage-lead">Wird derzeit von keinem Workflow verwendet.</span>
             }
           </div>
         }
+
+        <div class="wf-tpl__footer">
+          @if (message(); as msg) { <p class="wf-tpl__ok">{{ msg }}</p> }
+          @if (error(); as err) { <p class="wf-tpl__error" role="alert">{{ err }}</p> }
+          <span class="wf-tpl__spacer"></span>
+          <div class="wf-tpl__actions">
+            @if (idText().trim() !== '') {
+              <button type="button" class="wf-tpl__delete" (click)="remove()" [disabled]="busy()">Löschen</button>
+            }
+            <button type="button" class="wf-tpl__save" (click)="save()" [disabled]="busy()">Speichern</button>
+          </div>
+        </div>
       </div>
     </div>
   `,
-  styles: [
-    `
-      .wf-tpl { display: flex; gap: 1.25rem; align-items: flex-start; }
-      .wf-tpl__list { min-width: 180px; }
-      .wf-tpl__list ul { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
-      .wf-tpl__list button { width: 100%; text-align: left; }
-      .wf-tpl__form { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-      .wf-tpl__form label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
-      .wf-tpl__label { font-size: 12px; color: #666; }
-      .wf-tpl__ok { color: #0a7d28; }
-      .wf-tpl__error { color: #b00020; }
-      .wf-tpl__actions { display: flex; gap: 8px; }
-      .wf-tpl__delete { color: #b00020; }
-      .wf-tpl__usage { border-top: 1px solid #eee; padding-top: 8px; }
-      .wf-tpl__usage ul { list-style: none; padding: 0; margin: 4px 0; font-size: 13px; }
-      .wf-tpl__usage small { color: #999; }
-      .wf-tpl__seg { display: flex; gap: 4px; margin: 6px 0; }
-      .wf-tpl__seg button { flex: 1; font-size: 12px; }
-      .wf-tpl__seg button.is-active { font-weight: 600; border-color: #1d4ed8; color: #1d4ed8; }
-    `,
-  ],
+  styleUrls: ['./workflow-theme.css', './workflow-template-manager.component.css'],
 })
 export class WorkflowTemplateManagerComponent implements OnInit {
   private readonly service = inject(WorkflowService);

@@ -12,6 +12,7 @@ import {
 @Component({
   selector: 'app-root',
   standalone: true,
+  host: { '[attr.data-theme]': 'theme()' },
   imports: [
     FormsModule,
     WorkflowRunnerComponent,
@@ -20,7 +21,16 @@ import {
   ],
   template: `
     <main class="demo">
-      <h1>Workflow-Demo</h1>
+      <header class="demo__head">
+        <div>
+          <div class="demo__eyebrow">Workflow-Engine · Admin</div>
+          <h1 class="demo__title">Visueller Workflow-Builder</h1>
+        </div>
+        <div class="demo__theme" role="group" aria-label="Darstellung">
+          <button type="button" [class.active]="theme() === 'hell'" (click)="theme.set('hell')">Hell</button>
+          <button type="button" [class.active]="theme() === 'dunkel'" (click)="theme.set('dunkel')">Dunkel</button>
+        </div>
+      </header>
 
       <nav class="tabs">
         <button type="button" [class.active]="view() === 'runner'" (click)="view.set('runner')">Runner</button>
@@ -74,18 +84,42 @@ import {
   `,
   styles: [
     `
-      .demo { max-width: 48rem; margin: 2rem auto; font-family: system-ui, sans-serif; }
-      .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-      .tabs .active { font-weight: bold; }
+      :host {
+        display: block;
+        min-height: 100vh;
+        background: #f4f4f5;
+        color: #18181b;
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      }
+      :host([data-theme='dunkel']) { background: #0b0b0d; color: #ececf0; }
+
+      .demo { max-width: 1180px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+      .demo__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+      .demo__eyebrow { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #71717a; }
+      :host([data-theme='dunkel']) .demo__eyebrow { color: #9a9aa6; }
+      .demo__title { margin: 4px 0 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+
+      .demo__theme { display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: #fff; border: 1px solid #e5e5ea; }
+      :host([data-theme='dunkel']) .demo__theme { background: #151518; border-color: #2a2a31; }
+      .demo__theme button { padding: 5px 14px; border: 0; border-radius: 6px; background: transparent; color: #71717a; font: inherit; font-size: 12.5px; cursor: pointer; }
+      .demo__theme button.active { background: #4338ca; color: #fff; font-weight: 500; }
+
+      .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+      .tabs button { padding: 6px 14px; border: 1px solid #e5e5ea; border-radius: 8px; background: #fff; color: #18181b; font: inherit; font-size: 13px; cursor: pointer; }
+      :host([data-theme='dunkel']) .tabs button { background: #151518; border-color: #2a2a31; color: #ececf0; }
+      .tabs button.active { border-color: #4338ca; color: #4338ca; font-weight: 600; }
+      :host([data-theme='dunkel']) .tabs button.active { color: #a5b4fc; border-color: #6d63f0; }
+
       .starter { display: flex; flex-direction: column; gap: 0.75rem; max-width: 32rem; }
       .starter label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
-      .starter textarea { font-family: ui-monospace, monospace; font-size: 0.85rem; }
+      .starter textarea { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.85rem; }
       .starter button { align-self: flex-start; }
       .meta { display: flex; align-items: center; gap: 0.75rem; }
-      .link { background: none; border: none; color: #1d4ed8; cursor: pointer; padding: 0; text-decoration: underline; }
-      .hint { color: #666; font-size: 0.85rem; }
-      .error { color: #b00020; }
-      .done { color: #0a7d28; }
+      .link { background: none; border: none; color: #4338ca; cursor: pointer; padding: 0; text-decoration: underline; }
+      :host([data-theme='dunkel']) .link { color: #a5b4fc; }
+      .hint { color: #71717a; font-size: 0.85rem; }
+      .error { color: #b91c1c; }
+      .done { color: #047857; }
     `,
   ],
 })
@@ -93,6 +127,7 @@ export class AppComponent implements OnInit {
   private readonly service = inject(WorkflowService);
 
   readonly view = signal<'runner' | 'editor' | 'templates'>('runner');
+  readonly theme = signal<'hell' | 'dunkel'>('hell');
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly selectedDef = signal<string>('');
   readonly contextText = signal<string>(
