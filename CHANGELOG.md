@@ -3,6 +3,22 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [1.16.1] - 2026-08-31
+
+### Changed
+- **Der Runner zeigt keine rohen Status-Codes mehr.** Im Wartezustand stand dort
+  «Im Hintergrund … (Status: waiting_timer)». `waiting_timer` ist ein Wert aus
+  `wf_instance.status` und beantwortet die einzige Frage nicht, die jemand vor dem
+  Bildschirm hat: muss ich jetzt etwas tun? Neu steht da ein Satz — «Wartet auf den
+  naechsten Termin — hier ist gerade nichts zu tun.»
+- Neues Modul `workflow.status` (client 1.13.0) exportiert `WORKFLOW_STATUS_LABELS`,
+  `workflowStatusLabel()`, `workflowWaitingText()` und `workflowFinishedText()`, damit
+  Host-Apps dieselben Bezeichnungen verwenden koennen wie der Runner statt eigene
+  Listen zu pflegen. Ein unbekannter Status faellt auf den rohen Wert zurueck — eine
+  neue Engine-Version soll keinen leeren Kasten hinterlassen.
+
+Nur die Angular-Library ist betroffen; am PHP-Paket aendert sich nichts.
+
 ## [1.16.0] - 2026-08-31
 
 ### Changed

@@ -1,6 +1,7 @@
 import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CurrentStep } from './workflow.models';
+import { workflowFinishedText, workflowWaitingText } from './workflow.status';
 import { WorkflowService } from './workflow.service';
 
 /**
@@ -20,7 +21,7 @@ import { WorkflowService } from './workflow.service';
     } @else {
       @if (step(); as s) {
         @if (s.finished) {
-          <div class="wf-done">Workflow abgeschlossen (Status: {{ s.status }}).</div>
+          <div class="wf-done">{{ finishedText(s.status) }}</div>
         } @else if (s.interactive) {
           <form class="wf-form" (ngSubmit)="$event.preventDefault()">
             @if (pageHtml(); as html) {
@@ -59,7 +60,7 @@ import { WorkflowService } from './workflow.service';
             </div>
           </form>
         } @else {
-          <div class="wf-waiting">Im Hintergrund … (Status: {{ s.status }})</div>
+          <div class="wf-waiting">{{ waitingText(s.status) }}</div>
         }
       } @else {
         <div class="wf-loading">Lädt …</div>
@@ -92,6 +93,15 @@ export class WorkflowRunnerComponent implements OnInit {
 
   ngOnInit(): void {
     this.refresh(this.instanceId());
+  }
+
+  /** Lesbarer Text statt des rohen Status — siehe workflow.status.ts. */
+  waitingText(status: string): string {
+    return workflowWaitingText(status);
+  }
+
+  finishedText(status: string): string {
+    return workflowFinishedText(status);
   }
 
   setValue(name: string, value: unknown): void {
