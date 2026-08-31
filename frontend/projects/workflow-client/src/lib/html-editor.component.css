@@ -1,9 +1,16 @@
+/* ============================================================
+   wf-html-editor — Design nach Vorlage „WYSIWYG-Editor".
+   Tokens aus workflow-theme.css (--_* auf :host, hell/dunkel).
+   ============================================================ */
+:host { display: block; }
+
 .wfb-html {
-  border: 1px solid var(--wfb-border, #d5d7db);
-  border-radius: var(--wfb-radius, 8px);
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
   overflow: hidden;
-  background: var(--wfb-bg, #fff);
-  color: var(--wfb-text, #1f2329);
+  background: var(--_surface);
+  color: var(--_text);
+  font-family: var(--_font);
 }
 
 .wfb-html__toolbar {
@@ -12,131 +19,143 @@
   gap: 4px;
   align-items: center;
   padding: 6px;
-  background: var(--wfb-bg-soft, #f6f7f9);
-  border-bottom: 1px solid var(--wfb-border, #d5d7db);
+  background: var(--_surface-2);
+  border-bottom: 1px solid var(--_border);
 }
 
 .wfb-html__toolbar button {
-  padding: 4px 8px;
-  min-width: 30px;
-  font-size: 13px;
-  line-height: 1.2;
-  border: 1px solid var(--wfb-border, #d5d7db);
-  background: var(--wfb-bg, #fff);
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--_text);
+  border: 1px solid transparent;
+  background: transparent;
   border-radius: 6px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.wfb-html__toolbar button:hover {
-  background: var(--wfb-bg-soft, #eef0f3);
-}
+.wfb-html__toolbar button:hover { background: var(--_surface); border-color: var(--_border); }
 
 .wfb-html__toolbar button.is-active {
-  background: var(--wfb-primary, #2f6feb);
-  border-color: var(--wfb-primary, #2f6feb);
+  background: var(--_primary);
+  border-color: var(--_primary);
   color: #fff;
 }
 
-.wfb-html__custom {
-  width: 130px;
+/* Platzhalter-Auswahl als Chip-artiges Select */
+.wfb-html__toolbar select {
+  height: 26px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--_primary-fg);
+  background: var(--_primary-soft);
+  border: 1px solid var(--_primary-bd);
+  border-radius: 999px;
+  cursor: pointer;
 }
+
+.wfb-html__toolbar input.wfb-html__custom {
+  height: 26px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--_text);
+  background: var(--_surface);
+  border: 1px solid var(--_border);
+  border-radius: 6px;
+}
+
+.wfb-html__custom { width: 130px; }
 
 .wfb-html__sep {
   width: 1px;
   align-self: stretch;
-  background: var(--wfb-border, #d5d7db);
-  margin: 0 2px;
+  background: var(--_border);
+  margin: 2px 3px;
 }
 
-.wfb-html__spacer {
-  flex: 1;
-}
+.wfb-html__spacer { flex: 1; }
 
 .wfb-html__area {
   min-height: 160px;
-  background: var(--wfb-bg, #fff);
+  background: var(--_surface);
+  color: var(--_text);
 }
 
-.wfb-html__area--hidden {
-  display: none;
-}
+.wfb-html__area--hidden { display: none; }
 
 .wfb-html__area ::ng-deep .tiptap {
   min-height: 160px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   outline: none;
+  line-height: 1.6;
 }
 
 .wfb-html__area ::ng-deep .tiptap:focus {
-  box-shadow: inset 0 0 0 2px var(--wfb-primary, #2f6feb);
+  box-shadow: inset 0 0 0 2px var(--_primary);
 }
 
-.wfb-html__area ::ng-deep .tiptap p {
-  margin: 0 0 0.6em;
-}
+.wfb-html__area ::ng-deep .tiptap p { margin: 0 0 0.6em; }
 
 .wfb-html__area ::ng-deep .tiptap blockquote {
-  border-left: 3px solid var(--wfb-border, #d5d7db);
+  border-left: 3px solid var(--_border);
   margin: 0 0 0.6em;
   padding-left: 10px;
-  color: var(--wfb-text-muted, #666);
+  color: var(--_muted);
 }
 
-.wfb-html__area ::ng-deep .tiptap img {
-  max-width: 100%;
-  height: auto;
-}
+.wfb-html__area ::ng-deep .tiptap img { max-width: 100%; height: auto; }
 
 /* Platzhalter als Chip (rein visuell; Inhalt bleibt {{feld}}). */
 .wfb-html__area ::ng-deep .wfb-ph {
-  background: var(--wfb-bg-soft, #eef2ff);
-  color: var(--wfb-primary, #2f6feb);
-  border: 1px solid var(--wfb-primary, #2f6feb);
-  border-radius: 10px;
+  background: var(--_primary-soft);
+  color: var(--_primary-fg);
+  border: 1px solid var(--_primary-bd);
+  border-radius: 999px;
   padding: 0 6px;
   font-size: 0.9em;
-  font-family: monospace;
+  font-family: var(--_mono);
   white-space: nowrap;
 }
 
 /* Spalten im Editor sichtbar machen (nur Editor, nicht im gespeicherten HTML). */
-.wfb-html__area ::ng-deep table[data-columns] {
-  margin: 0 0 0.6em;
-}
+.wfb-html__area ::ng-deep table[data-columns] { margin: 0 0 0.6em; }
 
 .wfb-html__area ::ng-deep table[data-columns] td[data-column] {
-  border: 1px dashed var(--wfb-border, #d5d7db);
+  border: 1px dashed var(--_border-strong);
 }
 
-.wfb-html__area ::ng-deep a[data-email-button] {
-  cursor: default;
-}
+.wfb-html__area ::ng-deep a[data-email-button] { cursor: default; }
 
-.wfb-html__preview-body img {
-  max-width: 100%;
-  height: auto;
-}
+.wfb-html__preview-body img { max-width: 100%; height: auto; }
 
 .wfb-html__source {
   width: 100%;
+  box-sizing: border-box;
   border: 0;
-  padding: 10px 12px;
-  font-family: monospace;
-  font-size: 13px;
+  padding: 12px 14px;
+  color: var(--_text);
+  background: var(--_surface-2);
+  font-family: var(--_mono);
+  font-size: 12.5px;
+  line-height: 1.6;
   resize: vertical;
 }
 
-.wfb-html__preview {
-  border-top: 1px solid var(--wfb-border, #d5d7db);
-}
+.wfb-html__preview { border-top: 1px solid var(--_border); }
 
 .wfb-html__preview-label {
   padding: 6px 12px;
   font-size: 12px;
-  color: var(--wfb-text-muted, #666);
-  background: var(--wfb-bg-soft, #f6f7f9);
+  color: var(--_muted);
+  background: var(--_surface-2);
 }
 
-.wfb-html__preview-body {
-  padding: 12px;
-}
+.wfb-html__preview-body { padding: 12px; color: var(--_text); }

@@ -33,7 +33,7 @@ import { Column, Columns, EmailButton, PlaceholderHighlight } from './email-exte
   standalone: true,
   imports: [FormsModule],
   templateUrl: './html-editor.component.html',
-  styleUrl: './html-editor.component.css',
+  styleUrls: ['./workflow-theme.css', './html-editor.component.css'],
 })
 export class HtmlEditorComponent implements AfterViewInit, OnDestroy {
   readonly value = model<string>('');

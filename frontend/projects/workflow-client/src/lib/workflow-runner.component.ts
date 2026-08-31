@@ -16,63 +16,90 @@ import { WorkflowService } from './workflow.service';
   imports: [FormsModule],
   template: `
     @if (error(); as err) {
-      <div class="wf-error" role="alert">Fehler: {{ err }}</div>
+      <div class="wf-card wf-state wf-state--err" role="alert">
+        <span class="wf-state__label">Fehler</span>
+        <div class="wf-state__row">
+          <span class="wf-dot" aria-hidden="true"></span>
+          <span>Fehler: {{ err }}</span>
+        </div>
+        <button type="button" class="wf-btn" (click)="retry()">Erneut versuchen</button>
+      </div>
     } @else {
       @if (step(); as s) {
         @if (s.finished) {
-          <div class="wf-done">Workflow abgeschlossen (Status: {{ s.status }}).</div>
+          <div class="wf-card wf-state wf-state--ok">
+            <span class="wf-state__label">Abgeschlossen</span>
+            <div class="wf-state__row">
+              <span class="wf-dot" aria-hidden="true"></span>
+              <span>Workflow abgeschlossen (Status: {{ s.status }}).</span>
+            </div>
+          </div>
         } @else if (s.interactive) {
-          <form class="wf-form" (ngSubmit)="$event.preventDefault()">
-            @if (pageHtml(); as html) {
-              <div class="wf-page" [innerHTML]="html"></div>
-            }
-            @if (s.ui.title) {
-              <h3 class="wf-title">{{ s.ui.title }}</h3>
-            }
-            @if (s.ui.description) {
-              <p class="wf-desc">{{ s.ui.description }}</p>
-            }
-            @for (field of s.ui.fields ?? []; track field.name) {
-              <label class="wf-field">
-                <span>{{ field.label ?? field.name }}</span>
-                @if (field.type === 'boolean') {
-                  <input
-                    type="checkbox"
-                    [name]="field.name"
-                    [ngModel]="boolValue(field.name)"
-                    (ngModelChange)="setValue(field.name, $event)"
-                  />
-                } @else {
-                  <input
-                    type="text"
-                    [name]="field.name"
-                    [ngModel]="stringValue(field.name)"
-                    (ngModelChange)="setValue(field.name, $event)"
-                  />
-                }
-              </label>
-            }
-            <div class="wf-actions">
-              @for (event of s.events; track event) {
-                <button type="submit" [disabled]="busy()" (click)="submit(event)">{{ event }}</button>
+          <form class="wf-card wf-form" (ngSubmit)="$event.preventDefault()">
+            <div class="wf-head">
+              <span class="wf-head__label">Interaktiver Schritt</span>
+              @if (s.ui.title) {
+                <h3 class="wf-title">{{ s.ui.title }}</h3>
               }
+              @if (s.ui.description) {
+                <p class="wf-desc">{{ s.ui.description }}</p>
+              }
+            </div>
+            <div class="wf-body">
+              @if (pageHtml(); as html) {
+                <div class="wf-page" [innerHTML]="html"></div>
+              }
+              @for (field of s.ui.fields ?? []; track field.name) {
+                @if (field.type === 'boolean') {
+                  <label class="wf-check">
+                    <input
+                      type="checkbox"
+                      [name]="field.name"
+                      [ngModel]="boolValue(field.name)"
+                      (ngModelChange)="setValue(field.name, $event)"
+                    />
+                    <span>{{ field.label ?? field.name }}</span>
+                  </label>
+                } @else {
+                  <label class="wf-field">
+                    <span class="wf-field__label">{{ field.label ?? field.name }}</span>
+                    <input
+                      type="text"
+                      [name]="field.name"
+                      [ngModel]="stringValue(field.name)"
+                      (ngModelChange)="setValue(field.name, $event)"
+                    />
+                  </label>
+                }
+              }
+              <div class="wf-actions">
+                @for (event of s.events; track event; let first = $first) {
+                  <button type="submit" class="wf-btn" [class.wf-btn--primary]="first"
+                          [disabled]="busy()" (click)="submit(event)">{{ event }}</button>
+                }
+              </div>
             </div>
           </form>
         } @else {
-          <div class="wf-waiting">Im Hintergrund … (Status: {{ s.status }})</div>
+          <div class="wf-card wf-state wf-state--auto">
+            <span class="wf-state__label">Läuft im Hintergrund</span>
+            <div class="wf-state__row">
+              <span class="wf-dot" aria-hidden="true"></span>
+              <span>Im Hintergrund … (Status: {{ s.status }})</span>
+            </div>
+          </div>
         }
       } @else {
-        <div class="wf-loading">Lädt …</div>
+        <div class="wf-card wf-loading">
+          <span class="wf-state__label">Lädt</span>
+          <span class="wf-skel wf-skel--sm"></span>
+          <span class="wf-skel"></span>
+          <span class="wf-skel wf-skel--block"></span>
+        </div>
       }
     }
   `,
-  styles: [
-    `
-      .wf-error { color: #b00020; }
-      .wf-field { display: block; margin: 0.5rem 0; }
-      .wf-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
-    `,
-  ],
+  styleUrls: ['./workflow-theme.css', './workflow-runner.component.css'],
 })
 export class WorkflowRunnerComponent implements OnInit {
   readonly instanceId = input.required<string>();
@@ -91,6 +118,12 @@ export class WorkflowRunnerComponent implements OnInit {
   private polling = false;
 
   ngOnInit(): void {
+    this.refresh(this.instanceId());
+  }
+
+  /** Lädt den aktuellen Schritt nach einem Fehler erneut. */
+  retry(): void {
+    this.error.set(null);
     this.refresh(this.instanceId());
   }
 
