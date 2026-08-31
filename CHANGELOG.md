@@ -3,6 +3,25 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [1.16.0] - 2026-08-31
+
+### Changed
+- **Die History speichert keine Werte mehr, nur noch Schluesselnamen.** Ein Workflow
+  traegt Personendaten durch den Kontext — im Trainer-Onboarding Namen und
+  Bemerkungen, in der Warteliste Adressen von Eltern. Die landeten an drei Stellen
+  im Klartext in `wf_history`, einem dauerhaften und in der Oberflaeche sichtbaren
+  Protokoll:
+  - `start` schrieb `context` (den ganzen Initial-Kontext) -> jetzt `contextKeys`
+  - `action` schrieb `result` (`send_email` liefert `lastEmailTo`) -> jetzt `resultKeys`
+  - `event` schrieb `payload` -> jetzt `payloadKeys`
+
+  Nachvollziehbar bleibt damit, WELCHE Felder gesetzt wurden; die Werte werden nicht
+  mehr aufbewahrt. Wer History-Details auswertet, muss die drei Felder umstellen.
+
+  Nicht betroffen: `retry` und `error` protokollieren weiterhin die
+  Exception-Meldung. Sie kann im Einzelfall Daten enthalten, ohne sie waere ein
+  Fehlschlag aber nicht mehr zu diagnostizieren — eine eigene Abwaegung.
+
 ## [1.15.0] - 2026-08-31
 
 ### Security
