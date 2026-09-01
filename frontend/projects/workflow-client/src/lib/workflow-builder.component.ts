@@ -11,6 +11,7 @@ import {
   emptyStep,
   fromDefinition,
   orderedStepNames,
+  removeStep as removeStepFromModel,
   toDefinition,
 } from './definition-mapping';
 import { HtmlEditorComponent } from './html-editor.component';
@@ -265,10 +266,13 @@ export class WorkflowBuilderComponent implements OnInit {
   }
 
   removeStep(index: number): void {
-    const model = this.model();
-    const steps = model.steps.filter((_, i) => i !== index);
-    this.model.set({ ...model, steps });
-    this.selected.set(Math.min(index, steps.length - 1));
+    // Die Kette schliesst `removeStep` aus definition-mapping — nur das
+    // Element aus der Liste zu nehmen liess die Reihenfolge im Editor
+    // durcheinander aussehen, weil die Uebergaenge auf den geloeschten Namen
+    // zeigen blieben. Dort steht auch, warum das so und nicht anders geht.
+    const model = removeStepFromModel(this.model(), index);
+    this.model.set(model);
+    this.selected.set(Math.min(index, model.steps.length - 1));
   }
 
   private uniqueStepName(): string {
@@ -328,6 +332,25 @@ export class WorkflowBuilderComponent implements OnInit {
 
   setOp(t: BuilderTransition, value: string): void {
     t.condition.op = value as ConditionOp;
+  }
+
+  /**
+   * `ui.public` als drei Auswahlmöglichkeiten statt als Häkchen: der
+   * Vorgabefall ist NICHT «aus», sondern «die Regel der Anwendung gilt». Ein
+   * Häkchen kann diesen Unterschied nicht zeigen — und genau er entscheidet,
+   * ob beim Speichern ein Feld in der Definition landet.
+   */
+  publicChoice(step: BuilderStep): 'default' | 'show' | 'hide' {
+    if (step.publicVisible === null) {
+      return 'default';
+    }
+
+    return step.publicVisible ? 'show' : 'hide';
+  }
+
+  setPublicChoice(step: BuilderStep, value: string): void {
+    step.publicVisible = value === 'show' ? true : value === 'hide' ? false : null;
+    this.bump();
   }
 
   setFieldType(field: { type: string }, value: string): void {

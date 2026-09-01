@@ -4,6 +4,7 @@ import {
   fromDefinition,
   orderedStepNames,
   parseCondition,
+  removeStep,
   toDefinition,
 } from './definition-mapping';
 
@@ -66,6 +67,7 @@ describe('definition-mapping', () => {
           description: 'Bitte ausfüllen',
           fields: [{ name: 'ok', label: 'OK', type: 'boolean' }],
           pageTemplateId: '',
+          publicVisible: null,
           delaySeconds: null,
           transitions: [
             {
@@ -86,6 +88,7 @@ describe('definition-mapping', () => {
           description: '',
           fields: [],
           pageTemplateId: '',
+          publicVisible: null,
           delaySeconds: null,
           transitions: [],
         },
@@ -182,6 +185,180 @@ describe('definition-mapping', () => {
       'ui'
     ] as Record<string, unknown>;
     expect('handler' in (ui['fields'] as Record<string, unknown>[])[0]).toBeFalse();
+  });
+
+  /**
+   * Einen Schritt zu loeschen liess die Reihenfolge im Editor «zufaellig»
+   * aussehen. Der Grund war keine Sortierung, sondern ein Abriss: die
+   * Uebergaenge zeigten weiter auf den geloeschten Namen, die Kette brach
+   * dort ab, und alles dahinter fiel in die Sammelstelle fuer unerreichbare
+   * Schritte am Ende — in Einfuege- statt Ablaufreihenfolge.
+   *
+   * Loeschen heisst deshalb: die Kette schliessen, nicht nur ein Element
+   * entfernen.
+   */
+  describe('removeStep', () => {
+    function kette(): BuilderModel {
+      return fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: {
+          a: { type: 'automatic', transitions: [{ to: 'b' }] },
+          b: { type: 'automatic', transitions: [{ to: 'c' }] },
+          c: { type: 'automatic', transitions: [{ to: 'd' }] },
+          d: { type: 'automatic', transitions: [] },
+        },
+      });
+    }
+
+    it('bridges the gap so the chain stays intact', () => {
+      const model = removeStep(kette(), 1); // b raus
+
+      expect(model.steps.map((s) => s.name)).toEqual(['a', 'c', 'd']);
+      expect(model.steps[0].transitions[0].to).toBe('c');
+      // Der eigentliche Nachweis: die Ablaufreihenfolge stimmt noch. Vorher
+      // stand hier ['a', 'c', 'd'] nur zufaellig — weil c und d als
+      // unerreichbar hinten angehaengt wurden.
+      expect(orderedStepNames(model)).toEqual(['a', 'c', 'd']);
+    });
+
+    it('keeps every remaining step reachable when the start step goes', () => {
+      const model = removeStep(kette(), 0); // a raus
+
+      expect(model.startStep).toBe('b');
+      expect(orderedStepNames(model)).toEqual(['b', 'c', 'd']);
+    });
+
+    /**
+     * Bei mehreren Ausgaengen gibt es kein eindeutiges Ersatzziel — eine
+     * Verzweigung waere geraten. Dann bleiben die eingehenden Uebergaenge
+     * nicht als Verweise ins Leere stehen (die Definition liesse sich nicht
+     * mehr speichern), sondern fallen weg.
+     */
+    it('drops incoming transitions when the deleted step branched', () => {
+      const model = removeStep(
+        fromDefinition({
+          id: 'f',
+          startStep: 'a',
+          steps: {
+            a: { type: 'automatic', transitions: [{ to: 'gabel' }] },
+            gabel: { type: 'automatic', transitions: [{ to: 'links' }, { to: 'rechts' }] },
+            links: { type: 'automatic', transitions: [] },
+            rechts: { type: 'automatic', transitions: [] },
+          },
+        }),
+        1,
+      );
+
+      expect(model.steps[0].transitions).toEqual([]);
+      // Kein Verweis auf einen Schritt, den es nicht mehr gibt.
+      const namen = new Set(model.steps.map((s) => s.name));
+      for (const step of model.steps) {
+        for (const t of step.transitions) {
+          expect(namen.has(t.to)).toBeTrue();
+        }
+      }
+    });
+
+    it('does not invent a self-loop when bridging would create one', () => {
+      // a -> b -> a: waere b weg, zeigte a auf sich selbst. Eine Schleife, die
+      // niemand angelegt hat, ist schlimmer als ein fehlender Uebergang.
+      const model = removeStep(
+        fromDefinition({
+          id: 'f',
+          startStep: 'a',
+          steps: {
+            a: { type: 'automatic', transitions: [{ to: 'b' }] },
+            b: { type: 'automatic', transitions: [{ to: 'a' }] },
+          },
+        }),
+        1,
+      );
+
+      expect(model.steps.map((s) => s.name)).toEqual(['a']);
+      expect(model.steps[0].transitions).toEqual([]);
+    });
+
+    it('leaves the model alone for an index that does not exist', () => {
+      const model = kette();
+      expect(removeStep(model, 9)).toBe(model);
+    });
+
+    it('empties the start step when the last step goes', () => {
+      const model = removeStep(
+        fromDefinition({ id: 'f', startStep: 'a', steps: { a: { type: 'automatic', transitions: [] } } }),
+        0,
+      );
+
+      expect(model.steps).toEqual([]);
+      expect(model.startStep).toBe('');
+    });
+  });
+
+  /**
+   * `ui.public` entscheidet, ob ein Schritt auf der oeffentlichen Seite
+   * erscheint. Der Vorgabefall ist «nur Eingabe-Schritte» und steht NICHT in
+   * der Definition — sonst waere jede bestehende Definition beim naechsten
+   * Speichern um ein Feld reicher, das nichts aendert.
+   */
+  describe('ui.public', () => {
+    function uiVon(model: BuilderModel, step: string): Record<string, unknown> | undefined {
+      const steps = toDefinition(model)['steps'] as Record<string, Record<string, unknown>>;
+      return steps[step]['ui'] as Record<string, unknown> | undefined;
+    }
+
+    it('leaves ui.public out when the step follows the default', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'interactive', ui: { title: 'A' }, transitions: [] } },
+      });
+
+      expect(model.steps[0].publicVisible).toBeNull();
+      expect('public' in (uiVon(model, 'a') ?? {})).toBeFalse();
+    });
+
+    it('round-trips an explicit show and an explicit hide', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'zeigen',
+        steps: {
+          zeigen: { type: 'automatic', ui: { public: true, title: 'Wird geprüft' }, transitions: [] },
+          verstecken: { type: 'interactive', ui: { public: false }, transitions: [] },
+        },
+      });
+
+      expect(model.steps[0].publicVisible).toBeTrue();
+      expect(model.steps[1].publicVisible).toBeFalse();
+      expect(uiVon(model, 'zeigen')?.['public']).toBeTrue();
+      expect(uiVon(model, 'verstecken')?.['public']).toBeFalse();
+    });
+
+    /**
+     * Ein automatischer Schritt hatte bisher gar kein `ui` in der Definition.
+     * Ohne diesen Fall waere «anzeigen» an ihm im Editor einstellbar, aber
+     * nach dem Speichern wieder weg — die stille Sorte Fehler.
+     */
+    it('creates a ui block for an automatic step that opts in', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+      model.steps[0].publicVisible = true;
+
+      expect(uiVon(model, 'a')?.['public']).toBeTrue();
+    });
+
+    it('does not create a ui block for an automatic step on the default', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(uiVon(model, 'a')).toBeUndefined();
+    });
   });
 
   it('orders steps breadth-first from the start step', () => {

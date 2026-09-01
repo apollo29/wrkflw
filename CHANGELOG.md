@@ -20,6 +20,23 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - Der Runner zeigt ein `file`-Feld als Hinweis statt als Eingabefeld: die Engine-API
   kennt nur JSON-Events. Ein Dateifeld anzubieten, das nichts hochlaedt, waere die
   schlechtere Antwort.
+- **Sichtbarkeit auf der oeffentlichen Seite ist im Editor einstellbar (`ui.public`).**
+  Drei Moeglichkeiten statt eines Haekchens: «Standard», «Anzeigen», «Ausblenden». Der
+  Vorgabefall ist nicht «aus», sondern «die Regel der Host-App gilt» — und er wird
+  bewusst NICHT in die Definition geschrieben, sonst waere jede bestehende Definition
+  beim naechsten Speichern um ein Feld reicher, das nichts aendert. Ein automatischer
+  Schritt, der auf «Anzeigen» gestellt wird, bekommt dafuer erstmals ein `ui`-Objekt.
+
+### Fixed
+- **Einen Schritt zu loeschen brachte die Reihenfolge im Editor durcheinander.** Der
+  Grund war keine Sortierung, sondern ein Abriss: die Uebergaenge zeigten weiter auf
+  den geloeschten Namen, die Kette brach dort ab, und alles dahinter fiel in die
+  Sammelstelle fuer unerreichbare Schritte am Ende — in Einfuege- statt
+  Ablaufreihenfolge. Loeschen schliesst die Kette jetzt: hatte der Schritt genau ein
+  Ziel, erben die eingehenden Uebergaenge dieses Ziel (A→B→C wird A→C). Bei mehreren
+  Zielen waere jede Wahl geraten, dann fallen sie weg. Nebenbei behoben: Verweise auf
+  einen geloeschten Schritt liessen sich gar nicht mehr speichern, und der Start-Schritt
+  zeigte nach seiner eigenen Loeschung ins Leere.
 
 ## [1.18.0] - 2026-09-01
 

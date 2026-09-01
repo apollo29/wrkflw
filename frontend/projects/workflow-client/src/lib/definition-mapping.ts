@@ -45,6 +45,15 @@ export interface BuilderStep {
   fields: BuilderField[];
   /** Referenz auf eine 'page'-Vorlage (nur interaktive Schritte), ui.templateId. */
   pageTemplateId: string;
+  /**
+   * `ui.public`: erscheint der Schritt auf der öffentlichen Seite?
+   *
+   * `null` = die Vorgabe der Host-App gilt (dort: nur Eingabe-Schritte). Sie
+   * wird bewusst NICHT in die Definition geschrieben — sonst wäre jede
+   * bestehende Definition beim nächsten Speichern um ein Feld reicher, das
+   * nichts ändert.
+   */
+  publicVisible: boolean | null;
   delaySeconds: number | null;
   transitions: BuilderTransition[];
 }
@@ -155,6 +164,7 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
       return out;
     }),
     pageTemplateId: asString(ui['templateId']),
+    publicVisible: typeof ui['public'] === 'boolean' ? ui['public'] : null,
     delaySeconds: typeof delay === 'number' ? delay : null,
     transitions: asArray(raw['transitions']).map((t) => transitionFromJson(asRecord(t))),
   };
@@ -223,7 +233,15 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     if (step.pageTemplateId) {
       ui['templateId'] = step.pageTemplateId;
     }
+    if (step.publicVisible !== null) {
+      ui['public'] = step.publicVisible;
+    }
     out['ui'] = ui;
+  } else if (step.publicVisible !== null) {
+    // Ein automatischer oder Timer-Schritt hat sonst gar kein `ui`. Wer ihn
+    // sichtbar schaltet («Deine Anmeldung wird geprüft»), braucht trotzdem
+    // eines — sonst wäre die Einstellung nach dem Speichern wieder weg.
+    out['ui'] = { public: step.publicVisible };
   }
 
   if (step.type === 'timer' && step.delaySeconds !== null) {
@@ -246,6 +264,57 @@ export function toDefinition(model: BuilderModel): Record<string, unknown> {
     startStep: model.startStep,
     steps,
   };
+}
+
+/**
+ * Einen Schritt entfernen und die Kette wieder schliessen.
+ *
+ * Nur das Element aus der Liste zu nehmen genügt nicht: die Übergänge zeigen
+ * weiter auf seinen Namen. Die Ablaufreihenfolge bricht dort ab, alles
+ * dahinter gilt als unerreichbar und rutscht im Editor ans Ende — was wie eine
+ * zufällige Sortierung aussieht. Speichern liesse sich eine solche Definition
+ * ausserdem nicht: ein Übergang auf einen Schritt, den es nicht gibt, ist ein
+ * Fehler.
+ *
+ * Deshalb: hatte der gelöschte Schritt genau ein Ziel, erben die eingehenden
+ * Übergänge dieses Ziel (A→B→C wird A→C). Gab es mehrere, wäre jede Wahl
+ * geraten — dann fallen die eingehenden Übergänge weg und der Autor entscheidet
+ * selbst.
+ */
+export function removeStep(model: BuilderModel, index: number): BuilderModel {
+  const geloescht = model.steps[index];
+  if (geloescht === undefined) {
+    return model;
+  }
+
+  const uebrig = model.steps.filter((_, i) => i !== index);
+  const vorhanden = new Set(uebrig.map((s) => s.name));
+  const ersatz = bridgeTarget(geloescht, vorhanden);
+
+  const steps = uebrig.map((step) => ({
+    ...step,
+    transitions: step.transitions
+      .map((t) => (t.to === geloescht.name && ersatz !== null ? { ...t, to: ersatz } : t))
+      // Verweise ins Leere fliegen raus — und eine Schleife auf sich selbst,
+      // die erst durch die Brücke entstünde, ebenso: die hat niemand angelegt.
+      .filter((t) => vorhanden.has(t.to) && t.to !== step.name),
+  }));
+
+  return {
+    ...model,
+    steps,
+    startStep:
+      model.startStep === geloescht.name
+        ? ersatz ?? steps[0]?.name ?? ''
+        : model.startStep,
+  };
+}
+
+/** Das eindeutige Ziel des gelöschten Schritts, sonst null. */
+function bridgeTarget(step: BuilderStep, vorhanden: Set<string>): string | null {
+  const ziele = new Set(step.transitions.map((t) => t.to).filter((to) => vorhanden.has(to)));
+
+  return ziele.size === 1 ? [...ziele][0] : null;
 }
 
 /** Reihenfolge der Schritte ab dem Start-Step (BFS) für die Ablauf-Vorschau. */
@@ -289,6 +358,7 @@ export function emptyStep(name: string, type: StepType): BuilderStep {
     description: '',
     fields: [],
     pageTemplateId: '',
+    publicVisible: null,
     delaySeconds: type === 'timer' ? 3600 : null,
     transitions: [],
   };

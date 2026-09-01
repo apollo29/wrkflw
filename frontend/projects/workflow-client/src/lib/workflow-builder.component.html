@@ -208,6 +208,20 @@
             </select>
           </div>
 
+          <div class="wfb__label">Auf der öffentlichen Seite</div>
+          <select class="wfb__wide" [ngModel]="publicChoice(step)"
+                  (ngModelChange)="setPublicChoice(step, $event)"
+                  aria-label="Sichtbarkeit auf der öffentlichen Seite">
+            <option value="default">Standard — nur Eingabe-Schritte</option>
+            <option value="show">Anzeigen</option>
+            <option value="hide">Ausblenden</option>
+          </select>
+          <div class="wfb__hint">
+            Die Empfänger:in eines Links sieht sonst nur, was sie selbst tut. «Anzeigen» macht
+            auch einen Hintergrundschritt sichtbar («Wird geprüft»), «Ausblenden» versteckt
+            umgekehrt einen Eingabe-Schritt.
+          </div>
+
           @if (step.type === 'automatic') {
             @if (!isWorkflowStep(step) && !isDataCheckStep(step)) {
               <div class="wfb__label">Aktion</div>
