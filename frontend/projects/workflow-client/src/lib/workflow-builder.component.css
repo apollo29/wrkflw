@@ -434,3 +434,10 @@
 .wfb .wfb__load--archiv { opacity: 0.75; }
 .wfb .wfb__load--archiv:hover { opacity: 1; }
 .wfb__archiv-hint { padding: 0 10px 6px 24px; }
+
+/* ── Startkontext ── */
+.wfb__input-pflicht {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--_muted); white-space: nowrap; cursor: pointer;
+}
+.wfb__input-pflicht input { width: 14px; height: 14px; accent-color: var(--_primary); }

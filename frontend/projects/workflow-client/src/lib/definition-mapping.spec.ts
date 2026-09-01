@@ -57,6 +57,7 @@ describe('definition-mapping', () => {
       id: 'flow',
       name: 'Flow',
       startStep: 'ask',
+      inputs: [],
       steps: [
         {
           name: 'ask',
@@ -439,6 +440,70 @@ describe('definition-mapping', () => {
 
       // Zwei Uebergaenge, ein Ereignis — und damit ein Knopf, nicht zwei.
       expect(uiVon(model, 'frage')['eventLabels']).toEqual({ submit: 'Absenden' });
+    });
+  });
+
+  /**
+   * Der deklarierte Startkontext (`inputs`). Ohne ihn steht nirgends, was ein
+   * Ablauf beim Start braucht — und fehlt etwas, lief er bisher trotzdem an.
+   */
+  describe('inputs', () => {
+    it('reads a declaration with all its properties', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [
+          { name: 'trainer_id', label: 'Trainer-ID', required: true, beispiel: 'TR-0123' },
+          { name: 'kjs_mail' },
+        ],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs[0]).toEqual({
+        name: 'trainer_id', label: 'Trainer-ID', required: true, beispiel: 'TR-0123',
+      });
+      // Ohne Angabe: Label faellt auf den Namen zurueck, Pflicht ist aus.
+      expect(model.inputs[1]).toEqual({ name: 'kjs_mail', label: 'kjs_mail', required: false, beispiel: '' });
+    });
+
+    it('writes the declaration back', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [{ name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' }],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' },
+      ]);
+    });
+
+    it('writes no inputs key when nothing is declared', () => {
+      // Sonst waere jede bestehende Definition beim naechsten Speichern um ein
+      // leeres Feld reicher.
+      const model = fromDefinition({
+        id: 'f', startStep: 'a', steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs).toEqual([]);
+      expect('inputs' in toDefinition(model)).toBeFalse();
+    });
+
+    it('drops a nameless row', () => {
+      // Der Editor legt eine leere Zeile an, sobald jemand «+ Angabe» drueckt.
+      // Sie darf keinen Start blockieren.
+      const model = fromDefinition({
+        id: 'f', startStep: 'a', steps: { a: { type: 'automatic', transitions: [] } },
+      });
+      model.inputs = [
+        { name: '  ', label: 'leer', required: true, beispiel: '' },
+        { name: 'mail', label: '', required: false, beispiel: '' },
+      ];
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'mail', required: false, beispiel: '' },
+      ]);
     });
   });
 

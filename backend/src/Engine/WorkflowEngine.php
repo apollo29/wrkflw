@@ -11,6 +11,7 @@ use WorkflowEngine\Contracts\WorkflowStarterInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Definition\Transition;
 use WorkflowEngine\Definition\WorkflowDefinition;
+use WorkflowEngine\Exception\MissingInputException;
 use WorkflowEngine\Exception\WorkflowException;
 use WorkflowEngine\Instance\ContextKeys;
 use WorkflowEngine\Instance\WorkflowInstance;
@@ -67,6 +68,15 @@ final class WorkflowEngine implements WorkflowStarterInterface
         ?string $subjectId = null,
     ): WorkflowInstance {
         $def = $this->repo->findDefinition($definitionId);
+
+        // Die Pruefung sitzt VOR dem Anlegen: sonst bliebe eine Instanz
+        // zurueck, die nie laufen kann, und im Protokoll ein Start, den es
+        // nicht gab. Ohne Deklaration ist die Liste immer leer — bestehende
+        // Definitionen merken davon nichts.
+        $fehlt = $def->missingInputs($context);
+        if ($fehlt !== []) {
+            throw new MissingInputException($def->id, $fehlt);
+        }
 
         $instance = new WorkflowInstance(
             id: $this->uuid(),

@@ -6,6 +6,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Deklarierter Startkontext (`inputs`).** An der Definition steht jetzt, welche
+  Werte ein Ablauf beim Start braucht: Name, Label, Pflicht, Beispiel. `start()`
+  wirft eine `MissingInputException` mit ALLEN fehlenden Namen, bevor eine Instanz
+  entsteht — bisher lief der Ablauf trotzdem an, die Platzhalter blieben leer, und
+  `send_email` verschickte an eine leere Adresse. Aufgefallen ist das jeweils erst,
+  wenn sich jemand meldete.
+
+  Ein Schluessel, der da ist, aber leer, zaehlt als fehlend — genau der Fall, der
+  die leere Adresse erzeugt. `false` und `0` sind dagegen Werte.
+
+  **Rueckwaertskompatibel:** ohne `inputs` prueft die Engine nichts, und der
+  Editor schreibt den Schluessel nur, wenn wirklich etwas deklariert ist. Der
+  Vorgabewert fuer `required` ist `false` — sonst wuerde das erste Speichern einer
+  bestehenden Definition im Editor sie ungewollt scharf schalten.
+- Panel «Startkontext» im Editor, unter dem Start-Schritt.
 - **Feldtyp `file` fuer interaktive Schritte (client 1.15.0).** Ein Schritt kann jetzt
   eine Datei verlangen. Der Editor bietet den Typ in der Feldliste an und daneben eine
   Angabe `handler` — ein freier String, den die Engine unveraendert durchreicht, genau

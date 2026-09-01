@@ -405,6 +405,21 @@ export class WorkflowBuilderComponent implements OnInit {
 
   // -- Felder (interaktiv) ------------------------------------------------
 
+  // -- Startkontext ------------------------------------------------------
+
+  addInput(): void {
+    const model = this.model();
+    this.model.set({
+      ...model,
+      inputs: [...model.inputs, { name: '', label: '', required: true, beispiel: '' }],
+    });
+  }
+
+  removeInput(index: number): void {
+    const model = this.model();
+    this.model.set({ ...model, inputs: model.inputs.filter((_, i) => i !== index) });
+  }
+
   addField(step: BuilderStep): void {
     step.fields.push({ name: 'feld', label: 'Feld', type: 'text' });
     this.bump();

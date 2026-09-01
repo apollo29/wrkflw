@@ -66,10 +66,27 @@ export interface BuilderStep {
   transitions: BuilderTransition[];
 }
 
+/**
+ * Ein Wert, den der Workflow beim Start erwartet (`inputs` in der Definition).
+ *
+ * Bisher stand nirgends, was eine Definition braucht — wer sie startet, musste
+ * die Schritte lesen und die Platzhalter zusammensuchen. Fehlt etwas, lief der
+ * Ablauf trotzdem an.
+ */
+export interface BuilderInput {
+  name: string;
+  label: string;
+  required: boolean;
+  /** Beispielwert, rein erklärend. */
+  beispiel: string;
+}
+
 export interface BuilderModel {
   id: string;
   name: string;
   startStep: string;
+  /** Leer = nicht deklariert; dann prüft die Engine beim Start nichts. */
+  inputs: BuilderInput[];
   steps: BuilderStep[];
 }
 
@@ -196,6 +213,16 @@ export function fromDefinition(json: Record<string, unknown>): BuilderModel {
     id,
     name: asString(json['name'], id),
     startStep: asString(json['startStep']),
+    inputs: asArray(json['inputs']).map((i) => {
+      const roh = asRecord(i);
+      const name = asString(roh['name']);
+      return {
+        name,
+        label: asString(roh['label'], name),
+        required: roh['required'] === true,
+        beispiel: asString(roh['beispiel']),
+      };
+    }),
     steps: Object.entries(asRecord(json['steps'])).map(([name, s]) => stepFromJson(name, asRecord(s))),
   };
 }
@@ -287,12 +314,30 @@ export function toDefinition(model: BuilderModel): Record<string, unknown> {
   for (const step of model.steps) {
     steps[step.name] = stepToJson(step);
   }
-  return {
+  const out: Record<string, unknown> = {
     id: model.id,
     name: model.name,
     startStep: model.startStep,
     steps,
   };
+
+  // Namenlose Zeilen fliegen raus — der Editor legt eine an, sobald jemand
+  // «+ Angabe» drückt. Und ohne Deklaration wird der Schlüssel gar nicht
+  // geschrieben: sonst wäre jede bestehende Definition beim nächsten Speichern
+  // um ein leeres Feld reicher.
+  const inputs = model.inputs
+    .filter((i) => i.name.trim() !== '')
+    .map((i) => ({
+      name: i.name.trim(),
+      label: i.label.trim() || i.name.trim(),
+      required: i.required,
+      beispiel: i.beispiel.trim(),
+    }));
+  if (inputs.length > 0) {
+    out['inputs'] = inputs;
+  }
+
+  return out;
 }
 
 /**
@@ -412,5 +457,5 @@ export function emptyStep(name: string, type: StepType): BuilderStep {
 }
 
 export function emptyModel(): BuilderModel {
-  return { id: '', name: '', startStep: '', steps: [] };
+  return { id: '', name: '', startStep: '', inputs: [], steps: [] };
 }
