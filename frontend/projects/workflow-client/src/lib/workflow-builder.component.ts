@@ -96,6 +96,16 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly templates = signal<TemplateSummary[]>([]);
   readonly dataEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
+  /**
+   * Version der geladenen Definition — `null`, solange nichts geladen oder
+   * gespeichert wurde.
+   *
+   * Sie steht bewusst NICHT im BuilderModel: das Modell ist der Entwurf, den
+   * man bearbeitet, und die Version gehoert nicht dazu — sie entsteht erst
+   * beim Speichern. Ein `version`-Feld im Modell laedt dazu ein, die alte
+   * Nummer mitzuschicken, und der Server vergibt sie ohnehin selbst.
+   */
+  readonly loadedVersion = signal<number | null>(null);
   readonly selected = signal<number>(-1);
   readonly status = signal<WorkflowLifecycle>('active');
   readonly viewMode = signal<'visual' | 'json'>('visual');
@@ -217,6 +227,9 @@ export class WorkflowBuilderComponent implements OnInit {
 
   newDefinition(): void {
     this.model.set(emptyModel());
+    // Sonst truege der leere Entwurf die Version der zuletzt geoeffneten
+    // Definition — und die Kopfleiste behauptete etwas, das es nicht gibt.
+    this.loadedVersion.set(null);
     this.selected.set(-1);
     this.status.set('active');
     this.viewMode.set('visual');
@@ -231,6 +244,8 @@ export class WorkflowBuilderComponent implements OnInit {
     this.service.getDefinition(id).subscribe({
       next: (res) => {
         this.model.set(fromDefinition(res.definition));
+        const v = res.definition['version'];
+        this.loadedVersion.set(typeof v === 'number' ? v : null);
         this.selected.set(this.model().steps.length > 0 ? 0 : -1);
         this.viewMode.set('visual');
       },
@@ -597,6 +612,7 @@ export class WorkflowBuilderComponent implements OnInit {
       next: (res) => {
         this.busy.set(false);
         const label = res.status === 'active' ? 'aktiv' : res.status === 'draft' ? 'Entwurf' : 'inaktiv';
+        this.loadedVersion.set(res.version);
         this.message.set(`Gespeichert: ${res.id} v${res.version} (${label}).`);
         this.reloadDefinitions();
       },

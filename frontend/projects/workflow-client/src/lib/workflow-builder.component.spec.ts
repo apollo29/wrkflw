@@ -93,6 +93,48 @@ describe('WorkflowBuilderComponent', () => {
     expect(component.status()).toBe('draft');
   });
 
+  /**
+   * Kopfleiste: ID, Name und Version stehen nebeneinander.
+   *
+   * Die Version stand vorher nirgends — eine geladene Definition sah aus wie
+   * ein frischer Entwurf, und die Nummer tauchte erst in der Meldung nach dem
+   * Speichern auf.
+   */
+  it('shows the version of the loaded definition in the header', () => {
+    component.loadDefinition('flow');
+    httpMock.expectOne('/workflows/flow').flush({
+      id: 'flow',
+      definition: { id: 'flow', version: 4, startStep: '', steps: {} },
+    });
+    fixture.detectChanges();
+
+    expect(component.loadedVersion()).toBe(4);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.wfb__bar-version')?.textContent?.trim(),
+    ).toBe('v4');
+  });
+
+  it('marks an unsaved draft as new instead of showing a version', () => {
+    component.newDefinition();
+    fixture.detectChanges();
+
+    expect(component.loadedVersion()).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.wfb__bar-version')?.textContent?.trim(),
+    ).toBe('neu');
+  });
+
+  /** Nach dem Speichern gilt die neue Fassung, ohne dass man neu laden muss. */
+  it('takes over the version returned by save()', () => {
+    component.model.set({ ...component.model(), id: 'flow', startStep: 'a' });
+    component.save();
+
+    httpMock.expectOne('/workflows/flow').flush({ id: 'flow', version: 7, active: true, status: 'active' });
+    httpMock.expectOne('/workflows').flush({ definitions: [] });
+
+    expect(component.loadedVersion()).toBe(7);
+  });
+
   it('shows the JSON view of the current model', () => {
     component.model.set({ ...component.model(), id: 'flow', startStep: 'a' });
     component.showJson();

@@ -38,6 +38,15 @@
         <div class="wfb__bar-id wfb__bar-id--static">{{ model().id || 'workflow-id' }}</div>
         <div class="wfb__bar-name wfb__bar-name--static">{{ model().name || model().id || 'Ohne Namen' }}</div>
       }
+      <!-- Welche Fassung hier liegt. Ohne sie sah eine geladene Definition
+           genauso aus wie ein neuer Entwurf, und beim Speichern erschien die
+           Nummer zum ersten Mal in der Meldung. -->
+      @if (loadedVersion(); as v) {
+        <span class="wfb__bar-version" title="Gespeicherte Fassung. Beim Speichern entsteht die nächste.">v{{ v }}</span>
+      } @else {
+        <span class="wfb__bar-version wfb__bar-version--neu"
+              title="Noch nicht gespeichert — beim Speichern entsteht v1.">neu</span>
+      }
     </div>
 
     <div class="wfb__bar-tools">
