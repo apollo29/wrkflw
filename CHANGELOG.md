@@ -5,6 +5,21 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-01
+
+### Warum 2.0.0 und nicht 1.19.0
+
+`WorkflowRepositoryInterface` hat eine Methode mehr (`deleteDefinitionVersion()`),
+und `listDefinitions()` liefert je Version zwei zusaetzliche Felder. Wer den Port
+selbst implementiert, bricht daran — das ist eine breaking change, auch wenn der
+einzige bekannte Konsument (coach-admin) die mitgelieferte
+`PdoWorkflowRepository` benutzt und nichts zu tun hat.
+
+Die Alternative waere 1.19.0 gewesen, mit dem Argument «praktisch bricht
+niemand». Genau dieses Argument macht eine Versionsnummer wertlos: sie soll die
+Frage «kann ich das gefahrlos ziehen?» beantworten, ohne dass jemand den Diff
+liest.
+
 ### Added
 - **Datencheck liest mehrere Spalten (`fields`).** `check_data` kennt neben `field`
   jetzt `fields: ["vorname", "mail"]` und legt je Spalte ein `<as>_<spalte>` im
