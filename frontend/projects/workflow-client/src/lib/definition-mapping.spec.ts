@@ -569,4 +569,54 @@ describe('definition-mapping', () => {
 
     expect(json['steps']['a']['transitions'][0]['event']).toBe('submit');
   });
+
+  /**
+   * Ein Hintergrundschritt kann stehen bleiben — der Schritt, der auf einen
+   * verknüpften Ablauf wartet, ist genau so einer. Die öffentliche Seite zeigt
+   * dann seinen Text, also muss er einen haben können.
+   */
+  it('schreibt Beschreibung und Seitenvorlage auch an einem sichtbaren Hintergrundschritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: {
+          type: 'automatic',
+          action: 'start_workflow',
+          ui: { public: true, title: 'Wird geprüft', description: 'Das dauert einen Moment.', templateId: 'warten' },
+          transitions: [{ to: 'b' }],
+        },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+    const ui = json['steps']['a']['ui'];
+
+    expect(ui['title']).toBe('Wird geprüft');
+    expect(ui['description']).toBe('Das dauert einen Moment.');
+    expect(ui['templateId']).toBe('warten');
+    expect(ui['public']).toBe(true);
+  });
+
+  /**
+   * Die Gegenprobe: ein Schritt auf «Standard» bekommt weiterhin gar kein `ui`.
+   * Sonst wäre jede bestehende Definition beim nächsten Speichern um ein Objekt
+   * reicher, das nichts ändert.
+   */
+  it('schreibt kein ui an einen Hintergrundschritt ohne Sichtbarkeits-Entscheid', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'automatic', transitions: [{ to: 'b' }] },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+    model.steps[0].description = 'wird nicht geschrieben';
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['ui']).toBeUndefined();
+  });
 });

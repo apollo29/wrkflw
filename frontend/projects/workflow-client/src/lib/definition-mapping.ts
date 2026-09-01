@@ -297,9 +297,18 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     // eines — sonst wäre die Einstellung nach dem Speichern wieder weg.
     const ui: Record<string, unknown> = { public: step.publicVisible };
     // Und eine Überschrift, sonst steht in der Checkliste der technische
-    // Schrittname.
+    // Schrittname. Beschreibung und Seitenvorlage kommen dazu, weil auch ein
+    // Hintergrundschritt stehen bleiben kann — der Schritt, der auf einen
+    // verknüpften Ablauf wartet, ist genau so einer, und die Seite zeigt dann
+    // seinen Text.
     if (step.title !== '') {
       ui['title'] = step.title;
+    }
+    if (step.description !== '') {
+      ui['description'] = step.description;
+    }
+    if (step.pageTemplateId !== '') {
+      ui['templateId'] = step.pageTemplateId;
     }
     out['ui'] = ui;
   }

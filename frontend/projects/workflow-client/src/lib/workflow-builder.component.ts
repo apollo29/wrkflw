@@ -387,16 +387,54 @@ export class WorkflowBuilderComponent implements OnInit {
     return this.model().steps.map((s) => s.name);
   }
 
-  fieldSuggestions(): string[] {
-    const names = new Set<string>();
+  /**
+   * Alle Kontext-Variablen, die in diesem Ablauf entstehen — die Liste, aus der
+   * sich `{{platzhalter}}` bedienen können.
+   *
+   * Sie sammelte lange NUR die Eingabefelder. Damit fehlten genau die
+   * Schlüssel, die man am häufigsten braucht: der deklarierte Startkontext
+   * (`trainer_id`, `name`, `mail` …) und die Ergebnisse eines Datenchecks.
+   * Wer sie benutzen wollte, musste sie auswendig kennen — und ein Tippfehler
+   * fiel erst auf, wenn eine Mail an eine leere Adresse ging.
+   *
+   * Anzeigefelder zählen NICHT mit: die zeigen einen Wert, sie erzeugen keinen.
+   * Stünden sie hier, bestätigte sich eine Definition selbst.
+   */
+  kontextVariablen(): { name: string; herkunft: string }[] {
+    const out = new Map<string, string>();
+
+    for (const input of this.model().inputs) {
+      if (input.name) {
+        out.set(input.name, 'Startkontext');
+      }
+    }
+
     for (const step of this.model().steps) {
+      if (this.isDataCheckStep(step)) {
+        const as = this.configValue(step, 'as') || 'checkedValue';
+        out.set(as, `Datencheck «${step.name}»`);
+        out.set(`${as}Found`, `Datencheck «${step.name}»`);
+        for (const spalte of this.configList(step, 'fields')) {
+          out.set(`${as}_${spalte}`, `Datencheck «${step.name}»`);
+        }
+      }
+      if (this.isWorkflowStep(step)) {
+        out.set('startedWorkflow', `Workflow-Schritt «${step.name}»`);
+        out.set('subWorkflow', `Workflow-Schritt «${step.name}»`);
+      }
       for (const field of step.fields) {
-        if (field.name) {
-          names.add(field.name);
+        if (field.name && field.type !== 'display') {
+          out.set(field.name, `Eingabe in «${step.name}»`);
         }
       }
     }
-    return [...names];
+
+    return [...out.entries()].map(([name, herkunft]) => ({ name, herkunft }));
+  }
+
+  /** Nur die Namen — für die Vorschlagslisten und den HTML-Editor. */
+  fieldSuggestions(): string[] {
+    return this.kontextVariablen().map((v) => v.name);
   }
 
   bump(): void {

@@ -197,6 +197,31 @@
           </div>
         </div>
 
+        <!--
+          Die Kontext-Variablen sichtbar, nicht nur als unsichtbare Vorschlags-
+          liste im Eingabefeld. Wer «{{ '{{' }}…{{ '}}' }}» schreibt, muss sehen können, was
+          es überhaupt gibt — sonst tippt man aus dem Gedächtnis, und ein
+          Tippfehler fällt erst auf, wenn eine Mail an eine leere Adresse geht.
+        -->
+        <div class="wfb__side-group">
+          <div class="wfb__side-label">Kontext-Variablen</div>
+          @if (kontextVariablen().length === 0) {
+            <div class="wfb__hint">
+              Noch keine. Sie entstehen aus dem Startkontext, aus Eingabefeldern
+              und aus Datencheck-Schritten.
+            </div>
+          } @else {
+            <div class="wfb__ctxlist">
+              @for (v of kontextVariablen(); track v.name) {
+                <div class="wfb__ctxrow">
+                  <code class="wfb__ctxname">{{ '{{' }}{{ v.name }}{{ '}}' }}</code>
+                  <span class="wfb__ctxsrc">{{ v.herkunft }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
         <div class="wfb__side-group">
           <div class="wfb__side-label">Vorhandene laden</div>
           <div class="wfb__loadlist">
@@ -317,6 +342,26 @@
             <input type="text" class="wfb__wide" [ngModel]="step.title"
                    (ngModelChange)="step.title = $event; bump()"
                    placeholder="z. B. «Zertifikat hochladen»" aria-label="Überschrift" />
+            <div class="wfb__label">Beschreibung</div>
+            <input type="text" class="wfb__wide" [ngModel]="step.description"
+                   (ngModelChange)="step.description = $event; bump()"
+                   placeholder="z. B. «Das dauert einen Moment.»" aria-label="Beschreibung" />
+            <div class="wfb__label">Seitenvorlage (optional)</div>
+            <select class="wfb__wide" [ngModel]="step.pageTemplateId"
+                    (ngModelChange)="step.pageTemplateId = $event; bump()" aria-label="Seitenvorlage">
+              <option value="">— keine —</option>
+              @for (t of pageTemplates(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+            @if (step.pageTemplateId && templatePreview(step.pageTemplateId); as tpl) {
+              <div class="wfb__tpl-preview">
+                <div class="wfb__tpl-body" [innerHTML]="tpl.body"></div>
+              </div>
+            }
+            <div class="wfb__hint">
+              Sichtbar wird das nur, solange der Schritt tatsächlich stehen bleibt — etwa
+              weil er auf einen verknüpften Ablauf wartet. Ein Schritt, der durchläuft,
+              zeigt nur seine Überschrift in der Checkliste.
+            </div>
           }
 
           @if (step.type === 'automatic') {
