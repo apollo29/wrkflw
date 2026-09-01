@@ -76,6 +76,7 @@ describe('definition-mapping', () => {
               mode: 'assistant',
               condition: { field: 'ok', op: '==', value: 'Ja' },
               raw: 'true',
+              label: '',
             },
           ],
         },
@@ -358,6 +359,73 @@ describe('definition-mapping', () => {
       });
 
       expect(uiVon(model, 'a')).toBeUndefined();
+    });
+  });
+
+  /**
+   * `ui.eventLabels` gibt den Knöpfen der öffentlichen Seite eine Aufschrift.
+   * Ohne sie steht dort der rohe Ereignisname — bei «submit» faellt das nicht
+   * auf, bei einem zweiten Ausgang «hilfe» sehr wohl.
+   */
+  describe('ui.eventLabels', () => {
+    function uiVon(model: BuilderModel, step: string): Record<string, unknown> {
+      const steps = toDefinition(model)['steps'] as Record<string, Record<string, unknown>>;
+      return (steps[step]['ui'] ?? {}) as Record<string, unknown>;
+    }
+
+    function schrittMitAusgaengen(labels?: Record<string, string>): BuilderModel {
+      return fromDefinition({
+        id: 'f',
+        startStep: 'frage',
+        steps: {
+          frage: {
+            type: 'interactive',
+            ui: labels === undefined ? {} : { eventLabels: labels },
+            transitions: [
+              { to: 'weiter', event: 'submit' },
+              { to: 'hilfe_schritt', event: 'hilfe' },
+            ],
+          },
+          weiter: { type: 'automatic', transitions: [] },
+          hilfe_schritt: { type: 'automatic', transitions: [] },
+        },
+      });
+    }
+
+    it('hangs the labels on the transitions and writes them back', () => {
+      const model = schrittMitAusgaengen({ hilfe: 'Ich komme nicht weiter' });
+
+      expect(model.steps[0].transitions[0].label).toBe('');
+      expect(model.steps[0].transitions[1].label).toBe('Ich komme nicht weiter');
+      expect(uiVon(model, 'frage')['eventLabels']).toEqual({ hilfe: 'Ich komme nicht weiter' });
+    });
+
+    it('writes no eventLabels at all when none are set', () => {
+      // Sonst waere jede bestehende Definition beim naechsten Speichern um ein
+      // leeres Objekt reicher.
+      expect('eventLabels' in uiVon(schrittMitAusgaengen(), 'frage')).toBeFalse();
+    });
+
+    it('keeps one label per event even if two transitions share it', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'frage',
+        steps: {
+          frage: {
+            type: 'interactive',
+            ui: { eventLabels: { submit: 'Absenden' } },
+            transitions: [
+              { to: 'a', event: 'submit', when: "context['x'] == 'y'" },
+              { to: 'b', event: 'submit' },
+            ],
+          },
+          a: { type: 'automatic', transitions: [] },
+          b: { type: 'automatic', transitions: [] },
+        },
+      });
+
+      // Zwei Uebergaenge, ein Ereignis — und damit ein Knopf, nicht zwei.
+      expect(uiVon(model, 'frage')['eventLabels']).toEqual({ submit: 'Absenden' });
     });
   });
 

@@ -16,6 +16,7 @@ import {
   TemplateListResponse,
   TemplateType,
   TemplateUsageResponse,
+  UploadHandlerCatalogResponse,
   WorkflowLifecycle,
 } from './workflow.models';
 
@@ -93,6 +94,11 @@ export class WorkflowService {
   /** Katalog der verfügbaren Actions inkl. Config-Schema (GET /actions). */
   listActions(): Observable<ActionCatalogResponse> {
     return this.http.get<ActionCatalogResponse>(`${this.baseUrl}/actions`);
+  }
+
+  /** Katalog der Datei-Prüfungen für `file`-Felder (GET /upload-handlers). */
+  listUploadHandlers(): Observable<UploadHandlerCatalogResponse> {
+    return this.http.get<UploadHandlerCatalogResponse>(`${this.baseUrl}/upload-handlers`);
   }
 
   /** Katalog abfragbarer Entitäten/Felder für den Datencheck-Schritt (GET /data-catalog). */

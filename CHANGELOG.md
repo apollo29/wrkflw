@@ -16,6 +16,18 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   im Editor nachtraeglich auf Text stellt, laesst ihn nicht als stille Altlast in der
   Definition zurueck.
 
+- **Katalog der Datei-Pruefungen (`GET /upload-handlers`).** Neuer Port
+  `UploadHandlerCatalogInterface` plus `UploadHandlerController`, nach demselben
+  Muster wie `/data-catalog`. Der Editor bietet an einem `file`-Feld jetzt eine
+  Auswahlliste mit Bezeichnung und Erklaerung an, statt ein Textfeld, in das der
+  Autor den Schluessel aus dem Kopf tippen muesste. Die Engine kennt die Werte
+  weiterhin nicht — sie fragt die Host-App danach.
+- **`ui.eventLabels`: Aufschrift je Ereignis.** Bisher stand auf einem Knopf der
+  rohe Ereignisname. Bei `submit` faellt das nicht auf, bei einem zweiten Ausgang
+  «hilfe» sehr wohl. Im Editor steht die Beschriftung neben dem Ereignis des
+  Uebergangs; Runner und Host-Seiten lesen sie. Ohne Eintrag bleibt es beim
+  bisherigen Verhalten, und es wird nichts in die Definition geschrieben.
+
 ### Changed
 - Der Runner zeigt ein `file`-Feld als Hinweis statt als Eingabefeld: die Engine-API
   kennt nur JSON-Events. Ein Dateifeld anzubieten, das nichts hochlaedt, waere die

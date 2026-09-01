@@ -23,6 +23,7 @@ import {
   StepType,
   TemplateDetail,
   TemplateSummary,
+  UploadHandlerEntry,
   WorkflowLifecycle,
 } from './workflow.models';
 import { WorkflowService } from './workflow.service';
@@ -94,6 +95,7 @@ export class WorkflowBuilderComponent implements OnInit {
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
+  readonly uploadHandlers = signal<UploadHandlerEntry[]>([]);
   readonly templates = signal<TemplateSummary[]>([]);
   readonly dataEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
@@ -208,6 +210,15 @@ export class WorkflowBuilderComponent implements OnInit {
     this.service.listActions().subscribe({
       next: (res) => this.actions.set(res.actions),
       error: (err: unknown) => this.error.set(this.apiError(err)),
+    });
+    // Ein Fehlschlag bleibt hier still: Datei-Felder sind ein Sonderfall, und
+    // eine rote Meldung über dem ganzen Editor wäre eine Überreaktion für
+    // eine Auswahlliste, die die meisten Schritte gar nicht brauchen. Die
+    // Liste bleibt dann leer, und das Feld sagt selbst, dass ohne Prüfung
+    // nichts angenommen wird.
+    this.service.listUploadHandlers().subscribe({
+      next: (res) => this.uploadHandlers.set(res.handlers),
+      error: () => this.uploadHandlers.set([]),
     });
     this.service.listTemplates().subscribe({
       next: (res) => this.templates.set(res.templates),
@@ -351,6 +362,11 @@ export class WorkflowBuilderComponent implements OnInit {
   setPublicChoice(step: BuilderStep, value: string): void {
     step.publicVisible = value === 'show' ? true : value === 'hide' ? false : null;
     this.bump();
+  }
+
+  /** Der erklärende Satz zur gewählten Prüfung, falls es einen gibt. */
+  handlerBeschreibung(key: string | undefined): string {
+    return this.uploadHandlers().find((h) => h.key === key)?.description ?? '';
   }
 
   setFieldType(field: { type: string }, value: string): void {
@@ -566,6 +582,7 @@ export class WorkflowBuilderComponent implements OnInit {
       mode: 'assistant',
       condition: { field: '', op: '==', value: '' },
       raw: 'true',
+      label: '',
     };
     step.transitions.push(t);
     this.bump();

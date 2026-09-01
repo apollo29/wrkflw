@@ -328,14 +328,20 @@
                 @if (f.type === 'file') {
                   <div class="wfb__field-row wfb__field-row--sub">
                     <span class="wfb__field-sub-label">Prüfung</span>
-                    <input type="text" [(ngModel)]="f.handler" placeholder="handler" style="flex:1;"
-                           aria-label="Prüfung der hochgeladenen Datei" />
+                    <select [ngModel]="f.handler ?? ''" (ngModelChange)="f.handler = $event; bump()"
+                            style="flex:1;" aria-label="Prüfung der hochgeladenen Datei">
+                      <option value="">— bitte wählen —</option>
+                      @for (h of uploadHandlers(); track h.key) { <option [value]="h.key">{{ h.label }}</option> }
+                    </select>
                   </div>
-                  <div class="wfb__hint">
-                    Welche Prüfungen es gibt, legt die Anwendung fest — die Engine reicht den
-                    Namen nur durch. Ohne Eintrag weiss sie nicht, was mit der Datei geschehen soll,
-                    und weist den Upload ab.
-                  </div>
+                  @if (handlerBeschreibung(f.handler); as beschreibung) {
+                    <div class="wfb__hint">{{ beschreibung }}</div>
+                  } @else {
+                    <div class="wfb__hint">
+                      Ohne Prüfung weiss die Anwendung nicht, was mit der Datei geschehen soll,
+                      und weist den Upload ab.
+                    </div>
+                  }
                 }
               }
             </div>
@@ -375,6 +381,10 @@
                   <span class="wfb__kw">bei</span>
                   <input type="text" style="width:100px;" [ngModel]="t.event ?? ''"
                          (ngModelChange)="t.event = $event || null" placeholder="submit" aria-label="Ereignis" />
+                  <span class="wfb__kw">Knopf</span>
+                  <input type="text" style="width:170px;" [ngModel]="t.label"
+                         (ngModelChange)="t.label = $event; bump()"
+                         placeholder="Beschriftung" aria-label="Beschriftung des Knopfes" />
                 }
                 <span class="wfb__else-note">bedingungslos</span>
                 <button type="button" class="wfb__transition-toggle" (click)="toggleConditionMode(t)">Bedingung…</button>
@@ -419,6 +429,10 @@
                     <span class="wfb__kw">bei</span>
                     <input type="text" style="width:90px;" [ngModel]="t.event ?? ''"
                            (ngModelChange)="t.event = $event || null" placeholder="submit" aria-label="Ereignis" />
+                    <span class="wfb__kw">Knopf</span>
+                    <input type="text" style="width:150px;" [ngModel]="t.label"
+                           (ngModelChange)="t.label = $event; bump()"
+                           placeholder="Beschriftung" aria-label="Beschriftung des Knopfes" />
                   }
                 </div>
                 @if (t.mode === 'assistant') {

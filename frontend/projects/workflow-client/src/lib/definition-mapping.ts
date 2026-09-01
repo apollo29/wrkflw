@@ -20,6 +20,14 @@ export interface BuilderTransition {
   mode: 'assistant' | 'raw';
   condition: BuilderCondition;
   raw: string;
+  /**
+   * Beschriftung des Knopfes, der dieses Ereignis auslöst (`ui.eventLabels`).
+   *
+   * Ohne sie steht auf dem Knopf der rohe Ereignisname. Bei `submit` fällt das
+   * nicht auf — die Anzeige kennt ein paar gängige Namen —, bei allem anderen
+   * schon: ein zweiter Ausgang «ich komme nicht weiter» hiesse sonst «hilfe».
+   */
+  label: string;
 }
 
 export interface BuilderField {
@@ -120,16 +128,25 @@ export function parseCondition(when: string): BuilderCondition | null {
   return { field, op, value };
 }
 
-function transitionFromJson(entry: Record<string, unknown>): BuilderTransition {
+function transitionFromJson(
+  entry: Record<string, unknown>,
+  labels: Record<string, unknown>,
+): BuilderTransition {
   const when = asString(entry['when'], 'true') || 'true';
   const parsed = parseCondition(when);
   const eventValue = entry['event'];
+  const event = typeof eventValue === 'string' ? eventValue : null;
   return {
     to: asString(entry['to']),
-    event: typeof eventValue === 'string' ? eventValue : null,
+    event,
     mode: parsed ? 'assistant' : 'raw',
     condition: parsed ?? emptyCondition(),
     raw: when,
+    // Die Beschriftungen liegen am Schritt (`ui.eventLabels`), nicht am
+    // Uebergang: mehrere Uebergaenge koennen dasselbe Ereignis tragen, und
+    // zwei Knoepfe mit demselben Namen und verschiedener Aufschrift waeren
+    // fuer die Person davor nicht zu unterscheiden.
+    label: event !== null ? asString(labels[event]) : '',
   };
 }
 
@@ -166,7 +183,9 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
     pageTemplateId: asString(ui['templateId']),
     publicVisible: typeof ui['public'] === 'boolean' ? ui['public'] : null,
     delaySeconds: typeof delay === 'number' ? delay : null,
-    transitions: asArray(raw['transitions']).map((t) => transitionFromJson(asRecord(t))),
+    transitions: asArray(raw['transitions']).map((t) =>
+      transitionFromJson(asRecord(t), asRecord(ui['eventLabels'])),
+    ),
   };
 }
 
@@ -235,6 +254,10 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     }
     if (step.publicVisible !== null) {
       ui['public'] = step.publicVisible;
+    }
+    const labels = eventLabelsOf(step);
+    if (Object.keys(labels).length > 0) {
+      ui['eventLabels'] = labels;
     }
     out['ui'] = ui;
   } else if (step.publicVisible !== null) {
@@ -308,6 +331,24 @@ export function removeStep(model: BuilderModel, index: number): BuilderModel {
         ? ersatz ?? steps[0]?.name ?? ''
         : model.startStep,
   };
+}
+
+/**
+ * Die Knopf-Beschriftungen des Schritts, aus seinen Übergängen eingesammelt.
+ *
+ * Der erste Übergang mit einer Beschriftung gewinnt: tragen zwei Übergänge
+ * dasselbe Ereignis, gibt es trotzdem nur einen Knopf.
+ */
+function eventLabelsOf(step: BuilderStep): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of step.transitions) {
+    const event = t.event ?? '';
+    const label = t.label.trim();
+    if (event !== '' && label !== '' && out[event] === undefined) {
+      out[event] = label;
+    }
+  }
+  return out;
 }
 
 /** Das eindeutige Ziel des gelöschten Schritts, sonst null. */
