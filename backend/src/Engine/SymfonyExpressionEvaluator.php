@@ -7,6 +7,7 @@ namespace WorkflowEngine\Engine;
 use Symfony\Component\ExpressionLanguage\ExpressionFunction;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\ExpressionLanguage\SyntaxError;
+use WorkflowEngine\Contracts\ExpressionCheckerInterface;
 use WorkflowEngine\Contracts\ExpressionEvaluatorInterface;
 use WorkflowEngine\Exception\ExpressionException;
 
@@ -27,7 +28,7 @@ use WorkflowEngine\Exception\ExpressionException;
  *   "context['vip'] and context['amount'] > 1000"
  *   "context['lastSeen'] < now - days(30)"
  */
-final class SymfonyExpressionEvaluator implements ExpressionEvaluatorInterface
+final class SymfonyExpressionEvaluator implements ExpressionEvaluatorInterface, ExpressionCheckerInterface
 {
     private readonly ExpressionLanguage $el;
 
@@ -50,6 +51,23 @@ final class SymfonyExpressionEvaluator implements ExpressionEvaluatorInterface
 
         foreach ($functions as $function) {
             $this->el->addFunction($function);
+        }
+    }
+
+    /**
+     * Uebersetzt den Ausdruck, ohne ihn auszuwerten.
+     *
+     * `parse()` bekommt die Namen der erlaubten Wurzeln mit und meldet damit
+     * genau den Fall, der im Betrieb teuer ist: einen Namen, den es nicht gibt
+     * (`daten_korrekt` statt `context['daten_korrekt']`). Beim AUSWERTEN faellt
+     * das erst auf, wenn jemand den Knopf drueckt.
+     */
+    public function check(string $expression): void
+    {
+        try {
+            $this->el->parse($expression, ['context', 'now']);
+        } catch (SyntaxError $e) {
+            throw new ExpressionException("Ungueltiger Ausdruck: {$e->getMessage()}", 0, $e);
         }
     }
 

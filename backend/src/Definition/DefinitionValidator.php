@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Definition;
 
+use WorkflowEngine\Contracts\ExpressionCheckerInterface;
+use WorkflowEngine\Exception\ExpressionException;
 use WorkflowEngine\Exception\InvalidDefinitionException;
 
 /**
@@ -14,12 +16,24 @@ use WorkflowEngine\Exception\InvalidDefinitionException;
  *  - es gibt keine unerreichbaren Steps,
  *  - kein erreichbarer Step sitzt in einem Zyklus ohne Ausgang
  *    (jeder erreichbare Step muss einen Endzustand erreichen koennen),
- *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen.
+ *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen,
+ *  - jede Bedingung (`when`) und jeder Timer-Ausdruck (`until`) laesst sich
+ *    uebersetzen — sofern ein {@see ExpressionCheckerInterface} uebergeben wird.
  *
  * Alle gefundenen Fehler werden gesammelt und gebuendelt geworfen.
  */
 final class DefinitionValidator
 {
+    /**
+     * @param ExpressionCheckerInterface|null $checker prueft `when` und `until`
+     *        beim Speichern. Optional, damit eine Anwendung mit eigenem
+     *        Evaluator (und eigenen Wurzeln) den Validator unveraendert
+     *        weiterbenutzen kann — ohne ihn bleibt alles wie zuvor.
+     */
+    public function __construct(private readonly ?ExpressionCheckerInterface $checker = null)
+    {
+    }
+
     /**
      * @throws InvalidDefinitionException wenn die Definition ungueltig ist
      */
@@ -29,6 +43,7 @@ final class DefinitionValidator
 
         $this->checkTransitionTargets($def, $errors);
         $this->checkEventlessExit($def, $errors);
+        $this->checkExpressions($def, $errors);
         $startExists = $def->hasStep($def->startStep);
         if (!$startExists) {
             $errors[] = "Start-Step '{$def->startStep}' existiert nicht.";
@@ -42,6 +57,42 @@ final class DefinitionValidator
 
         if ($errors !== []) {
             throw new InvalidDefinitionException(array_values(array_unique($errors)));
+        }
+    }
+
+    /**
+     * Laesst sich jede Bedingung uebersetzen?
+     *
+     * GEMELDET: `"when": "daten_korrekt == true"` — gemeint war
+     * `context['daten_korrekt']`. Die Sprache kennt nur die Wurzeln `context`
+     * und `now`; ein blosser Name ist ein Fehler. Beim AUSWERTEN faellt das
+     * erst auf, wenn jemand den Knopf drueckt — als Serverfehler auf der
+     * oeffentlichen Seite, mitten im Ablauf.
+     *
+     * @param list<string> $errors
+     */
+    private function checkExpressions(WorkflowDefinition $def, array &$errors): void
+    {
+        if ($this->checker === null) {
+            return;
+        }
+
+        foreach ($def->steps as $name => $step) {
+            foreach ($step->transitions as $t) {
+                try {
+                    $this->checker->check($t->when);
+                } catch (ExpressionException $e) {
+                    $errors[] = "Step '{$name}', Uebergang nach '{$t->to}': {$e->getMessage()}";
+                }
+            }
+
+            if ($step->untilExpr !== null) {
+                try {
+                    $this->checker->check($step->untilExpr);
+                } catch (ExpressionException $e) {
+                    $errors[] = "Step '{$name}', 'until': {$e->getMessage()}";
+                }
+            }
         }
     }
 

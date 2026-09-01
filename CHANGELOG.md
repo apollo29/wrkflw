@@ -5,6 +5,23 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **`ExpressionCheckerInterface`: Bedingungen beim SPEICHERN pruefen.** Der
+  `DefinitionValidator` nimmt ihn optional entgegen und uebersetzt damit jedes
+  `when` und jedes `until`, ohne es auszuwerten. `SymfonyExpressionEvaluator`
+  implementiert ihn.
+
+  GEMELDET: `"when": "daten_korrekt == true"` — gemeint war
+  `context['daten_korrekt']`. Die Sprache kennt nur die Wurzeln `context` und
+  `now`; ein blosser Name ist ein Fehler. Beim Auswerten faellt das erst auf,
+  wenn jemand den Knopf drueckt — als Serverfehler mitten im Ablauf, auf der
+  oeffentlichen Seite.
+
+  Bewusst ein eigener Port und nicht eine Methode in
+  `ExpressionEvaluatorInterface`: wer einen eigenen Evaluator mitbringt, soll
+  ihn nicht erweitern muessen, nur damit der Validator laeuft. Ohne Pruefer
+  bleibt der Validator unveraendert — **nicht** breaking.
+
 ## [2.0.0] - 2026-09-01
 
 ### Warum 2.0.0 und nicht 1.19.0
