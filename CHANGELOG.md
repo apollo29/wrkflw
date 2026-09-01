@@ -6,6 +6,40 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Datencheck liest mehrere Spalten (`fields`).** `check_data` kennt neben `field`
+  jetzt `fields: ["vorname", "mail"]` und legt je Spalte ein `<as>_<spalte>` im
+  Kontext ab, zusaetzlich zum bisherigen `<as>` und `<as>Found`. Die Schluessel
+  entstehen auch dann, wenn kein Datensatz gefunden wurde — sonst bliebe ein
+  Anzeigefeld beim naechsten Durchlauf auf dem alten Wert stehen.
+
+  Die ganze Zeile (`fields: "*"`) gibt es bewusst NICHT: der Kontext ist auf der
+  oeffentlichen Seite sichtbar, und was gelesen wird, soll in der Definition
+  dastehen statt davon abzuhaengen, welche Spalten die Tabelle gerade hat. `*`
+  wird als gewoehnlicher Spaltenname behandelt und faellt heraus.
+- **Feldtyp `display` in `ui.fields`.** Zeigt einen Kontextwert an und nimmt keine
+  Eingabe entgegen — damit ist «Kontaktdaten aus der Tabelle anzeigen» gebaut:
+  Datencheck laedt, interaktiver Schritt zeigt.
+
+  Ein Anzeigefeld kommt NICHT in die Payload-Whitelist ({@see EventPayloadPolicy}).
+  Sonst waere der Name, unter dem ein Wert angezeigt wird, zugleich der Name, unter
+  dem er sich ueberschreiben liesse: die angezeigte Mailadresse waere genau die, die
+  der Absender umschreiben kann — und `send_email` holt seinen Empfaenger aus eben
+  diesem Kontext.
+- **Deklarierter Startkontext (`inputs`).** An der Definition steht jetzt, welche
+  Werte ein Ablauf beim Start braucht: Name, Label, Pflicht, Beispiel. `start()`
+  wirft eine `MissingInputException` mit ALLEN fehlenden Namen, bevor eine Instanz
+  entsteht — bisher lief der Ablauf trotzdem an, die Platzhalter blieben leer, und
+  `send_email` verschickte an eine leere Adresse. Aufgefallen ist das jeweils erst,
+  wenn sich jemand meldete.
+
+  Ein Schluessel, der da ist, aber leer, zaehlt als fehlend — genau der Fall, der
+  die leere Adresse erzeugt. `false` und `0` sind dagegen Werte.
+
+  **Rueckwaertskompatibel:** ohne `inputs` prueft die Engine nichts, und der
+  Editor schreibt den Schluessel nur, wenn wirklich etwas deklariert ist. Der
+  Vorgabewert fuer `required` ist `false` — sonst wuerde das erste Speichern einer
+  bestehenden Definition im Editor sie ungewollt scharf schalten.
+- Panel «Startkontext» im Editor, unter dem Start-Schritt.
 - **Feldtyp `file` fuer interaktive Schritte (client 1.15.0).** Ein Schritt kann jetzt
   eine Datei verlangen. Der Editor bietet den Typ in der Feldliste an und daneben eine
   Angabe `handler` — ein freier String, den die Engine unveraendert durchreicht, genau
@@ -62,6 +96,29 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   Ueberschrift dazu setzen.
 
 ### Fixed
+- **Ein Schritt ohne ereignislosen Ausgang beendete den Ablauf still.** GEMELDET:
+  «wenn der Workflow einen anderen Workflow startet und dieser schliesst, wird der
+  naechste Schritt im Eltern-Ablauf uebersprungen.»
+
+  Die Ursache stand in der Definition: der Uebergang aus dem Workflow-Schritt trug
+  ein `"event": "submit"` — stehengeblieben davon, dass der Schritt vorher
+  interaktiv war. Ein automatischer Schritt bekommt nie einen Knopfdruck; die
+  Engine suchte den ereignislosen Weg, fand keinen, hielt das fuer «nichts mehr zu
+  tun» und setzte den GANZEN Ablauf auf `completed`. Die restlichen Schritte liefen
+  nie, und nichts zeigte an, dass etwas fehlte.
+
+  Drei Aenderungen, damit das nicht wiederkommt:
+  - Die Engine scheitert jetzt sichtbar (`failed`, mit dem Schrittnamen in der
+    Meldung), statt still zu beenden — in `advance()` wie beim Aufwecken aus einem
+    Kind-Workflow. Der Unterschied zum echten Ende bleibt: KEINE Uebergaenge heisst
+    «hier ist Schluss», und eine Bedingung, die diesmal nicht zutrifft, ist eine
+    nicht genommene Verzweigung.
+  - Der `DefinitionValidator` weist eine solche Definition beim Speichern ab.
+  - Der Editor schreibt `event` nur noch an Uebergaengen interaktiver Schritte. Das
+    Feld war dort ohnehin nur sichtbar; wer den Schritt-Typ umstellte, liess es als
+    unsichtbare Altlast zurueck. Bestehende Definitionen reparieren sich damit beim
+    naechsten Speichern von selbst.
+
 - **Einen Schritt zu loeschen brachte die Reihenfolge im Editor durcheinander.** Der
   Grund war keine Sortierung, sondern ein Abriss: die Uebergaenge zeigten weiter auf
   den geloeschten Namen, die Kette brach dort ab, und alles dahinter fiel in die

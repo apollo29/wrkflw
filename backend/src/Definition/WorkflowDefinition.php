@@ -16,14 +16,40 @@ use WorkflowEngine\Exception\WorkflowException;
  */
 final class WorkflowDefinition
 {
-    /** @param array<string,Step> $steps */
+    /**
+     * @param array<string,Step>   $steps
+     * @param list<WorkflowInput>  $inputs deklarierter Startkontext; leer = nicht deklariert
+     */
     private function __construct(
         public readonly string $id,
         public readonly int $version,
         public readonly string $name,
         public readonly string $startStep,
         public readonly array $steps,
+        public readonly array $inputs = [],
     ) {
+    }
+
+    /**
+     * Welche deklarierten Pflichtangaben in diesem Kontext fehlen?
+     *
+     * Leere Liste heisst «alles da» — und bei einer Definition ohne
+     * Deklaration immer, denn dann gibt es nichts zu pruefen.
+     *
+     * @param array<string,mixed> $context
+     *
+     * @return list<string> die Namen, in der Reihenfolge der Deklaration
+     */
+    public function missingInputs(array $context): array
+    {
+        $fehlt = [];
+        foreach ($this->inputs as $input) {
+            if ($input->fehltIn($context)) {
+                $fehlt[] = $input->name;
+            }
+        }
+
+        return $fehlt;
     }
 
     /**
@@ -66,12 +92,27 @@ final class WorkflowDefinition
             $steps[$stepName] = Step::fromArray($stepName, $stepDef);
         }
 
+        // Fehlt `inputs` ganz, ist nichts deklariert — bestehende Definitionen
+        // bleiben damit unveraendert gueltig.
+        $inputs = [];
+        foreach (is_array($d['inputs'] ?? null) ? $d['inputs'] : [] as $rohInput) {
+            if (!is_array($rohInput)) {
+                continue;
+            }
+            /** @var array<string,mixed> $rohInput */
+            $input = WorkflowInput::fromArray($rohInput);
+            if ($input !== null) {
+                $inputs[] = $input;
+            }
+        }
+
         return new self(
             id: $id,
             version: $version,
             name: $name,
             startStep: $startStep,
             steps: $steps,
+            inputs: $inputs,
         );
     }
 

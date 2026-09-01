@@ -57,6 +57,7 @@ describe('definition-mapping', () => {
       id: 'flow',
       name: 'Flow',
       startStep: 'ask',
+      inputs: [],
       steps: [
         {
           name: 'ask',
@@ -442,6 +443,70 @@ describe('definition-mapping', () => {
     });
   });
 
+  /**
+   * Der deklarierte Startkontext (`inputs`). Ohne ihn steht nirgends, was ein
+   * Ablauf beim Start braucht — und fehlt etwas, lief er bisher trotzdem an.
+   */
+  describe('inputs', () => {
+    it('reads a declaration with all its properties', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [
+          { name: 'trainer_id', label: 'Trainer-ID', required: true, beispiel: 'TR-0123' },
+          { name: 'kjs_mail' },
+        ],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs[0]).toEqual({
+        name: 'trainer_id', label: 'Trainer-ID', required: true, beispiel: 'TR-0123',
+      });
+      // Ohne Angabe: Label faellt auf den Namen zurueck, Pflicht ist aus.
+      expect(model.inputs[1]).toEqual({ name: 'kjs_mail', label: 'kjs_mail', required: false, beispiel: '' });
+    });
+
+    it('writes the declaration back', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [{ name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' }],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' },
+      ]);
+    });
+
+    it('writes no inputs key when nothing is declared', () => {
+      // Sonst waere jede bestehende Definition beim naechsten Speichern um ein
+      // leeres Feld reicher.
+      const model = fromDefinition({
+        id: 'f', startStep: 'a', steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs).toEqual([]);
+      expect('inputs' in toDefinition(model)).toBeFalse();
+    });
+
+    it('drops a nameless row', () => {
+      // Der Editor legt eine leere Zeile an, sobald jemand «+ Angabe» drueckt.
+      // Sie darf keinen Start blockieren.
+      const model = fromDefinition({
+        id: 'f', startStep: 'a', steps: { a: { type: 'automatic', transitions: [] } },
+      });
+      model.inputs = [
+        { name: '  ', label: 'leer', required: true, beispiel: '' },
+        { name: 'mail', label: '', required: false, beispiel: '' },
+      ];
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'mail', required: false, beispiel: '' },
+      ]);
+    });
+  });
+
   it('orders steps breadth-first from the start step', () => {
     const model = fromDefinition({
       id: 'f',
@@ -453,5 +518,55 @@ describe('definition-mapping', () => {
       },
     });
     expect(orderedStepNames(model)).toEqual(['a', 'b', 'orphan']);
+  });
+
+  /**
+   * GEMELDET: nach Abschluss eines Kind-Workflows wurde der nächste Schritt
+   * im Eltern-Ablauf übersprungen.
+   *
+   * Der Übergang aus dem Workflow-Schritt trug ein `"event": "submit"` — ein
+   * Rest davon, dass der Schritt vorher interaktiv war. Ein automatischer
+   * Schritt bekommt nie einen Knopfdruck; die Engine fand keinen Weg hinaus
+   * und hielt das für das Ende des Ablaufs.
+   *
+   * Das Feld ist im Editor bei automatischen Schritten gar nicht sichtbar —
+   * genau deshalb muss das Speichern es entfernen: sonst schleppt die
+   * Definition eine Einstellung mit, die niemand mehr sehen oder ändern kann.
+   */
+  it('schreibt kein Ereignis an einen Übergang aus einem automatischen Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: {
+          type: 'automatic',
+          action: 'start_workflow',
+          config: { workflowId: 'kind', waitForCompletion: true },
+          transitions: [{ to: 'b', event: 'submit' }],
+        },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBeUndefined();
+    expect(json['steps']['a']['transitions'][0]['to']).toBe('b');
+  });
+
+  /** Die Gegenprobe: beim interaktiven Schritt bleibt es natürlich stehen. */
+  it('behält das Ereignis am interaktiven Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'interactive', transitions: [{ to: 'b', event: 'submit' }] },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBe('submit');
   });
 });

@@ -34,6 +34,15 @@
   border: 1px dashed var(--_border); border-radius: 8px;
   background: var(--_surface-2);
 }
+/* Anzeigefeld: sieht bewusst NICHT wie ein Eingabefeld aus — es nimmt nichts
+   entgegen, und ein Rahmen wie beim Textfeld lüde zum Hineinklicken ein. */
+.wf-field__value {
+  font-size: 13.5px; color: var(--_text);
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--_surface-2);
+}
+
 .wf-field input[type='text'] {
   width: 100%; box-sizing: border-box; height: 38px; padding: 0 11px;
   border: 1px solid var(--_border); border-radius: 8px;

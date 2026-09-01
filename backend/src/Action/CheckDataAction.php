@@ -20,11 +20,17 @@ use WorkflowEngine\Instance\WorkflowInstance;
  *   "config": {
  *       "entity": "order",        // Tabelle/Entitaet (aus dem Daten-Katalog)
  *       "id":     "{{orderId}}",  // ID des Datensatzes (mit {{platzhalter}})
- *       "field":  "status",       // zu lesende Spalte
+ *       "field":  "status",       // zu lesende Spalte (der Pruefwert)
+ *       "fields": ["vorname", "mail"], // weitere Spalten, zum Anzeigen
  *       "as":     "orderStatus"   // Kontext-Key fuer den Wert (Default: checkedValue)
  *   }
  *
- * Ergebnis im Kontext: <as> = Feldwert (oder null), <as>Found = ob der Datensatz existierte.
+ * Ergebnis im Kontext: <as> = Feldwert (oder null), <as>Found = ob der Datensatz
+ * existierte, und je Eintrag aus `fields` ein <as>_<spalte>.
+ *
+ * Die ganze Zeile (`fields: "*"`) gibt es bewusst NICHT: der Kontext ist auf der
+ * oeffentlichen Seite sichtbar, und was gelesen wird, soll in der Definition
+ * dastehen statt davon abzuhaengen, welche Spalten die Tabelle gerade hat.
  */
 final class CheckDataAction implements ActionInterface, ConfigurableActionInterface
 {
@@ -38,6 +44,7 @@ final class CheckDataAction implements ActionInterface, ConfigurableActionInterf
             ['name' => 'entity', 'label' => 'Tabelle', 'type' => 'entity-ref'],
             ['name' => 'id', 'label' => 'Datensatz-ID (z. B. {{orderId}})', 'type' => 'text'],
             ['name' => 'field', 'label' => 'Feld', 'type' => 'field-ref'],
+            ['name' => 'fields', 'label' => 'Weitere Felder (nur anzeigen)', 'type' => 'field-ref-list'],
             ['name' => 'as', 'label' => 'Ergebnis-Variable', 'type' => 'text'],
         ];
     }
@@ -58,10 +65,51 @@ final class CheckDataAction implements ActionInterface, ConfigurableActionInterf
         $row = ($entity !== '' && $id !== '') ? $this->data->get($entity, $id) : null;
         $value = is_array($row) ? ($row[$field] ?? null) : null;
 
-        return [
+        $ergebnis = [
             $as => $value,
             $as . 'Found' => $row !== null,
         ];
+
+        // Auch ohne Datensatz entsteht je Spalte ein Schluessel — sonst bliebe
+        // ein Anzeigefeld beim naechsten Durchlauf auf dem alten Wert stehen.
+        foreach ($this->columns($config) as $spalte) {
+            $ergebnis[$as . '_' . $spalte] = is_array($row) ? ($row[$spalte] ?? null) : null;
+        }
+
+        return $ergebnis;
+    }
+
+    /**
+     * Die Spalten aus `fields` — nur brauchbare Namen, ohne Dubletten.
+     *
+     * `*` ist kein Platzhalter, sondern ein gewoehnlicher Name, den keine
+     * Tabelle traegt: er faellt hier heraus, damit aus einem Tippfehler kein
+     * versehentliches «alles lesen» wird.
+     *
+     * @param array<string,mixed> $config
+     *
+     * @return list<string>
+     */
+    private function columns(array $config): array
+    {
+        $roh = $config['fields'] ?? null;
+        if (!is_array($roh)) {
+            return [];
+        }
+
+        $spalten = [];
+        foreach ($roh as $eintrag) {
+            if (!is_string($eintrag)) {
+                continue;
+            }
+            $name = trim($eintrag);
+            if ($name === '' || $name === '*' || in_array($name, $spalten, true)) {
+                continue;
+            }
+            $spalten[] = $name;
+        }
+
+        return $spalten;
     }
 
     /**

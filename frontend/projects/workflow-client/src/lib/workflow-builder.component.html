@@ -156,6 +156,47 @@
           </select>
         </div>
 
+        <!--
+          Startkontext: welche Daten der Ablauf beim Start braucht. Steht das
+          nicht da, muss man die Schritte lesen und die Platzhalter
+          zusammensuchen — und fehlt etwas, lief der Ablauf bisher trotzdem an.
+        -->
+        <div class="wfb__side-group">
+          <div class="wfb__fields-head">
+            <span class="wfb__side-label" style="margin:0;">Startkontext</span>
+            <button type="button" class="wfb__mini" (click)="addInput()">+ Angabe</button>
+          </div>
+          @if (model().inputs.length === 0) {
+            <div class="wfb__hint">
+              Nichts deklariert — der Start prüft dann nichts. Trag ein, was der Ablauf
+              erwartet (z. B. <code>trainer_id</code>, <code>mail</code>), dann scheitert
+              ein Start ohne diese Angaben sichtbar statt still.
+            </div>
+          }
+          <div class="wfb__fields">
+            @for (i of model().inputs; track $index) {
+              <div class="wfb__field-row">
+                <input type="text" [ngModel]="i.name" (ngModelChange)="i.name = $event; bump()"
+                       placeholder="name" class="wfb__mono" style="width:130px;" aria-label="Name" />
+                <input type="text" [ngModel]="i.label" (ngModelChange)="i.label = $event; bump()"
+                       placeholder="Label" style="flex:1;" aria-label="Label" />
+                <label class="wfb__input-pflicht" [title]="'Ohne diese Angabe kann der Ablauf nicht starten'">
+                  <input type="checkbox" [ngModel]="i.required"
+                         (ngModelChange)="i.required = $event; bump()" aria-label="Pflicht" />
+                  <span>Pflicht</span>
+                </label>
+                <button type="button" class="wfb__step-x" (click)="removeInput($index)"
+                        aria-label="Angabe entfernen">×</button>
+              </div>
+              <div class="wfb__field-row wfb__field-row--sub">
+                <span class="wfb__field-sub-label">Beispiel</span>
+                <input type="text" [ngModel]="i.beispiel" (ngModelChange)="i.beispiel = $event; bump()"
+                       placeholder="z. B. TR-0123" style="flex:1;" aria-label="Beispielwert" />
+              </div>
+            }
+          </div>
+        </div>
+
         <div class="wfb__side-group">
           <div class="wfb__side-label">Vorhandene laden</div>
           <div class="wfb__loadlist">
@@ -307,6 +348,25 @@
                   <option value="">— Feld wählen —</option>
                   @for (f of entityFields(step); track f) { <option [value]="f">{{ f }}</option> }
                 </select>
+              } @else if (field.type === 'field-ref-list') {
+                @if (entityFields(step).length === 0) {
+                  <div class="wfb__hint">Erst eine Tabelle wählen.</div>
+                } @else {
+                  <div class="wfb__fieldlist">
+                    @for (f of entityFields(step); track f) {
+                      <label class="wfb__check">
+                        <input type="checkbox" [checked]="isInConfigList(step, field.name, f)"
+                               (change)="toggleConfigList(step, field.name, f, $any($event.target).checked)" />
+                        {{ f }}
+                      </label>
+                    }
+                  </div>
+                  <div class="wfb__hint">
+                    Jede gewählte Spalte landet im Kontext als
+                    <code>{{ configValue(step, 'as') || 'checkedValue' }}_spalte</code> — genau so
+                    heisst dann das Anzeigefeld im nächsten Schritt.
+                  </div>
+                }
               } @else if (field.type === 'boolean') {
                 <label class="wfb__check">
                   <input type="checkbox" [ngModel]="configBool(step, field.name)"
@@ -378,9 +438,17 @@
                     <option value="text">Text</option>
                     <option value="boolean">Ja/Nein</option>
                     <option value="file">Datei</option>
+                    <option value="display">Nur anzeigen</option>
                   </select>
                   <button type="button" class="wfb__step-x" (click)="removeField(step, $index)" aria-label="Feld entfernen">×</button>
                 </div>
+                @if (f.type === 'display') {
+                  <div class="wfb__hint">
+                    Zeigt den Kontextwert unter diesem Namen an und nimmt keine Eingabe
+                    entgegen — was hier steht, lässt sich über die Seite auch nicht
+                    überschreiben.
+                  </div>
+                }
                 @if (f.type === 'file') {
                   <div class="wfb__field-row wfb__field-row--sub">
                     <span class="wfb__field-sub-label">Prüfung</span>

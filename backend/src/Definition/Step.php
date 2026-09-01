@@ -24,6 +24,18 @@ final class Step
     private const TYPES = [self::AUTOMATIC, self::INTERACTIVE, self::TIMER];
 
     /**
+     * Feldtyp in `ui.fields`, der einen Kontextwert nur ANZEIGT.
+     *
+     * Er nimmt keine Eingabe entgegen. Das ist keine Frage der Darstellung:
+     * ein Anzeigefeld darf nicht in der Payload-Whitelist stehen, sonst waere
+     * der Name, unter dem ein Wert angezeigt wird, zugleich der Name, unter
+     * dem er sich ueberschreiben liesse. Die Engine wertet `ui` sonst nicht
+     * aus — dieser eine Wert steht hier, damit Engine und Host-App nicht zwei
+     * Schreibweisen desselben Begriffs pflegen.
+     */
+    public const FIELD_DISPLAY = 'display';
+
+    /**
      * @param list<Transition>    $transitions
      * @param array<string,mixed> $config
      * @param array<string,mixed> $ui
