@@ -50,11 +50,48 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface
                     'name' => $meta['name'],
                     'active' => $meta['active'],
                     'status' => $meta['status'],
+                    'instances' => $this->zaehleInstanzen((string)$id, (int)$version, nurLaufende: false),
+                    'runningInstances' => $this->zaehleInstanzen((string)$id, (int)$version, nurLaufende: true),
                 ];
             }
         }
 
         return $out;
+    }
+
+    private function zaehleInstanzen(string $id, int $version, bool $nurLaufende): int
+    {
+        $n = 0;
+        foreach ($this->instances as $instance) {
+            if ($instance->definitionId !== $id || $instance->definitionVersion !== $version) {
+                continue;
+            }
+            if ($nurLaufende && $instance->isFinished()) {
+                continue;
+            }
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public function deleteDefinitionVersion(string $id, int $version): bool
+    {
+        if (!isset($this->definitionMeta[$id][$version])) {
+            return false;
+        }
+        // Die neueste Version bleibt stehen, und eine Version mit Durchlaeufen
+        // ebenfalls — sonst waeren deren Schritte nicht mehr aufloesbar.
+        if ($version >= max(array_keys($this->definitionMeta[$id]))) {
+            return false;
+        }
+        if ($this->zaehleInstanzen($id, $version, nurLaufende: false) > 0) {
+            return false;
+        }
+
+        unset($this->definitionMeta[$id][$version], $this->definitions[$id][$version]);
+
+        return true;
     }
 
     public function findDefinitionJson(string $id, ?int $version = null): ?string

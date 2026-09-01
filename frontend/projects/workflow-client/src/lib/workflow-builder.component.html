@@ -38,6 +38,15 @@
         <div class="wfb__bar-id wfb__bar-id--static">{{ model().id || 'workflow-id' }}</div>
         <div class="wfb__bar-name wfb__bar-name--static">{{ model().name || model().id || 'Ohne Namen' }}</div>
       }
+      <!-- Welche Fassung hier liegt. Ohne sie sah eine geladene Definition
+           genauso aus wie ein neuer Entwurf, und beim Speichern erschien die
+           Nummer zum ersten Mal in der Meldung. -->
+      @if (loadedVersion(); as v) {
+        <span class="wfb__bar-version" title="Gespeicherte Fassung. Beim Speichern entsteht die nächste.">v{{ v }}</span>
+      } @else {
+        <span class="wfb__bar-version wfb__bar-version--neu"
+              title="Noch nicht gespeichert — beim Speichern entsteht v1.">neu</span>
+      }
     </div>
 
     <div class="wfb__bar-tools">
@@ -150,7 +159,7 @@
         <div class="wfb__side-group">
           <div class="wfb__side-label">Vorhandene laden</div>
           <div class="wfb__loadlist">
-            @for (def of definitions(); track def.id + ':' + def.version) {
+            @for (def of aktuelleDefinitionen(); track def.id + ':' + def.version) {
               <button type="button" class="wfb__load" (click)="loadDefinition(def.id)">
                 <span class="wfb__load-text">
                   <span class="wfb__load-name">{{ def.name || def.id }}</span>
@@ -168,6 +177,50 @@
             }
             <button type="button" class="wfb__add-step" (click)="newDefinition()">+ Neuer Workflow</button>
           </div>
+
+          <!--
+            Archiv: aeltere Versionen, an denen nichts mehr laeuft. Zugeklappt,
+            weil es der Ablageort ist und nicht der Arbeitsplatz — vorher
+            standen alle Versionen jeder Definition in derselben Liste, und die
+            aktuelle ging darin unter.
+          -->
+          @if (archivierteDefinitionen(); as archiv) {
+            @if (archiv.length > 0) {
+              <div class="wfb__archiv">
+                <button type="button" class="wfb__archiv-head" (click)="toggleArchiv()"
+                        [attr.aria-expanded]="archivOffen()">
+                  <span class="wfb__archiv-caret" aria-hidden="true">{{ archivOffen() ? '▾' : '▸' }}</span>
+                  <span>Archiv</span>
+                  <span class="wfb__pill">{{ archiv.length }}</span>
+                </button>
+                @if (archivOffen()) {
+                  <div class="wfb__loadlist">
+                    @for (def of archiv; track def.id + ':' + def.version) {
+                      <div class="wfb__archiv-row">
+                        <button type="button" class="wfb__load wfb__load--archiv" (click)="loadDefinition(def.id)">
+                          <span class="wfb__load-text">
+                            <span class="wfb__load-name">{{ def.name || def.id }}</span>
+                            <span class="wfb__load-id">{{ def.id }}</span>
+                          </span>
+                          <span class="wfb__load-meta">
+                            <span class="wfb__load-v">v{{ def.version }}</span>
+                          </span>
+                        </button>
+                        <button type="button" class="wfb__step-x"
+                                [disabled]="busy() || loeschsperre(def) !== ''"
+                                [title]="loeschsperre(def) || 'Diese Version entfernen'"
+                                (click)="deleteVersion(def)"
+                                aria-label="Version entfernen">×</button>
+                      </div>
+                      @if (loeschsperre(def); as grund) {
+                        <div class="wfb__hint wfb__archiv-hint">{{ grund }}</div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            }
+          }
         </div>
       </div>
 
@@ -198,6 +251,32 @@
               <option value="datacheck">Datencheck</option>
             </select>
           </div>
+
+          <div class="wfb__label">Auf der öffentlichen Seite</div>
+          <select class="wfb__wide" [ngModel]="publicChoice(step)"
+                  (ngModelChange)="setPublicChoice(step, $event)"
+                  aria-label="Sichtbarkeit auf der öffentlichen Seite">
+            <option value="default">Standard — nur Eingabe-Schritte</option>
+            <option value="show">Anzeigen</option>
+            <option value="hide">Ausblenden</option>
+          </select>
+          <div class="wfb__hint">
+            Die Empfänger:in eines Links sieht sonst nur, was sie selbst tut. «Anzeigen» macht
+            auch einen Hintergrundschritt sichtbar («Wird geprüft»), «Ausblenden» versteckt
+            umgekehrt einen Eingabe-Schritt.
+          </div>
+
+          <!--
+            Ein Hintergrundschritt hat sonst kein Textfeld — in der Checkliste
+            stand deshalb sein technischer Schlüssel («upload_uefa_certificate»).
+            Wer ihn sichtbar schaltet, braucht auch etwas Lesbares dafür.
+          -->
+          @if (step.type !== 'interactive' && step.publicVisible === true) {
+            <div class="wfb__label">Überschrift (auf der öffentlichen Seite)</div>
+            <input type="text" class="wfb__wide" [ngModel]="step.title"
+                   (ngModelChange)="step.title = $event; bump()"
+                   placeholder="z. B. «Zertifikat hochladen»" aria-label="Überschrift" />
+          }
 
           @if (step.type === 'automatic') {
             @if (!isWorkflowStep(step) && !isDataCheckStep(step)) {
@@ -298,9 +377,28 @@
                   <select [ngModel]="f.type" (ngModelChange)="setFieldType(f, $event)">
                     <option value="text">Text</option>
                     <option value="boolean">Ja/Nein</option>
+                    <option value="file">Datei</option>
                   </select>
                   <button type="button" class="wfb__step-x" (click)="removeField(step, $index)" aria-label="Feld entfernen">×</button>
                 </div>
+                @if (f.type === 'file') {
+                  <div class="wfb__field-row wfb__field-row--sub">
+                    <span class="wfb__field-sub-label">Prüfung</span>
+                    <select [ngModel]="f.handler ?? ''" (ngModelChange)="f.handler = $event; bump()"
+                            style="flex:1;" aria-label="Prüfung der hochgeladenen Datei">
+                      <option value="">— bitte wählen —</option>
+                      @for (h of uploadHandlers(); track h.key) { <option [value]="h.key">{{ h.label }}</option> }
+                    </select>
+                  </div>
+                  @if (handlerBeschreibung(f.handler); as beschreibung) {
+                    <div class="wfb__hint">{{ beschreibung }}</div>
+                  } @else {
+                    <div class="wfb__hint">
+                      Ohne Prüfung weiss die Anwendung nicht, was mit der Datei geschehen soll,
+                      und weist den Upload ab.
+                    </div>
+                  }
+                }
               }
             </div>
           }
@@ -339,6 +437,10 @@
                   <span class="wfb__kw">bei</span>
                   <input type="text" style="width:100px;" [ngModel]="t.event ?? ''"
                          (ngModelChange)="t.event = $event || null" placeholder="submit" aria-label="Ereignis" />
+                  <span class="wfb__kw">Knopf</span>
+                  <input type="text" style="width:170px;" [ngModel]="t.label"
+                         (ngModelChange)="t.label = $event; bump()"
+                         placeholder="Beschriftung" aria-label="Beschriftung des Knopfes" />
                 }
                 <span class="wfb__else-note">bedingungslos</span>
                 <button type="button" class="wfb__transition-toggle" (click)="toggleConditionMode(t)">Bedingung…</button>
@@ -383,6 +485,10 @@
                     <span class="wfb__kw">bei</span>
                     <input type="text" style="width:90px;" [ngModel]="t.event ?? ''"
                            (ngModelChange)="t.event = $event || null" placeholder="submit" aria-label="Ereignis" />
+                    <span class="wfb__kw">Knopf</span>
+                    <input type="text" style="width:150px;" [ngModel]="t.label"
+                           (ngModelChange)="t.label = $event; bump()"
+                           placeholder="Beschriftung" aria-label="Beschriftung des Knopfes" />
                   }
                 </div>
                 @if (t.mode === 'assistant') {

@@ -3,6 +3,75 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Feldtyp `file` fuer interaktive Schritte (client 1.15.0).** Ein Schritt kann jetzt
+  eine Datei verlangen. Der Editor bietet den Typ in der Feldliste an und daneben eine
+  Angabe `handler` — ein freier String, den die Engine unveraendert durchreicht, genau
+  wie `ui` insgesamt. Was ein Handler bedeutet und welche es gibt, weiss allein die
+  Host-App; die Engine kennt weder die Namen noch nimmt sie selbst Dateien entgegen.
+  Der Upload-Weg gehoert damit vollstaendig der Host-App.
+- Der `handler` wird nur an Feldern vom Typ `file` gelesen und geschrieben. Wer den Typ
+  im Editor nachtraeglich auf Text stellt, laesst ihn nicht als stille Altlast in der
+  Definition zurueck.
+
+- **Katalog der Datei-Pruefungen (`GET /upload-handlers`).** Neuer Port
+  `UploadHandlerCatalogInterface` plus `UploadHandlerController`, nach demselben
+  Muster wie `/data-catalog`. Der Editor bietet an einem `file`-Feld jetzt eine
+  Auswahlliste mit Bezeichnung und Erklaerung an, statt ein Textfeld, in das der
+  Autor den Schluessel aus dem Kopf tippen muesste. Die Engine kennt die Werte
+  weiterhin nicht — sie fragt die Host-App danach.
+- **`ui.eventLabels`: Aufschrift je Ereignis.** Bisher stand auf einem Knopf der
+  rohe Ereignisname. Bei `submit` faellt das nicht auf, bei einem zweiten Ausgang
+  «hilfe» sehr wohl. Im Editor steht die Beschriftung neben dem Ereignis des
+  Uebergangs; Runner und Host-Seiten lesen sie. Ohne Eintrag bleibt es beim
+  bisherigen Verhalten, und es wird nichts in die Definition geschrieben.
+
+### Changed
+- Der Runner zeigt ein `file`-Feld als Hinweis statt als Eingabefeld: die Engine-API
+  kennt nur JSON-Events. Ein Dateifeld anzubieten, das nichts hochlaedt, waere die
+  schlechtere Antwort.
+- **Sichtbarkeit auf der oeffentlichen Seite ist im Editor einstellbar (`ui.public`).**
+  Drei Moeglichkeiten statt eines Haekchens: «Standard», «Anzeigen», «Ausblenden». Der
+  Vorgabefall ist nicht «aus», sondern «die Regel der Host-App gilt» — und er wird
+  bewusst NICHT in die Definition geschrieben, sonst waere jede bestehende Definition
+  beim naechsten Speichern um ein Feld reicher, das nichts aendert. Ein automatischer
+  Schritt, der auf «Anzeigen» gestellt wird, bekommt dafuer erstmals ein `ui`-Objekt.
+
+- **Archiv fuer alte Definitions-Versionen.** Die Uebersicht «Vorhandene laden»
+  zeigte jede Version jeder Definition; nach einem halben Jahr stand dort ein
+  Dutzend Eintraege zu einem einzigen Ablauf und der aktuelle ging darin unter.
+  Neu haelt sie je Definition nur die neueste Version — plus jede aeltere, an
+  der noch ein Durchlauf laeuft, denn die ist in Gebrauch. Der Rest liegt in
+  einem zugeklappten Archiv und laesst sich dort entfernen
+  (`DELETE /workflows/{id}/versions/{v}`).
+- `listDefinitions()` liefert dafuer zwei neue Zahlen je Version: `instances`
+  (alle Durchlaeufe) und `runningInstances` (die noch laufenden). Der
+  Unterschied entscheidet ueber zwei verschiedene Dinge — ins Archiv darf eine
+  Version, sobald nichts mehr LAEUFT; loeschen laesst sie sich erst, wenn
+  ueberhaupt kein Durchlauf mehr auf sie zeigt. Sonst waeren die abgeschlossenen
+  Durchlaeufe nicht mehr lesbar, weil ihre Definition fehlt.
+- `WorkflowRepositoryInterface::deleteDefinitionVersion()` — BREAKING fuer
+  eigene Repository-Implementierungen: die Methode kommt zum Port dazu.
+
+- **Ueberschrift fuer sichtbar geschaltete Hintergrundschritte.** Ein Schritt vom
+  Typ «Automatisch», «Timer» oder «Workflow» hatte kein Textfeld — auf einer
+  oeffentlichen Seite stand deshalb sein technischer Schluessel
+  («upload_uefa_certificate»). Wer ihn auf «Anzeigen» stellt, kann jetzt eine
+  Ueberschrift dazu setzen.
+
+### Fixed
+- **Einen Schritt zu loeschen brachte die Reihenfolge im Editor durcheinander.** Der
+  Grund war keine Sortierung, sondern ein Abriss: die Uebergaenge zeigten weiter auf
+  den geloeschten Namen, die Kette brach dort ab, und alles dahinter fiel in die
+  Sammelstelle fuer unerreichbare Schritte am Ende — in Einfuege- statt
+  Ablaufreihenfolge. Loeschen schliesst die Kette jetzt: hatte der Schritt genau ein
+  Ziel, erben die eingehenden Uebergaenge dieses Ziel (A→B→C wird A→C). Bei mehreren
+  Zielen waere jede Wahl geraten, dann fallen sie weg. Nebenbei behoben: Verweise auf
+  einen geloeschten Schritt liessen sich gar nicht mehr speichern, und der Start-Schritt
+  zeigte nach seiner eigenen Loeschung ins Leere.
+
 ## [1.18.0] - 2026-09-01
 
 ### Added

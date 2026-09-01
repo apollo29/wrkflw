@@ -20,12 +20,27 @@ export interface BuilderTransition {
   mode: 'assistant' | 'raw';
   condition: BuilderCondition;
   raw: string;
+  /**
+   * Beschriftung des Knopfes, der dieses Ereignis auslöst (`ui.eventLabels`).
+   *
+   * Ohne sie steht auf dem Knopf der rohe Ereignisname. Bei `submit` fällt das
+   * nicht auf — die Anzeige kennt ein paar gängige Namen —, bei allem anderen
+   * schon: ein zweiter Ausgang «ich komme nicht weiter» hiesse sonst «hilfe».
+   */
+  label: string;
 }
 
 export interface BuilderField {
   name: string;
   label: string;
   type: string;
+  /**
+   * Nur fuer `type: 'file'`: welche Pruefung die Host-App auf die hochgeladene
+   * Datei anwendet. Die Engine kennt die moeglichen Werte NICHT — sie reicht
+   * den String unveraendert durch, genau wie `ui` insgesamt. Welche Handler es
+   * gibt, weiss allein die Host-App (in coach-admin z. B. `uefa_certificate`).
+   */
+  handler?: string;
 }
 
 export interface BuilderStep {
@@ -38,6 +53,15 @@ export interface BuilderStep {
   fields: BuilderField[];
   /** Referenz auf eine 'page'-Vorlage (nur interaktive Schritte), ui.templateId. */
   pageTemplateId: string;
+  /**
+   * `ui.public`: erscheint der Schritt auf der öffentlichen Seite?
+   *
+   * `null` = die Vorgabe der Host-App gilt (dort: nur Eingabe-Schritte). Sie
+   * wird bewusst NICHT in die Definition geschrieben — sonst wäre jede
+   * bestehende Definition beim nächsten Speichern um ein Feld reicher, das
+   * nichts ändert.
+   */
+  publicVisible: boolean | null;
   delaySeconds: number | null;
   transitions: BuilderTransition[];
 }
@@ -104,16 +128,25 @@ export function parseCondition(when: string): BuilderCondition | null {
   return { field, op, value };
 }
 
-function transitionFromJson(entry: Record<string, unknown>): BuilderTransition {
+function transitionFromJson(
+  entry: Record<string, unknown>,
+  labels: Record<string, unknown>,
+): BuilderTransition {
   const when = asString(entry['when'], 'true') || 'true';
   const parsed = parseCondition(when);
   const eventValue = entry['event'];
+  const event = typeof eventValue === 'string' ? eventValue : null;
   return {
     to: asString(entry['to']),
-    event: typeof eventValue === 'string' ? eventValue : null,
+    event,
     mode: parsed ? 'assistant' : 'raw',
     condition: parsed ?? emptyCondition(),
     raw: when,
+    // Die Beschriftungen liegen am Schritt (`ui.eventLabels`), nicht am
+    // Uebergang: mehrere Uebergaenge koennen dasselbe Ereignis tragen, und
+    // zwei Knoepfe mit demselben Namen und verschiedener Aufschrift waeren
+    // fuer die Person davor nicht zu unterscheiden.
+    label: event !== null ? asString(labels[event]) : '',
   };
 }
 
@@ -132,15 +165,27 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
     description: asString(ui['description']),
     fields: asArray(ui['fields']).map((f) => {
       const field = asRecord(f);
-      return {
+      const type = asString(field['type'], 'text');
+      const out: BuilderField = {
         name: asString(field['name']),
         label: asString(field['label'], asString(field['name'])),
-        type: asString(field['type'], 'text'),
+        type,
       };
+      // `handler` nur bei Datei-Feldern uebernehmen: an einem Textfeld haette
+      // er keine Wirkung, wuerde aber beim Speichern mitgeschrieben und beim
+      // naechsten Laden wieder auftauchen.
+      const handler = asString(field['handler']);
+      if (type === 'file' && handler !== '') {
+        out.handler = handler;
+      }
+      return out;
     }),
     pageTemplateId: asString(ui['templateId']),
+    publicVisible: typeof ui['public'] === 'boolean' ? ui['public'] : null,
     delaySeconds: typeof delay === 'number' ? delay : null,
-    transitions: asArray(raw['transitions']).map((t) => transitionFromJson(asRecord(t))),
+    transitions: asArray(raw['transitions']).map((t) =>
+      transitionFromJson(asRecord(t), asRecord(ui['eventLabels'])),
+    ),
   };
 }
 
@@ -167,6 +212,23 @@ function transitionToJson(t: BuilderTransition): Record<string, unknown> {
   return out;
 }
 
+/**
+ * `handler` gehoert an Datei-Felder und nur dorthin. Wer den Typ im Editor
+ * nachtraeglich auf Text stellt, soll den Handler nicht als stille Altlast in
+ * der Definition zuruecklassen.
+ */
+function fieldToJson(field: BuilderField): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    name: field.name,
+    label: field.label,
+    type: field.type,
+  };
+  if (field.type === 'file' && (field.handler ?? '') !== '') {
+    out['handler'] = field.handler;
+  }
+  return out;
+}
+
 function stepToJson(step: BuilderStep): Record<string, unknown> {
   const out: Record<string, unknown> = { type: step.type };
 
@@ -184,11 +246,29 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     const ui: Record<string, unknown> = {
       title: step.title,
       description: step.description,
-      fields: step.fields,
+      fields: step.fields.map(fieldToJson),
       events,
     };
     if (step.pageTemplateId) {
       ui['templateId'] = step.pageTemplateId;
+    }
+    if (step.publicVisible !== null) {
+      ui['public'] = step.publicVisible;
+    }
+    const labels = eventLabelsOf(step);
+    if (Object.keys(labels).length > 0) {
+      ui['eventLabels'] = labels;
+    }
+    out['ui'] = ui;
+  } else if (step.publicVisible !== null) {
+    // Ein automatischer oder Timer-Schritt hat sonst gar kein `ui`. Wer ihn
+    // sichtbar schaltet («Deine Anmeldung wird geprüft»), braucht trotzdem
+    // eines — sonst wäre die Einstellung nach dem Speichern wieder weg.
+    const ui: Record<string, unknown> = { public: step.publicVisible };
+    // Und eine Überschrift, sonst steht in der Checkliste der technische
+    // Schrittname.
+    if (step.title !== '') {
+      ui['title'] = step.title;
     }
     out['ui'] = ui;
   }
@@ -213,6 +293,75 @@ export function toDefinition(model: BuilderModel): Record<string, unknown> {
     startStep: model.startStep,
     steps,
   };
+}
+
+/**
+ * Einen Schritt entfernen und die Kette wieder schliessen.
+ *
+ * Nur das Element aus der Liste zu nehmen genügt nicht: die Übergänge zeigen
+ * weiter auf seinen Namen. Die Ablaufreihenfolge bricht dort ab, alles
+ * dahinter gilt als unerreichbar und rutscht im Editor ans Ende — was wie eine
+ * zufällige Sortierung aussieht. Speichern liesse sich eine solche Definition
+ * ausserdem nicht: ein Übergang auf einen Schritt, den es nicht gibt, ist ein
+ * Fehler.
+ *
+ * Deshalb: hatte der gelöschte Schritt genau ein Ziel, erben die eingehenden
+ * Übergänge dieses Ziel (A→B→C wird A→C). Gab es mehrere, wäre jede Wahl
+ * geraten — dann fallen die eingehenden Übergänge weg und der Autor entscheidet
+ * selbst.
+ */
+export function removeStep(model: BuilderModel, index: number): BuilderModel {
+  const geloescht = model.steps[index];
+  if (geloescht === undefined) {
+    return model;
+  }
+
+  const uebrig = model.steps.filter((_, i) => i !== index);
+  const vorhanden = new Set(uebrig.map((s) => s.name));
+  const ersatz = bridgeTarget(geloescht, vorhanden);
+
+  const steps = uebrig.map((step) => ({
+    ...step,
+    transitions: step.transitions
+      .map((t) => (t.to === geloescht.name && ersatz !== null ? { ...t, to: ersatz } : t))
+      // Verweise ins Leere fliegen raus — und eine Schleife auf sich selbst,
+      // die erst durch die Brücke entstünde, ebenso: die hat niemand angelegt.
+      .filter((t) => vorhanden.has(t.to) && t.to !== step.name),
+  }));
+
+  return {
+    ...model,
+    steps,
+    startStep:
+      model.startStep === geloescht.name
+        ? ersatz ?? steps[0]?.name ?? ''
+        : model.startStep,
+  };
+}
+
+/**
+ * Die Knopf-Beschriftungen des Schritts, aus seinen Übergängen eingesammelt.
+ *
+ * Der erste Übergang mit einer Beschriftung gewinnt: tragen zwei Übergänge
+ * dasselbe Ereignis, gibt es trotzdem nur einen Knopf.
+ */
+function eventLabelsOf(step: BuilderStep): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of step.transitions) {
+    const event = t.event ?? '';
+    const label = t.label.trim();
+    if (event !== '' && label !== '' && out[event] === undefined) {
+      out[event] = label;
+    }
+  }
+  return out;
+}
+
+/** Das eindeutige Ziel des gelöschten Schritts, sonst null. */
+function bridgeTarget(step: BuilderStep, vorhanden: Set<string>): string | null {
+  const ziele = new Set(step.transitions.map((t) => t.to).filter((to) => vorhanden.has(to)));
+
+  return ziele.size === 1 ? [...ziele][0] : null;
 }
 
 /** Reihenfolge der Schritte ab dem Start-Step (BFS) für die Ablauf-Vorschau. */
@@ -256,6 +405,7 @@ export function emptyStep(name: string, type: StepType): BuilderStep {
     description: '',
     fields: [],
     pageTemplateId: '',
+    publicVisible: null,
     delaySeconds: type === 'timer' ? 3600 : null,
     transitions: [],
   };

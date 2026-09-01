@@ -11,6 +11,7 @@ import {
   emptyStep,
   fromDefinition,
   orderedStepNames,
+  removeStep as removeStepFromModel,
   toDefinition,
 } from './definition-mapping';
 import { HtmlEditorComponent } from './html-editor.component';
@@ -22,6 +23,7 @@ import {
   StepType,
   TemplateDetail,
   TemplateSummary,
+  UploadHandlerEntry,
   WorkflowLifecycle,
 } from './workflow.models';
 import { WorkflowService } from './workflow.service';
@@ -93,9 +95,22 @@ export class WorkflowBuilderComponent implements OnInit {
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
+  readonly uploadHandlers = signal<UploadHandlerEntry[]>([]);
+  /** Das Archiv startet zugeklappt — es ist der Ablageort, nicht der Arbeitsplatz. */
+  readonly archivOffen = signal(false);
   readonly templates = signal<TemplateSummary[]>([]);
   readonly dataEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
+  /**
+   * Version der geladenen Definition — `null`, solange nichts geladen oder
+   * gespeichert wurde.
+   *
+   * Sie steht bewusst NICHT im BuilderModel: das Modell ist der Entwurf, den
+   * man bearbeitet, und die Version gehoert nicht dazu — sie entsteht erst
+   * beim Speichern. Ein `version`-Feld im Modell laedt dazu ein, die alte
+   * Nummer mitzuschicken, und der Server vergibt sie ohnehin selbst.
+   */
+  readonly loadedVersion = signal<number | null>(null);
   readonly selected = signal<number>(-1);
   readonly status = signal<WorkflowLifecycle>('active');
   readonly viewMode = signal<'visual' | 'json'>('visual');
@@ -198,6 +213,15 @@ export class WorkflowBuilderComponent implements OnInit {
       next: (res) => this.actions.set(res.actions),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
+    // Ein Fehlschlag bleibt hier still: Datei-Felder sind ein Sonderfall, und
+    // eine rote Meldung über dem ganzen Editor wäre eine Überreaktion für
+    // eine Auswahlliste, die die meisten Schritte gar nicht brauchen. Die
+    // Liste bleibt dann leer, und das Feld sagt selbst, dass ohne Prüfung
+    // nichts angenommen wird.
+    this.service.listUploadHandlers().subscribe({
+      next: (res) => this.uploadHandlers.set(res.handlers),
+      error: () => this.uploadHandlers.set([]),
+    });
     this.service.listTemplates().subscribe({
       next: (res) => this.templates.set(res.templates),
       error: (err: unknown) => this.error.set(this.apiError(err)),
@@ -206,6 +230,90 @@ export class WorkflowBuilderComponent implements OnInit {
       next: (res) => this.dataEntities.set(res.entities),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
+  }
+
+  /**
+   * Die Liste «Vorhandene laden», ohne das Archiv.
+   *
+   * Enthalten ist von jeder id die neueste Version — plus jede aeltere, an der
+   * noch ein Durchlauf laeuft. Letztere gehoert nicht ins Archiv: sie ist in
+   * Gebrauch, auch wenn sie nicht mehr die aktuelle ist.
+   */
+  aktuelleDefinitionen(): DefinitionSummary[] {
+    const neueste = this.neuesteVersionen();
+
+    return this.definitions().filter(
+      (d) => d.version === neueste.get(d.id) || d.runningInstances > 0,
+    );
+  }
+
+  /**
+   * Das Archiv: alte Versionen, an denen nichts mehr laeuft.
+   *
+   * Der Editor sammelte mit jeder Aenderung eine weitere Zeile an; nach einem
+   * halben Jahr stand dort ein Dutzend Eintraege zu einem einzigen Ablauf und
+   * der aktuelle ging darin unter. Neueste zuerst — wer hier sucht, sucht
+   * meistens das zuletzt Ersetzte.
+   */
+  archivierteDefinitionen(): DefinitionSummary[] {
+    const neueste = this.neuesteVersionen();
+
+    return this.definitions()
+      .filter((d) => d.version !== neueste.get(d.id) && d.runningInstances === 0)
+      .sort((a, b) => (a.id === b.id ? b.version - a.version : a.id.localeCompare(b.id)));
+  }
+
+  /**
+   * Warum eine archivierte Version NICHT geloescht werden kann — leer, wenn
+   * sie es kann.
+   *
+   * Abgeschlossene Durchlaeufe halten sie fest: ihre Schritte stehen in dieser
+   * Definition, und ohne sie waere ihr Verlauf nicht mehr lesbar.
+   */
+  loeschsperre(def: DefinitionSummary): string {
+    if (def.instances === 0) {
+      return '';
+    }
+
+    return def.instances === 1
+      ? 'Ein abgeschlossener Durchlauf verweist noch darauf.'
+      : `${def.instances} abgeschlossene Durchläufe verweisen noch darauf.`;
+  }
+
+  toggleArchiv(): void {
+    this.archivOffen.update((offen) => !offen);
+  }
+
+  deleteVersion(def: DefinitionSummary): void {
+    if (this.loeschsperre(def) !== '' || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.resetMessages();
+    this.service.deleteDefinitionVersion(def.id, def.version).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.message.set(`${def.id} v${def.version} entfernt.`);
+        this.reloadDefinitions();
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.error.set(this.apiError(err));
+        // Neu laden, statt die Zeile stehen zu lassen: die Absage kommt
+        // meistens daher, dass sich inzwischen etwas geaendert hat.
+        this.reloadDefinitions();
+      },
+    });
+  }
+
+  /** Je id die hoechste vorhandene Versionsnummer. */
+  private neuesteVersionen(): Map<string, number> {
+    const out = new Map<string, number>();
+    for (const d of this.definitions()) {
+      out.set(d.id, Math.max(out.get(d.id) ?? 0, d.version));
+    }
+
+    return out;
   }
 
   reloadDefinitions(): void {
@@ -217,6 +325,9 @@ export class WorkflowBuilderComponent implements OnInit {
 
   newDefinition(): void {
     this.model.set(emptyModel());
+    // Sonst truege der leere Entwurf die Version der zuletzt geoeffneten
+    // Definition — und die Kopfleiste behauptete etwas, das es nicht gibt.
+    this.loadedVersion.set(null);
     this.selected.set(-1);
     this.status.set('active');
     this.viewMode.set('visual');
@@ -231,6 +342,8 @@ export class WorkflowBuilderComponent implements OnInit {
     this.service.getDefinition(id).subscribe({
       next: (res) => {
         this.model.set(fromDefinition(res.definition));
+        const v = res.definition['version'];
+        this.loadedVersion.set(typeof v === 'number' ? v : null);
         this.selected.set(this.model().steps.length > 0 ? 0 : -1);
         this.viewMode.set('visual');
       },
@@ -250,10 +363,13 @@ export class WorkflowBuilderComponent implements OnInit {
   }
 
   removeStep(index: number): void {
-    const model = this.model();
-    const steps = model.steps.filter((_, i) => i !== index);
-    this.model.set({ ...model, steps });
-    this.selected.set(Math.min(index, steps.length - 1));
+    // Die Kette schliesst `removeStep` aus definition-mapping — nur das
+    // Element aus der Liste zu nehmen liess die Reihenfolge im Editor
+    // durcheinander aussehen, weil die Uebergaenge auf den geloeschten Namen
+    // zeigen blieben. Dort steht auch, warum das so und nicht anders geht.
+    const model = removeStepFromModel(this.model(), index);
+    this.model.set(model);
+    this.selected.set(Math.min(index, model.steps.length - 1));
   }
 
   private uniqueStepName(): string {
@@ -313,6 +429,30 @@ export class WorkflowBuilderComponent implements OnInit {
 
   setOp(t: BuilderTransition, value: string): void {
     t.condition.op = value as ConditionOp;
+  }
+
+  /**
+   * `ui.public` als drei Auswahlmöglichkeiten statt als Häkchen: der
+   * Vorgabefall ist NICHT «aus», sondern «die Regel der Anwendung gilt». Ein
+   * Häkchen kann diesen Unterschied nicht zeigen — und genau er entscheidet,
+   * ob beim Speichern ein Feld in der Definition landet.
+   */
+  publicChoice(step: BuilderStep): 'default' | 'show' | 'hide' {
+    if (step.publicVisible === null) {
+      return 'default';
+    }
+
+    return step.publicVisible ? 'show' : 'hide';
+  }
+
+  setPublicChoice(step: BuilderStep, value: string): void {
+    step.publicVisible = value === 'show' ? true : value === 'hide' ? false : null;
+    this.bump();
+  }
+
+  /** Der erklärende Satz zur gewählten Prüfung, falls es einen gibt. */
+  handlerBeschreibung(key: string | undefined): string {
+    return this.uploadHandlers().find((h) => h.key === key)?.description ?? '';
   }
 
   setFieldType(field: { type: string }, value: string): void {
@@ -528,6 +668,7 @@ export class WorkflowBuilderComponent implements OnInit {
       mode: 'assistant',
       condition: { field: '', op: '==', value: '' },
       raw: 'true',
+      label: '',
     };
     step.transitions.push(t);
     this.bump();
@@ -597,6 +738,7 @@ export class WorkflowBuilderComponent implements OnInit {
       next: (res) => {
         this.busy.set(false);
         const label = res.status === 'active' ? 'aktiv' : res.status === 'draft' ? 'Entwurf' : 'inaktiv';
+        this.loadedVersion.set(res.version);
         this.message.set(`Gespeichert: ${res.id} v${res.version} (${label}).`);
         this.reloadDefinitions();
       },

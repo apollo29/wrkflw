@@ -67,22 +67,55 @@
   justify-content: space-between;
   flex-wrap: wrap;
 }
-.wfb__bar-head { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+/* ID, Name und Version nebeneinander. Untereinander brauchten sie zwei
+   Zeilen Hoehe fuer zwei Angaben, die zusammengehoeren — und die Kopfleiste
+   ist die Zeile, in der man sich orientiert. Bei schmalem Fenster bricht sie
+   um, statt die Werkzeuge rechts zu verdraengen. */
+.wfb__bar-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  /* Untergrenze, damit die ganze Leiste umbricht, bevor die Felder
+     unbrauchbar schmal werden: bei 820 px waren ID und Name sonst auf gut
+     60 px zusammengedrueckt und zeigten «trainer» statt
+     «trainer-onboarding». `min()` verhindert, dass die Untergrenze auf sehr
+     schmalen Fenstern selbst zum Ueberlauf fuehrt. */
+  min-width: min(100%, 360px);
+  flex: 1;
+  /* Kein Umbruch innerhalb der Kopfzeile: sonst rutscht ausgerechnet die
+     Version in die zweite Zeile, und die drei Angaben stehen wieder
+     untereinander. Die Felder geben stattdessen nach (min-width: 0), und
+     wenn es wirklich eng wird, bricht die ganze Leiste um — dort ist der
+     Umbruch richtig aufgehoben. */
+  flex-wrap: nowrap;
+}
 .wfb .wfb__bar-id {
-  width: 220px; max-width: 100%;
+  flex: 0 1 220px; min-width: 0;
   height: 24px; padding: 0 4px;
   font-family: var(--_mono); font-size: 11px; color: var(--_muted);
   border-color: transparent; background: transparent;
 }
 .wfb .wfb__bar-id:hover, .wfb .wfb__bar-id:focus { border-color: var(--_border); background: var(--_surface); }
 .wfb .wfb__bar-name {
-  width: 360px; max-width: 100%;
+  flex: 0 1 360px; min-width: 0;
   height: 30px; padding: 0 4px;
   font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
   border-color: transparent; background: transparent;
 }
 .wfb .wfb__bar-name:hover, .wfb .wfb__bar-name:focus { border-color: var(--_border); background: var(--_surface); }
 .wfb__bar-id--static { font-family: var(--_mono); font-size: 11px; color: var(--_muted); }
+.wfb__bar-version {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--_border);
+  border-radius: 999px;
+  background: var(--_surface-2);
+  font-family: var(--_mono); font-size: 11px; line-height: 16px;
+  color: var(--_muted);
+  white-space: nowrap;
+}
+.wfb__bar-version--neu { border-style: dashed; }
 .wfb__bar-name--static { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 
 .wfb__bar-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -306,6 +339,12 @@
 .wfb .wfb__field-row input { border-color: transparent; height: 30px; background: transparent; }
 .wfb .wfb__field-row input:hover, .wfb .wfb__field-row input:focus { border-color: var(--_border); }
 .wfb .wfb__field-row select { height: 30px; border-color: transparent; color: var(--_muted); margin-left: auto; background: transparent; }
+/* Die Handler-Zeile gehoert zum Feld darueber, nicht daneben: kein Trennstrich,
+   und der Text sitzt buendig unter dem Label-Feld. */
+.wfb__field-row--sub { padding-top: 0; }
+.wfb__field-row + .wfb__field-row--sub { border-top: none; }
+.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); }
+.wfb__fields .wfb__hint { padding: 0 10px 6px; margin: 0; }
 
 /* Übergänge */
 .wfb__trans-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 10px; padding-top: 14px; border-top: 1px solid var(--_border); }
@@ -379,3 +418,19 @@
   .wfb__side { border-right: 0; border-bottom: 1px solid var(--_border); }
   .wfb__typecards { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Archiv (alte Versionen) ── */
+.wfb__archiv { margin-top: 10px; border-top: 1px solid var(--_border); padding-top: 8px; }
+.wfb .wfb__archiv-head {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: 30px; padding: 0 6px;
+  border-color: transparent; background: transparent;
+  color: var(--_muted); font-size: 12.5px; justify-content: flex-start;
+}
+.wfb .wfb__archiv-head:hover { border-color: var(--_border); color: var(--_text); }
+.wfb__archiv-caret { width: 10px; font-size: 10px; }
+.wfb__archiv-row { display: flex; align-items: stretch; gap: 4px; }
+.wfb__archiv-row .wfb__load { flex: 1; min-width: 0; }
+.wfb .wfb__load--archiv { opacity: 0.75; }
+.wfb .wfb__load--archiv:hover { opacity: 1; }
+.wfb__archiv-hint { padding: 0 10px 6px 24px; }

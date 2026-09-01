@@ -44,6 +44,10 @@ final class ApiFactory
         ['GET', '/workflows', 'list'],
         ['GET', '/workflows/{def}', 'get'],
         ['POST', '/workflows/{def}', 'save'],
+        // Muss NACH '/workflows/{def}' stehen? Nein — anderer Pfad und andere
+        // Methode, es gibt keine Ueberschneidung. Die Reihenfolge hier ist nur
+        // Lesbarkeit.
+        ['DELETE', '/workflows/{def}/versions/{version}', 'deleteVersion'],
     ];
 
     /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, ActionController-Aktion */

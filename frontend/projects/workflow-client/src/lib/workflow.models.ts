@@ -29,6 +29,8 @@ export interface UiField {
   name: string;
   label?: string;
   type?: string;
+  /** Nur bei type 'file': welche Prüfung die Host-App auf die Datei anwendet. */
+  handler?: string;
 }
 
 /** UI-Beschreibung eines interaktiven Schritts (aus der Definition). */
@@ -39,6 +41,10 @@ export interface StepUi {
   events?: string[];
   /** Optionale Referenz auf eine 'page'-Vorlage, die der Runner anzeigt. */
   templateId?: string;
+  /** Aufschrift je Ereignis; ohne Eintrag steht der rohe Ereignisname auf dem Knopf. */
+  eventLabels?: Record<string, string>;
+  /** Sichtbarkeit auf einer öffentlichen Seite; die Host-App wertet sie aus. */
+  public?: boolean;
 }
 
 /** Aktueller Schritt inkl. UI-Metadaten (GET /instances/{id}/current-step). */
@@ -77,6 +83,10 @@ export interface DefinitionSummary {
   name: string;
   active: boolean;
   status: WorkflowLifecycle;
+  /** Alle Durchläufe dieser Version — auch abgeschlossene und abgebrochene. */
+  instances: number;
+  /** Davon die noch laufenden. */
+  runningInstances: number;
 }
 
 export interface DefinitionListResponse {
@@ -105,6 +115,20 @@ export interface ActionField {
 }
 
 /** Ein Eintrag im Action-Katalog (GET /actions). */
+/**
+ * Eine Datei-Prüfung, die die Host-App auf ein `file`-Feld anwenden kann
+ * (GET /upload-handlers). Die Engine kennt die Werte nicht — sie fragt danach.
+ */
+export interface UploadHandlerEntry {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface UploadHandlerCatalogResponse {
+  handlers: UploadHandlerEntry[];
+}
+
 export interface ActionCatalogEntry {
   key: string;
   label?: string;

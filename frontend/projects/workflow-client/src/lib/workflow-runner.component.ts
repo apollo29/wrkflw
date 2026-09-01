@@ -65,6 +65,17 @@ import { WorkflowService } from './workflow.service';
                     />
                     <span>{{ field.label ?? field.name }}</span>
                   </label>
+                } @else if (field.type === 'file') {
+                  <!--
+                    Dateien nimmt dieser Runner nicht entgegen: die Engine-API
+                    kennt nur JSON-Events, der Upload-Weg gehoert der Host-App
+                    und ihrer eigenen Seite. Ein Dateifeld hier anzubieten,
+                    das nichts hochlaedt, waere die schlechtere Antwort.
+                  -->
+                  <div class="wf-field wf-field--file">
+                    <span class="wf-field__label">{{ field.label ?? field.name }}</span>
+                    <span class="wf-field__note">Datei-Upload — nur über die Seite der Anwendung.</span>
+                  </div>
                 } @else {
                   <label class="wf-field">
                     <span class="wf-field__label">{{ field.label ?? field.name }}</span>
@@ -80,7 +91,7 @@ import { WorkflowService } from './workflow.service';
               <div class="wf-actions">
                 @for (event of s.events; track event; let first = $first) {
                   <button type="submit" class="wf-btn" [class.wf-btn--primary]="first"
-                          [disabled]="busy()" (click)="submit(event)">{{ event }}</button>
+                          [disabled]="busy()" (click)="submit(event)">{{ eventLabel(event) }}</button>
                 }
               </div>
             </div>
@@ -153,6 +164,20 @@ export class WorkflowRunnerComponent implements OnInit {
 
   setValue(name: string, value: unknown): void {
     this.values.update((current) => ({ ...current, [name]: value }));
+  }
+
+  /**
+   * Die Aufschrift des Knopfes: was die Definition unter `ui.eventLabels`
+   * hinterlegt hat, sonst der rohe Ereignisname.
+   *
+   * Vorher stand hier IMMER der rohe Name. Bei `submit` faellt das nicht auf,
+   * bei allem anderen schon — ein zweiter Ausgang «ich komme nicht weiter»
+   * hiesse sonst «hilfe».
+   */
+  eventLabel(event: string): string {
+    const label = this.step()?.ui.eventLabels?.[event] ?? '';
+
+    return label.trim() !== '' ? label : event;
   }
 
   stringValue(name: string): string {
