@@ -351,6 +351,19 @@ describe('definition-mapping', () => {
       expect(uiVon(model, 'a')?.['public']).toBeTrue();
     });
 
+    it('keeps a heading on a visible background step', () => {
+      // Ohne sie stand in der Checkliste der technische Schrittname — genau
+      // das war auf dem Screenshot zu sehen.
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', ui: { public: true, title: 'Zertifikat hochladen' }, transitions: [] } },
+      });
+
+      expect(model.steps[0].title).toBe('Zertifikat hochladen');
+      expect(uiVon(model, 'a')?.['title']).toBe('Zertifikat hochladen');
+    });
+
     it('does not create a ui block for an automatic step on the default', () => {
       const model = fromDefinition({
         id: 'f',

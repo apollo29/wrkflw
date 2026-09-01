@@ -55,6 +55,12 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - `WorkflowRepositoryInterface::deleteDefinitionVersion()` — BREAKING fuer
   eigene Repository-Implementierungen: die Methode kommt zum Port dazu.
 
+- **Ueberschrift fuer sichtbar geschaltete Hintergrundschritte.** Ein Schritt vom
+  Typ «Automatisch», «Timer» oder «Workflow» hatte kein Textfeld — auf einer
+  oeffentlichen Seite stand deshalb sein technischer Schluessel
+  («upload_uefa_certificate»). Wer ihn auf «Anzeigen» stellt, kann jetzt eine
+  Ueberschrift dazu setzen.
+
 ### Fixed
 - **Einen Schritt zu loeschen brachte die Reihenfolge im Editor durcheinander.** Der
   Grund war keine Sortierung, sondern ein Abriss: die Uebergaenge zeigten weiter auf

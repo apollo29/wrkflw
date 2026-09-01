@@ -264,7 +264,13 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     // Ein automatischer oder Timer-Schritt hat sonst gar kein `ui`. Wer ihn
     // sichtbar schaltet («Deine Anmeldung wird geprüft»), braucht trotzdem
     // eines — sonst wäre die Einstellung nach dem Speichern wieder weg.
-    out['ui'] = { public: step.publicVisible };
+    const ui: Record<string, unknown> = { public: step.publicVisible };
+    // Und eine Überschrift, sonst steht in der Checkliste der technische
+    // Schrittname.
+    if (step.title !== '') {
+      ui['title'] = step.title;
+    }
+    out['ui'] = ui;
   }
 
   if (step.type === 'timer' && step.delaySeconds !== null) {

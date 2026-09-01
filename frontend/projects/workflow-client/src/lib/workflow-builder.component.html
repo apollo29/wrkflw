@@ -266,6 +266,18 @@
             umgekehrt einen Eingabe-Schritt.
           </div>
 
+          <!--
+            Ein Hintergrundschritt hat sonst kein Textfeld — in der Checkliste
+            stand deshalb sein technischer Schlüssel («upload_uefa_certificate»).
+            Wer ihn sichtbar schaltet, braucht auch etwas Lesbares dafür.
+          -->
+          @if (step.type !== 'interactive' && step.publicVisible === true) {
+            <div class="wfb__label">Überschrift (auf der öffentlichen Seite)</div>
+            <input type="text" class="wfb__wide" [ngModel]="step.title"
+                   (ngModelChange)="step.title = $event; bump()"
+                   placeholder="z. B. «Zertifikat hochladen»" aria-label="Überschrift" />
+          }
+
           @if (step.type === 'automatic') {
             @if (!isWorkflowStep(step) && !isDataCheckStep(step)) {
               <div class="wfb__label">Aktion</div>
