@@ -307,9 +307,22 @@
                   <select [ngModel]="f.type" (ngModelChange)="setFieldType(f, $event)">
                     <option value="text">Text</option>
                     <option value="boolean">Ja/Nein</option>
+                    <option value="file">Datei</option>
                   </select>
                   <button type="button" class="wfb__step-x" (click)="removeField(step, $index)" aria-label="Feld entfernen">×</button>
                 </div>
+                @if (f.type === 'file') {
+                  <div class="wfb__field-row wfb__field-row--sub">
+                    <span class="wfb__field-sub-label">Prüfung</span>
+                    <input type="text" [(ngModel)]="f.handler" placeholder="handler" style="flex:1;"
+                           aria-label="Prüfung der hochgeladenen Datei" />
+                  </div>
+                  <div class="wfb__hint">
+                    Welche Prüfungen es gibt, legt die Anwendung fest — die Engine reicht den
+                    Namen nur durch. Ohne Eintrag weiss sie nicht, was mit der Datei geschehen soll,
+                    und weist den Upload ab.
+                  </div>
+                }
               }
             </div>
           }

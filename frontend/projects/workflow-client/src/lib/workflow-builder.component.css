@@ -339,6 +339,12 @@
 .wfb .wfb__field-row input { border-color: transparent; height: 30px; background: transparent; }
 .wfb .wfb__field-row input:hover, .wfb .wfb__field-row input:focus { border-color: var(--_border); }
 .wfb .wfb__field-row select { height: 30px; border-color: transparent; color: var(--_muted); margin-left: auto; background: transparent; }
+/* Die Handler-Zeile gehoert zum Feld darueber, nicht daneben: kein Trennstrich,
+   und der Text sitzt buendig unter dem Label-Feld. */
+.wfb__field-row--sub { padding-top: 0; }
+.wfb__field-row + .wfb__field-row--sub { border-top: none; }
+.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); }
+.wfb__fields .wfb__hint { padding: 0 10px 6px; margin: 0; }
 
 /* Übergänge */
 .wfb__trans-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 10px; padding-top: 14px; border-top: 1px solid var(--_border); }

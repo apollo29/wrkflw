@@ -3,6 +3,24 @@
 Alle nennenswerten Aenderungen an diesem Projekt werden hier dokumentiert.
 Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Feldtyp `file` fuer interaktive Schritte (client 1.15.0).** Ein Schritt kann jetzt
+  eine Datei verlangen. Der Editor bietet den Typ in der Feldliste an und daneben eine
+  Angabe `handler` — ein freier String, den die Engine unveraendert durchreicht, genau
+  wie `ui` insgesamt. Was ein Handler bedeutet und welche es gibt, weiss allein die
+  Host-App; die Engine kennt weder die Namen noch nimmt sie selbst Dateien entgegen.
+  Der Upload-Weg gehoert damit vollstaendig der Host-App.
+- Der `handler` wird nur an Feldern vom Typ `file` gelesen und geschrieben. Wer den Typ
+  im Editor nachtraeglich auf Text stellt, laesst ihn nicht als stille Altlast in der
+  Definition zurueck.
+
+### Changed
+- Der Runner zeigt ein `file`-Feld als Hinweis statt als Eingabefeld: die Engine-API
+  kennt nur JSON-Events. Ein Dateifeld anzubieten, das nichts hochlaedt, waere die
+  schlechtere Antwort.
+
 ## [1.18.0] - 2026-09-01
 
 ### Added

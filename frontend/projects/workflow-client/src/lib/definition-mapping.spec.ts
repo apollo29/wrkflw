@@ -140,6 +140,50 @@ describe('definition-mapping', () => {
     expect('templateId' in ui).toBeFalse();
   });
 
+  it('keeps the handler of a file field across a load/save round trip', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'upload',
+      steps: {
+        upload: {
+          type: 'interactive',
+          ui: {
+            fields: [{ name: 'zertifikat', label: 'Zertifikat', type: 'file', handler: 'uefa_certificate' }],
+          },
+          transitions: [],
+        },
+      },
+    });
+    expect(model.steps[0].fields[0].handler).toBe('uefa_certificate');
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['upload'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect((ui['fields'] as Record<string, unknown>[])[0]['handler']).toBe('uefa_certificate');
+  });
+
+  it('drops the handler when the field is not a file field', () => {
+    // Der Editor laesst den Typ umstellen; ein Handler an einem Textfeld
+    // wirkte nirgends, bliebe aber als Altlast in der Definition stehen.
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: {
+        ask: {
+          type: 'interactive',
+          ui: { fields: [{ name: 'wert', label: 'Wert', type: 'text', handler: 'uefa_certificate' }] },
+          transitions: [],
+        },
+      },
+    });
+    expect(model.steps[0].fields[0].handler).toBeUndefined();
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect('handler' in (ui['fields'] as Record<string, unknown>[])[0]).toBeFalse();
+  });
+
   it('orders steps breadth-first from the start step', () => {
     const model = fromDefinition({
       id: 'f',

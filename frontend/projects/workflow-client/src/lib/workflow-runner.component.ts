@@ -65,6 +65,17 @@ import { WorkflowService } from './workflow.service';
                     />
                     <span>{{ field.label ?? field.name }}</span>
                   </label>
+                } @else if (field.type === 'file') {
+                  <!--
+                    Dateien nimmt dieser Runner nicht entgegen: die Engine-API
+                    kennt nur JSON-Events, der Upload-Weg gehoert der Host-App
+                    und ihrer eigenen Seite. Ein Dateifeld hier anzubieten,
+                    das nichts hochlaedt, waere die schlechtere Antwort.
+                  -->
+                  <div class="wf-field wf-field--file">
+                    <span class="wf-field__label">{{ field.label ?? field.name }}</span>
+                    <span class="wf-field__note">Datei-Upload — nur über die Seite der Anwendung.</span>
+                  </div>
                 } @else {
                   <label class="wf-field">
                     <span class="wf-field__label">{{ field.label ?? field.name }}</span>

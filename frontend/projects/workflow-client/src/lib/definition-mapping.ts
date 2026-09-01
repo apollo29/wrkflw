@@ -26,6 +26,13 @@ export interface BuilderField {
   name: string;
   label: string;
   type: string;
+  /**
+   * Nur fuer `type: 'file'`: welche Pruefung die Host-App auf die hochgeladene
+   * Datei anwendet. Die Engine kennt die moeglichen Werte NICHT — sie reicht
+   * den String unveraendert durch, genau wie `ui` insgesamt. Welche Handler es
+   * gibt, weiss allein die Host-App (in coach-admin z. B. `uefa_certificate`).
+   */
+  handler?: string;
 }
 
 export interface BuilderStep {
@@ -132,11 +139,20 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
     description: asString(ui['description']),
     fields: asArray(ui['fields']).map((f) => {
       const field = asRecord(f);
-      return {
+      const type = asString(field['type'], 'text');
+      const out: BuilderField = {
         name: asString(field['name']),
         label: asString(field['label'], asString(field['name'])),
-        type: asString(field['type'], 'text'),
+        type,
       };
+      // `handler` nur bei Datei-Feldern uebernehmen: an einem Textfeld haette
+      // er keine Wirkung, wuerde aber beim Speichern mitgeschrieben und beim
+      // naechsten Laden wieder auftauchen.
+      const handler = asString(field['handler']);
+      if (type === 'file' && handler !== '') {
+        out.handler = handler;
+      }
+      return out;
     }),
     pageTemplateId: asString(ui['templateId']),
     delaySeconds: typeof delay === 'number' ? delay : null,
@@ -167,6 +183,23 @@ function transitionToJson(t: BuilderTransition): Record<string, unknown> {
   return out;
 }
 
+/**
+ * `handler` gehoert an Datei-Felder und nur dorthin. Wer den Typ im Editor
+ * nachtraeglich auf Text stellt, soll den Handler nicht als stille Altlast in
+ * der Definition zuruecklassen.
+ */
+function fieldToJson(field: BuilderField): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    name: field.name,
+    label: field.label,
+    type: field.type,
+  };
+  if (field.type === 'file' && (field.handler ?? '') !== '') {
+    out['handler'] = field.handler;
+  }
+  return out;
+}
+
 function stepToJson(step: BuilderStep): Record<string, unknown> {
   const out: Record<string, unknown> = { type: step.type };
 
@@ -184,7 +217,7 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     const ui: Record<string, unknown> = {
       title: step.title,
       description: step.description,
-      fields: step.fields,
+      fields: step.fields.map(fieldToJson),
       events,
     };
     if (step.pageTemplateId) {
