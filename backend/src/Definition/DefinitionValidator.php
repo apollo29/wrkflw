@@ -13,7 +13,8 @@ use WorkflowEngine\Exception\InvalidDefinitionException;
  *  - alle Transition-Ziele ('to') verweisen auf existierende Steps,
  *  - es gibt keine unerreichbaren Steps,
  *  - kein erreichbarer Step sitzt in einem Zyklus ohne Ausgang
- *    (jeder erreichbare Step muss einen Endzustand erreichen koennen).
+ *    (jeder erreichbare Step muss einen Endzustand erreichen koennen),
+ *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen.
  *
  * Alle gefundenen Fehler werden gesammelt und gebuendelt geworfen.
  */
@@ -27,6 +28,7 @@ final class DefinitionValidator
         $errors = [];
 
         $this->checkTransitionTargets($def, $errors);
+        $this->checkEventlessExit($def, $errors);
         $startExists = $def->hasStep($def->startStep);
         if (!$startExists) {
             $errors[] = "Start-Step '{$def->startStep}' existiert nicht.";
@@ -40,6 +42,40 @@ final class DefinitionValidator
 
         if ($errors !== []) {
             throw new InvalidDefinitionException(array_values(array_unique($errors)));
+        }
+    }
+
+    /**
+     * Ein nicht-interaktiver Step, dessen saemtliche Uebergaenge ein Ereignis
+     * verlangen, ist eine Sackgasse.
+     *
+     * GEMELDET: ein Schritt «starte anderen Workflow, warte auf Abschluss»,
+     * dessen einziger Uebergang `"event": "submit"` trug. Automatische und
+     * Timer-Schritte bekommen nie einen Knopfdruck — die Engine fand keinen
+     * Weg hinaus und hielt das fuer das Ende des Ablaufs. Die restlichen
+     * Schritte liefen nie, und nichts zeigte an, dass etwas fehlte.
+     *
+     * Die Engine scheitert seitdem sichtbar daran; hier faellt es frueher auf,
+     * beim Speichern. KEINE Uebergaenge bleibt erlaubt: das ist ein Endschritt
+     * und keine Sackgasse.
+     *
+     * @param list<string> $errors
+     */
+    private function checkEventlessExit(WorkflowDefinition $def, array &$errors): void
+    {
+        foreach ($def->steps as $name => $step) {
+            if ($step->isInteractive() || $step->transitions === []) {
+                continue;
+            }
+
+            foreach ($step->transitions as $t) {
+                if ($t->event === null) {
+                    continue 2;
+                }
+            }
+
+            $errors[] = "Step '{$name}' hat keinen Uebergang ohne Ereignis. Ein Schritt vom Typ "
+                . "'{$step->type}' bekommt nie einen Knopfdruck und kaeme nicht weiter.";
         }
     }
 

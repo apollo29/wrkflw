@@ -563,6 +563,48 @@ export class WorkflowBuilderComponent implements OnInit {
     return this.dataEntities().find((e) => e.entity === entity)?.fields ?? [];
   }
 
+  /**
+   * Der Wert eines Konfigurationsfeldes vom Typ `field-ref-list` — die Liste
+   * der zusätzlich zu lesenden Spalten (`check_data`, `fields`).
+   *
+   * Robust gegen alles, was nicht danach aussieht: die Definition ist im
+   * Editor bearbeitbar und kann aus einer älteren Version einen einzelnen
+   * String tragen.
+   */
+  configList(step: BuilderStep, name: string): string[] {
+    const value = step.config[name];
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+  }
+
+  isInConfigList(step: BuilderStep, name: string, spalte: string): boolean {
+    return this.configList(step, name).includes(spalte);
+  }
+
+  /**
+   * Eine Spalte an- oder abwählen.
+   *
+   * Die Auswahl folgt der Reihenfolge der Tabelle, nicht der des Anklickens —
+   * sonst sähe dieselbe Auswahl je nach Bedienung anders aus und erzeugte
+   * einen Diff, der nichts bedeutet.
+   */
+  toggleConfigList(step: BuilderStep, name: string, spalte: string, an: boolean): void {
+    const gewaehlt = new Set(this.configList(step, name));
+    if (an) {
+      gewaehlt.add(spalte);
+    } else {
+      gewaehlt.delete(spalte);
+    }
+    const geordnet = this.entityFields(step).filter((f) => gewaehlt.has(f));
+    if (geordnet.length > 0) {
+      step.config[name] = geordnet;
+    } else {
+      // Ein leeres Feld gehört nicht in die Definition — es sähe aus wie eine
+      // Einstellung, wäre aber keine.
+      delete step.config[name];
+    }
+    this.bump();
+  }
+
   stepIcon(step: BuilderStep): string {
     return this.kindIcon(this.stepKind(step));
   }

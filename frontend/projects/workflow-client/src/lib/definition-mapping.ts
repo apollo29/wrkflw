@@ -227,10 +227,14 @@ export function fromDefinition(json: Record<string, unknown>): BuilderModel {
   };
 }
 
-function transitionToJson(t: BuilderTransition): Record<string, unknown> {
+/**
+ * @param mitEreignis ob Ereignisse an diesem Schritt überhaupt etwas bewirken —
+ *   nur beim interaktiven. Siehe die Erklärung in `stepToJson`.
+ */
+function transitionToJson(t: BuilderTransition, mitEreignis: boolean): Record<string, unknown> {
   const when = t.mode === 'raw' ? t.raw.trim() || 'true' : compileCondition(t.condition);
   const out: Record<string, unknown> = { to: t.to };
-  if (t.event !== null && t.event !== '') {
+  if (mitEreignis && t.event !== null && t.event !== '') {
     out['event'] = t.event;
   }
   if (when !== 'true') {
@@ -304,7 +308,20 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     out['delaySeconds'] = step.delaySeconds;
   }
 
-  out['transitions'] = step.transitions.map(transitionToJson);
+  // Ereignisse gehören an interaktive Schritte und nur dorthin.
+  //
+  // GEMELDET: nach Abschluss eines Kind-Workflows wurde der nächste Schritt im
+  // Eltern-Ablauf übersprungen. Der Übergang aus dem Workflow-Schritt trug ein
+  // `"event": "submit"` — stehengeblieben davon, dass der Schritt vorher
+  // interaktiv war. Ein automatischer Schritt bekommt nie einen Knopfdruck; die
+  // Engine fand keinen Weg hinaus und hielt das für das Ende des Ablaufs.
+  //
+  // Der Editor zeigt das Feld bei automatischen Schritten gar nicht an — genau
+  // deshalb muss das Speichern es entfernen: sonst schleppte die Definition eine
+  // Einstellung mit, die niemand mehr sehen oder ändern kann. Ein Umstellen des
+  // Schritt-Typs repariert die Definition damit beim nächsten Speichern von
+  // selbst.
+  out['transitions'] = step.transitions.map((t) => transitionToJson(t, step.type === 'interactive'));
   return out;
 }
 

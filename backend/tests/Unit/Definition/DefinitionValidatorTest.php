@@ -100,4 +100,61 @@ final class DefinitionValidatorTest extends TestCase
         $this->validator->validate($def);
         $this->expectNotToPerformAssertions();
     }
+
+    /**
+     * GEMELDET: ein Workflow-Schritt («starte anderen Workflow, warte auf
+     * Abschluss»), dessen einziger Uebergang `"event": "submit"` trug. Ein
+     * nicht-interaktiver Schritt bekommt nie einen Knopfdruck; der Ablauf
+     * endete deshalb still mitten drin, statt weiterzulaufen.
+     *
+     * Die Engine scheitert seitdem sichtbar daran. Hier faellt es frueher auf:
+     * beim Speichern im Editor, bevor jemand den Ablauf startet.
+     */
+    public function testAnAutomaticStepWhoseOnlyExitNeedsAnEventThrows(): void
+    {
+        $def = $this->def('a', [
+            'a' => ['transitions' => [['to' => 'b', 'event' => 'submit']]],
+            'b' => ['transitions' => []],
+        ]);
+
+        try {
+            $this->validator->validate($def);
+            self::fail('Erwartete InvalidDefinitionException');
+        } catch (InvalidDefinitionException $e) {
+            self::assertStringContainsString('a', implode(' ', $e->errors()));
+        }
+    }
+
+    /** Ein interaktiver Schritt lebt von Ereignissen — dort ist es richtig so. */
+    public function testAnInteractiveStepMayHaveOnlyEventTransitions(): void
+    {
+        $def = $this->def('a', [
+            'a' => ['type' => 'interactive', 'transitions' => [['to' => 'b', 'event' => 'submit']]],
+            'b' => ['transitions' => []],
+        ]);
+
+        // Wirft keine Exception -> Definition ist gueltig.
+        $this->expectNotToPerformAssertions();
+        $this->validator->validate($def);
+    }
+
+    /**
+     * Und die Mischung ist der eigentliche Sinn der Regel: ein Timer-Schritt
+     * darf einen Ereignis-Ausgang haben, solange er auch ohne einen
+     * weiterkommt — sonst bliebe er stehen, wenn die Zeit abgelaufen ist.
+     */
+    public function testAMixOfEventAndEventlessExitsIsFine(): void
+    {
+        $def = $this->def('a', [
+            'a' => ['type' => 'timer', 'delaySeconds' => 60, 'transitions' => [
+                ['to' => 'b', 'event' => 'abbrechen'],
+                ['to' => 'b'],
+            ]],
+            'b' => ['transitions' => []],
+        ]);
+
+        // Wirft keine Exception -> Definition ist gueltig.
+        $this->expectNotToPerformAssertions();
+        $this->validator->validate($def);
+    }
 }

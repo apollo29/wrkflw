@@ -348,6 +348,25 @@
                   <option value="">— Feld wählen —</option>
                   @for (f of entityFields(step); track f) { <option [value]="f">{{ f }}</option> }
                 </select>
+              } @else if (field.type === 'field-ref-list') {
+                @if (entityFields(step).length === 0) {
+                  <div class="wfb__hint">Erst eine Tabelle wählen.</div>
+                } @else {
+                  <div class="wfb__fieldlist">
+                    @for (f of entityFields(step); track f) {
+                      <label class="wfb__check">
+                        <input type="checkbox" [checked]="isInConfigList(step, field.name, f)"
+                               (change)="toggleConfigList(step, field.name, f, $any($event.target).checked)" />
+                        {{ f }}
+                      </label>
+                    }
+                  </div>
+                  <div class="wfb__hint">
+                    Jede gewählte Spalte landet im Kontext als
+                    <code>{{ configValue(step, 'as') || 'checkedValue' }}_spalte</code> — genau so
+                    heisst dann das Anzeigefeld im nächsten Schritt.
+                  </div>
+                }
               } @else if (field.type === 'boolean') {
                 <label class="wfb__check">
                   <input type="checkbox" [ngModel]="configBool(step, field.name)"
@@ -419,9 +438,17 @@
                     <option value="text">Text</option>
                     <option value="boolean">Ja/Nein</option>
                     <option value="file">Datei</option>
+                    <option value="display">Nur anzeigen</option>
                   </select>
                   <button type="button" class="wfb__step-x" (click)="removeField(step, $index)" aria-label="Feld entfernen">×</button>
                 </div>
+                @if (f.type === 'display') {
+                  <div class="wfb__hint">
+                    Zeigt den Kontextwert unter diesem Namen an und nimmt keine Eingabe
+                    entgegen — was hier steht, lässt sich über die Seite auch nicht
+                    überschreiben.
+                  </div>
+                }
                 @if (f.type === 'file') {
                   <div class="wfb__field-row wfb__field-row--sub">
                     <span class="wfb__field-sub-label">Prüfung</span>

@@ -65,6 +65,18 @@ import { WorkflowService } from './workflow.service';
                     />
                     <span>{{ field.label ?? field.name }}</span>
                   </label>
+                } @else if (field.type === 'display') {
+                  <!--
+                    Anzeigefeld: zeigt einen Wert, den ein vorheriger Schritt
+                    in den Kontext geschrieben hat (etwa ein Datencheck). Es
+                    nimmt nichts entgegen und schickt nichts mit — sonst waere
+                    der Name, unter dem ein Wert angezeigt wird, zugleich der
+                    Name, unter dem er sich ueberschreiben liesse.
+                  -->
+                  <div class="wf-field wf-field--display">
+                    <span class="wf-field__label">{{ field.label ?? field.name }}</span>
+                    <span class="wf-field__value">{{ anzeigewert(s, field.name) }}</span>
+                  </div>
                 } @else if (field.type === 'file') {
                   <!--
                     Dateien nimmt dieser Runner nicht entgegen: die Engine-API
@@ -183,6 +195,22 @@ export class WorkflowRunnerComponent implements OnInit {
   stringValue(name: string): string {
     const value = this.values()[name];
     return value === undefined || value === null ? '' : String(value);
+  }
+
+  /**
+   * Der anzuzeigende Wert eines `display`-Feldes: aus dem Kontext des
+   * Schritts, nicht aus dem Formular.
+   *
+   * Ein leerer Kontextwert bekommt einen Strich statt einer leeren Zeile —
+   * sonst sähe «nichts geladen» aus wie «kein Feld».
+   */
+  anzeigewert(step: CurrentStep, name: string): string {
+    const value = step.context?.[name];
+    if (value === undefined || value === null || value === '') {
+      return '—';
+    }
+
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
 
   boolValue(name: string): boolean {

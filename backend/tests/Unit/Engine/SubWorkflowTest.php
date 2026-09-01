@@ -110,6 +110,107 @@ final class SubWorkflowTest extends TestCase
     }
 
     /**
+     * GEMELDET: «wenn der Workflow einen anderen Workflow startet und dieser
+     * schliesst, wird der naechste Schritt im Eltern-Ablauf uebersprungen.»
+     *
+     * Die Ursache stand in der Definition: der Uebergang aus dem
+     * Workflow-Schritt trug ein `event`. Ein automatischer Schritt bekommt nie
+     * einen Knopfdruck — die Engine suchte den ereignislosen Weg, fand keinen,
+     * hielt das fuer «nichts mehr zu tun» und setzte den GANZEN Eltern-Ablauf
+     * auf `completed`. Die restlichen Schritte liefen nie.
+     *
+     * Ein Ablauf, der mitten drin still endet, ist der schlimmste der
+     * moeglichen Ausgaenge: nichts zeigt an, dass etwas fehlt. Er scheitert
+     * jetzt sichtbar und benennt den Schritt.
+     */
+    public function testAnAutomaticStepWhoseOnlyExitNeedsAnEventFailsLoudly(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray($this->childInteractive()));
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'parent',
+            'startStep' => 'call_child',
+            'steps' => [
+                'call_child' => [
+                    'type' => 'automatic',
+                    'action' => 'start_workflow',
+                    'config' => ['workflowId' => 'child', 'waitForCompletion' => true],
+                    // Genau der gemeldete Fall: der einzige Ausgang verlangt ein Ereignis.
+                    'transitions' => [['to' => 'weiter', 'event' => 'submit']],
+                ],
+                'weiter' => [
+                    'type' => 'interactive',
+                    'ui' => ['events' => ['submit']],
+                    'transitions' => [['to' => 'done', 'event' => 'submit']],
+                ],
+                'done' => ['type' => 'automatic', 'transitions' => []],
+            ],
+        ]));
+
+        $parent = $this->engine->start('parent');
+        $child = $this->childrenOf($parent->id)[0];
+
+        $this->engine->handleEvent($child->id, 'submit', ['ok' => true]);
+
+        $frisch = $this->reload($parent->id);
+        self::assertSame(WorkflowInstance::FAILED, $frisch->status, 'Der Ablauf endete still statt zu scheitern.');
+        self::assertSame('call_child', $frisch->currentStep, 'Der Schritt, an dem es haengt, muss stehen bleiben.');
+        self::assertStringContainsString('call_child', (string) $frisch->lastError);
+    }
+
+    /**
+     * Dieselbe Luecke ohne Kind-Workflow: ein gewoehnlicher automatischer
+     * Schritt, dessen einziger Ausgang ein Ereignis verlangt. Er wurde
+     * genauso still zum Ende des Ablaufs.
+     */
+    public function testTheSameHoleInAPlainAutomaticStep(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'flow',
+            'startStep' => 'a',
+            'steps' => [
+                'a' => ['type' => 'automatic', 'transitions' => [['to' => 'b', 'event' => 'submit']]],
+                'b' => ['type' => 'automatic', 'transitions' => []],
+            ],
+        ]));
+
+        $instance = $this->engine->start('flow');
+
+        self::assertSame(WorkflowInstance::FAILED, $instance->status);
+        self::assertSame('a', $instance->currentStep);
+    }
+
+    /** Die Gegenprobe: ohne Uebergaenge ist der Schritt ein Ende, kein Fehler. */
+    public function testAStepWithoutTransitionsStillCompletes(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'flow',
+            'startStep' => 'a',
+            'steps' => ['a' => ['type' => 'automatic', 'transitions' => []]],
+        ]));
+
+        self::assertSame(WorkflowInstance::COMPLETED, $this->engine->start('flow')->status);
+    }
+
+    /**
+     * Und die zweite Gegenprobe: eine Bedingung, die gerade nicht zutrifft,
+     * ist KEIN Fehler in der Definition — sie ist eine Verzweigung, die
+     * diesmal nicht genommen wird. Auch das endet den Ablauf.
+     */
+    public function testAnUnmetConditionStillCompletes(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'flow',
+            'startStep' => 'a',
+            'steps' => [
+                'a' => ['type' => 'automatic', 'transitions' => [['to' => 'b', 'when' => "context['x'] == true"]]],
+                'b' => ['type' => 'automatic', 'transitions' => []],
+            ],
+        ]));
+
+        self::assertSame(WorkflowInstance::COMPLETED, $this->engine->start('flow', ['x' => false])->status);
+    }
+
+    /**
      * Die wichtigste Regressionsgefahr der Payload-Grenze (ADR 0006): der Filter
      * sitzt an der EVENT-Grenze, nicht in `mergeContext()`. Die Verknuepfung
      * zweier Workflows laeuft aber ueber genau die internen Schluessel, die er

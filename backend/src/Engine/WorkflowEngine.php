@@ -191,6 +191,12 @@ final class WorkflowEngine implements WorkflowStarterInterface
             // 4) Naechste Transition ohne Event-Bindung bestimmen.
             $next = $this->selectTransition($step, $instance, event: null);
             if ($next === null) {
+                if ($this->isDeadEnd($step)) {
+                    $this->fail($instance, self::deadEndMessage($step));
+
+                    return;
+                }
+
                 $instance->status = WorkflowInstance::COMPLETED;
                 $instance->wakeAt = null;
                 $this->repo->saveInstance($instance);
@@ -296,6 +302,44 @@ final class WorkflowEngine implements WorkflowStarterInterface
         }
 
         return null;
+    }
+
+    /**
+     * Ein Schritt, den der Ablauf nicht verlassen KANN: er hat Uebergaenge,
+     * aber jeder davon verlangt ein Ereignis.
+     *
+     * GEMELDET: ein Workflow-Schritt («starte anderen Workflow, warte auf
+     * Abschluss»), dessen einziger Uebergang `"event": "submit"` trug. Ein
+     * automatischer Schritt bekommt nie einen Knopfdruck — die Engine fand
+     * keinen ereignislosen Weg, hielt das fuer «nichts mehr zu tun» und setzte
+     * den ganzen Ablauf auf `completed`. Die restlichen Schritte liefen nie,
+     * und nichts zeigte an, dass etwas fehlte.
+     *
+     * Der Unterschied zum echten Ende ist genau dieser: KEINE Uebergaenge
+     * heisst «hier ist Schluss», und eine Bedingung, die diesmal nicht
+     * zutrifft, ist eine nicht genommene Verzweigung. Beides bleibt ein
+     * regulaerer Abschluss.
+     */
+    private function isDeadEnd(Step $step): bool
+    {
+        if ($step->transitions === []) {
+            return false;
+        }
+
+        foreach ($step->transitions as $t) {
+            if ($t->event === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function deadEndMessage(Step $step): string
+    {
+        return "Schritt '{$step->name}' hat keinen Ausgang ohne Ereignis: jeder Uebergang "
+            . 'verlangt einen Knopfdruck, den ein nicht-interaktiver Schritt nie bekommt. '
+            . 'Entferne das Ereignis am Uebergang oder mache den Schritt interaktiv.';
     }
 
     private function moveTo(WorkflowInstance $instance, Step $from, Transition $t): void
@@ -407,6 +451,12 @@ final class WorkflowEngine implements WorkflowStarterInterface
         // Ueber die naechste event-lose Transition weiter (Schritt nicht erneut ausfuehren).
         $next = $this->selectTransition($step, $parent, event: null);
         if ($next === null) {
+            if ($this->isDeadEnd($step)) {
+                $this->fail($parent, self::deadEndMessage($step));
+
+                return;
+            }
+
             $parent->status = WorkflowInstance::COMPLETED;
             $parent->wakeAt = null;
             $this->repo->saveInstance($parent);
@@ -479,6 +529,11 @@ final class WorkflowEngine implements WorkflowStarterInterface
      * Intern benannte Felder werden verworfen: sonst risse eine Definition mit
      * `{"name": "__parent"}` die Ebene A wieder auf.
      *
+     * Anzeigefelder (`type: "display"`) ebenso. Sie nehmen keine Eingabe
+     * entgegen, sondern zeigen einen Wert, den ein vorheriger Schritt geladen
+     * hat — stuende ihr Name in der Whitelist, waere jedes angezeigte Feld ein
+     * Weg, genau diesen Wert zu ueberschreiben.
+     *
      * @return list<string>
      */
     private function declaredFieldNames(Step $step): array
@@ -495,6 +550,9 @@ final class WorkflowEngine implements WorkflowStarterInterface
             }
             $name = $field['name'] ?? null;
             if (!is_string($name) || $name === '' || ContextKeys::isInternal($name)) {
+                continue;
+            }
+            if (($field['type'] ?? null) === Step::FIELD_DISPLAY) {
                 continue;
             }
             $names[] = $name;

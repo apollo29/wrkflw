@@ -242,6 +242,39 @@ final class EventPayloadBoundaryTest extends TestCase
         self::assertTrue($instance->context['ok']);
     }
 
+    /**
+     * Ein Anzeigefeld (`type: 'display'`) ist kein Eingabefeld — es zeigt
+     * einen Wert, den ein Datencheck geladen hat. Kaeme sein Name in die
+     * Whitelist, waere jedes angezeigte Feld ein Weg, genau den Wert zu
+     * ueberschreiben, den die Anzeige belegen soll: die geladene Mailadresse
+     * steht auf der Seite, und derselbe Name schriebe sie um.
+     */
+    public function testDisplayFieldsDoNotOpenThePayloadWhitelist(): void
+    {
+        $this->repo->addDefinition(WorkflowDefinition::fromArray([
+            'id' => 'anzeige-flow',
+            'startStep' => 'wait',
+            'steps' => [
+                'wait' => [
+                    'type' => 'interactive',
+                    'ui' => ['fields' => [
+                        ['name' => 'p_mail', 'label' => 'E-Mail', 'type' => 'display'],
+                        ['name' => 'ok', 'label' => 'Stimmt so', 'type' => 'boolean'],
+                    ]],
+                    'transitions' => [['event' => 'submit', 'to' => 'done']],
+                ],
+                'done' => ['type' => 'automatic'],
+            ],
+        ]));
+        $engine = $this->engine(EventPayloadPolicy::Enforce);
+        $instance = $engine->start('anzeige-flow', ['p_mail' => 'echt@example.test']);
+
+        $engine->handleEvent($instance->id, 'submit', ['p_mail' => 'fremd@example.test', 'ok' => true]);
+
+        self::assertSame('echt@example.test', $instance->context['p_mail'], 'Das Anzeigefeld wurde ueberschrieben.');
+        self::assertTrue($instance->context['ok']);
+    }
+
     public function testReportKeepsPayloadButRecordsWhatEnforceWouldDrop(): void
     {
         $this->addProfileFlow();

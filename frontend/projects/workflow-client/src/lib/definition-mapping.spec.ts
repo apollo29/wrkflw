@@ -519,4 +519,54 @@ describe('definition-mapping', () => {
     });
     expect(orderedStepNames(model)).toEqual(['a', 'b', 'orphan']);
   });
+
+  /**
+   * GEMELDET: nach Abschluss eines Kind-Workflows wurde der nächste Schritt
+   * im Eltern-Ablauf übersprungen.
+   *
+   * Der Übergang aus dem Workflow-Schritt trug ein `"event": "submit"` — ein
+   * Rest davon, dass der Schritt vorher interaktiv war. Ein automatischer
+   * Schritt bekommt nie einen Knopfdruck; die Engine fand keinen Weg hinaus
+   * und hielt das für das Ende des Ablaufs.
+   *
+   * Das Feld ist im Editor bei automatischen Schritten gar nicht sichtbar —
+   * genau deshalb muss das Speichern es entfernen: sonst schleppt die
+   * Definition eine Einstellung mit, die niemand mehr sehen oder ändern kann.
+   */
+  it('schreibt kein Ereignis an einen Übergang aus einem automatischen Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: {
+          type: 'automatic',
+          action: 'start_workflow',
+          config: { workflowId: 'kind', waitForCompletion: true },
+          transitions: [{ to: 'b', event: 'submit' }],
+        },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBeUndefined();
+    expect(json['steps']['a']['transitions'][0]['to']).toBe('b');
+  });
+
+  /** Die Gegenprobe: beim interaktiven Schritt bleibt es natürlich stehen. */
+  it('behält das Ereignis am interaktiven Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'interactive', transitions: [{ to: 'b', event: 'submit' }] },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBe('submit');
+  });
 });
