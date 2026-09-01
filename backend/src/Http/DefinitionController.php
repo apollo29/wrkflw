@@ -50,6 +50,37 @@ final class DefinitionController
     }
 
     /**
+     * DELETE /workflows/{def}/versions/{version} — eine alte Version entfernen.
+     *
+     * Bewusst KEIN 404/403-Unterschied: ob eine Version nicht existiert, die
+     * neueste ist oder noch Durchlaeufe hat, laeuft fuer den Aufrufer auf
+     * dasselbe hinaus — sie bleibt stehen. Ein 409 mit einem Satz dazu ist
+     * ehrlicher als drei Codes, die alle «nein» heissen.
+     *
+     * @param array<string,string> $args
+     */
+    public function deleteVersion(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        array $args,
+    ): ResponseInterface {
+        $id = (string) ($args['def'] ?? '');
+        $version = (int) ($args['version'] ?? 0);
+
+        if (!$this->repo->deleteDefinitionVersion($id, $version)) {
+            $response->getBody()->write((string) json_encode([
+                'error' => 'not_deletable',
+                'message' => 'Diese Version bleibt bestehen: sie ist die aktuelle, '
+                    . 'es hängen noch Durchläufe daran, oder es gibt sie nicht.',
+            ], JSON_UNESCAPED_UNICODE));
+
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(409);
+        }
+
+        return $response->withStatus(204);
+    }
+
+    /**
      * POST /workflows/{def} — neue Version anlegen (validiert, wird aktiv).
      *
      * @param array<string,string> $args

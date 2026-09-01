@@ -96,6 +96,18 @@ export class WorkflowService {
     return this.http.get<ActionCatalogResponse>(`${this.baseUrl}/actions`);
   }
 
+  /**
+   * Eine alte Version entfernen (DELETE /workflows/{id}/versions/{v}).
+   *
+   * Der Server weist mit 409 ab, wenn sie die aktuelle ist oder noch ein
+   * Durchlauf darauf zeigt — die Entscheidung liegt dort, nicht hier.
+   */
+  deleteDefinitionVersion(id: string, version: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/workflows/${encodeURIComponent(id)}/versions/${version}`,
+    );
+  }
+
   /** Katalog der Datei-Prüfungen für `file`-Felder (GET /upload-handlers). */
   listUploadHandlers(): Observable<UploadHandlerCatalogResponse> {
     return this.http.get<UploadHandlerCatalogResponse>(`${this.baseUrl}/upload-handlers`);

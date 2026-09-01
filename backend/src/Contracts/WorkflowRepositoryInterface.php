@@ -25,9 +25,26 @@ interface WorkflowRepositoryInterface
      * `active` markiert die aktuelle Version; `status` ist der Lebenszyklus
      * ('active'|'inactive'|'draft').
      *
-     * @return list<array{id:string,version:int,name:string,active:bool,status:string}>
+     * `runningInstances` sind die noch laufenden Durchlaeufe dieser Version,
+     * `instances` alle — auch abgeschlossene und abgebrochene. Der Unterschied
+     * entscheidet, was mit einer alten Version geschehen darf: ohne laufende
+     * Durchlaeufe stoert sie niemanden mehr und darf ins Archiv; loeschen
+     * laesst sie sich erst, wenn ueberhaupt kein Durchlauf mehr auf sie zeigt
+     * — sonst waeren die vergangenen Durchlaeufe nicht mehr lesbar, weil ihre
+     * Definition fehlt.
+     *
+     * @return list<array{id:string,version:int,name:string,active:bool,status:string,instances:int,runningInstances:int}>
      */
     public function listDefinitions(): array;
+
+    /**
+     * Loescht EINE Version einer Definition.
+     *
+     * Liefert `false`, wenn sie nicht geloescht werden darf oder nicht
+     * existiert — die neueste Version einer id bleibt immer stehen, und eine
+     * Version, auf die noch ein Durchlauf zeigt, ebenfalls.
+     */
+    public function deleteDefinitionVersion(string $id, int $version): bool;
 
     /**
      * Rohes Definition-JSON (neueste aktive Version, oder eine bestimmte). Null,

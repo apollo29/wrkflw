@@ -83,6 +83,10 @@ export interface DefinitionSummary {
   name: string;
   active: boolean;
   status: WorkflowLifecycle;
+  /** Alle Durchläufe dieser Version — auch abgeschlossene und abgebrochene. */
+  instances: number;
+  /** Davon die noch laufenden. */
+  runningInstances: number;
 }
 
 export interface DefinitionListResponse {

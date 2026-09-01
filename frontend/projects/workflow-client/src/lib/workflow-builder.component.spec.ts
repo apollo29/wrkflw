@@ -39,6 +39,7 @@ describe('WorkflowBuilderComponent', () => {
         },
       ],
     });
+    httpMock.expectOne('/upload-handlers').flush({ handlers: [] });
     httpMock.expectOne('/templates').flush({ templates: [] });
     httpMock.expectOne('/data-catalog').flush({
       entities: [{ entity: 'order', label: 'Bestellung', fields: ['id', 'status', 'total'] }],
@@ -84,7 +85,7 @@ describe('WorkflowBuilderComponent', () => {
 
   it('adopts the status of the loaded definition', () => {
     component.definitions.set([
-      { id: 'flow', version: 3, name: 'Flow', active: true, status: 'draft' },
+      { id: 'flow', version: 3, name: 'Flow', active: true, status: 'draft', instances: 0, runningInstances: 0 },
     ]);
 
     component.loadDefinition('flow');
@@ -177,11 +178,72 @@ describe('WorkflowBuilderComponent', () => {
     httpMock.expectNone('/templates/');
   });
 
+  /**
+   * Das Archiv trennt zwei Fragen, die man leicht in eine wirft: was ist noch
+   * in Gebrauch, und was darf weg?
+   */
+  describe('Archiv', () => {
+    /** Baut eine Zeile der Uebersicht. */
+    function zeile(id: string, version: number, instances = 0, runningInstances = 0) {
+      return { id, version, name: id, active: false, status: 'active' as const, instances, runningInstances };
+    }
+
+    it('haelt nur die neueste Version in der Hauptliste', () => {
+      component.definitions.set([zeile('flow', 1), zeile('flow', 2), zeile('flow', 3)]);
+
+      expect(component.aktuelleDefinitionen().map((d) => d.version)).toEqual([3]);
+      expect(component.archivierteDefinitionen().map((d) => d.version)).toEqual([2, 1]);
+    });
+
+    it('laesst eine alte Version mit laufendem Durchlauf oben stehen', () => {
+      // Sie ist nicht mehr die aktuelle, aber in Gebrauch — im Archiv waere
+      // sie am falschen Ort.
+      component.definitions.set([zeile('flow', 1, 5, 2), zeile('flow', 2)]);
+
+      expect(component.aktuelleDefinitionen().map((d) => d.version)).toEqual([1, 2]);
+      expect(component.archivierteDefinitionen()).toEqual([]);
+    });
+
+    it('sperrt das Loeschen, solange ein abgeschlossener Durchlauf verweist', () => {
+      const mitVerlauf = zeile('flow', 1, 3, 0);
+      const ohne = zeile('flow', 2, 0, 0);
+
+      expect(component.loeschsperre(mitVerlauf)).toContain('3 abgeschlossene');
+      expect(component.loeschsperre(ohne)).toBe('');
+    });
+
+    it('formuliert den einen Durchlauf im Singular', () => {
+      expect(component.loeschsperre(zeile('flow', 1, 1, 0))).toContain('Ein abgeschlossener');
+    });
+
+    it('loescht eine freie Version und laedt die Liste neu', () => {
+      component.definitions.set([zeile('flow', 1), zeile('flow', 2)]);
+
+      component.deleteVersion(zeile('flow', 1));
+
+      const req = httpMock.expectOne('/workflows/flow/versions/1');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+      httpMock.expectOne('/workflows').flush({ definitions: [] });
+
+      expect(component.message()).toContain('v1');
+    });
+
+    it('schickt gar keine Anfrage, wenn die Version gesperrt ist', () => {
+      // Die Sperre steht im Knopf — aber sie muss auch dann halten, wenn
+      // jemand die Methode direkt aufruft. httpMock.verify() im afterEach
+      // meldet eine Anfrage, die trotzdem hinausginge.
+      component.deleteVersion(zeile('flow', 1, 2, 0));
+
+      expect(component.message()).toBeNull();
+    });
+  });
+
   it('lists distinct workflow options for the workflow-ref field', () => {
     component.definitions.set([
-      { id: 'a', version: 1, name: 'Alpha alt', active: false, status: 'active' },
-      { id: 'a', version: 2, name: 'Alpha', active: true, status: 'active' },
-      { id: 'b', version: 1, name: 'Beta', active: true, status: 'active' },
+      { id: 'a', version: 1, name: 'Alpha alt', active: false, status: 'active', instances: 0, runningInstances: 0 },
+      { id: 'a', version: 2, name: 'Alpha', active: true, status: 'active', instances: 0, runningInstances: 0 },
+      { id: 'b', version: 1, name: 'Beta', active: true, status: 'active', instances: 0, runningInstances: 0 },
     ]);
 
     const options = component.workflowOptions();

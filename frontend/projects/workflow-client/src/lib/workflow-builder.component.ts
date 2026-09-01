@@ -96,6 +96,8 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
   readonly uploadHandlers = signal<UploadHandlerEntry[]>([]);
+  /** Das Archiv startet zugeklappt — es ist der Ablageort, nicht der Arbeitsplatz. */
+  readonly archivOffen = signal(false);
   readonly templates = signal<TemplateSummary[]>([]);
   readonly dataEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
@@ -228,6 +230,90 @@ export class WorkflowBuilderComponent implements OnInit {
       next: (res) => this.dataEntities.set(res.entities),
       error: (err: unknown) => this.error.set(this.apiError(err)),
     });
+  }
+
+  /**
+   * Die Liste «Vorhandene laden», ohne das Archiv.
+   *
+   * Enthalten ist von jeder id die neueste Version — plus jede aeltere, an der
+   * noch ein Durchlauf laeuft. Letztere gehoert nicht ins Archiv: sie ist in
+   * Gebrauch, auch wenn sie nicht mehr die aktuelle ist.
+   */
+  aktuelleDefinitionen(): DefinitionSummary[] {
+    const neueste = this.neuesteVersionen();
+
+    return this.definitions().filter(
+      (d) => d.version === neueste.get(d.id) || d.runningInstances > 0,
+    );
+  }
+
+  /**
+   * Das Archiv: alte Versionen, an denen nichts mehr laeuft.
+   *
+   * Der Editor sammelte mit jeder Aenderung eine weitere Zeile an; nach einem
+   * halben Jahr stand dort ein Dutzend Eintraege zu einem einzigen Ablauf und
+   * der aktuelle ging darin unter. Neueste zuerst — wer hier sucht, sucht
+   * meistens das zuletzt Ersetzte.
+   */
+  archivierteDefinitionen(): DefinitionSummary[] {
+    const neueste = this.neuesteVersionen();
+
+    return this.definitions()
+      .filter((d) => d.version !== neueste.get(d.id) && d.runningInstances === 0)
+      .sort((a, b) => (a.id === b.id ? b.version - a.version : a.id.localeCompare(b.id)));
+  }
+
+  /**
+   * Warum eine archivierte Version NICHT geloescht werden kann — leer, wenn
+   * sie es kann.
+   *
+   * Abgeschlossene Durchlaeufe halten sie fest: ihre Schritte stehen in dieser
+   * Definition, und ohne sie waere ihr Verlauf nicht mehr lesbar.
+   */
+  loeschsperre(def: DefinitionSummary): string {
+    if (def.instances === 0) {
+      return '';
+    }
+
+    return def.instances === 1
+      ? 'Ein abgeschlossener Durchlauf verweist noch darauf.'
+      : `${def.instances} abgeschlossene Durchläufe verweisen noch darauf.`;
+  }
+
+  toggleArchiv(): void {
+    this.archivOffen.update((offen) => !offen);
+  }
+
+  deleteVersion(def: DefinitionSummary): void {
+    if (this.loeschsperre(def) !== '' || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.resetMessages();
+    this.service.deleteDefinitionVersion(def.id, def.version).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.message.set(`${def.id} v${def.version} entfernt.`);
+        this.reloadDefinitions();
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.error.set(this.apiError(err));
+        // Neu laden, statt die Zeile stehen zu lassen: die Absage kommt
+        // meistens daher, dass sich inzwischen etwas geaendert hat.
+        this.reloadDefinitions();
+      },
+    });
+  }
+
+  /** Je id die hoechste vorhandene Versionsnummer. */
+  private neuesteVersionen(): Map<string, number> {
+    const out = new Map<string, number>();
+    for (const d of this.definitions()) {
+      out.set(d.id, Math.max(out.get(d.id) ?? 0, d.version));
+    }
+
+    return out;
   }
 
   reloadDefinitions(): void {

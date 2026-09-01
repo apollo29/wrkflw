@@ -418,3 +418,19 @@
   .wfb__side { border-right: 0; border-bottom: 1px solid var(--_border); }
   .wfb__typecards { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Archiv (alte Versionen) ── */
+.wfb__archiv { margin-top: 10px; border-top: 1px solid var(--_border); padding-top: 8px; }
+.wfb .wfb__archiv-head {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: 30px; padding: 0 6px;
+  border-color: transparent; background: transparent;
+  color: var(--_muted); font-size: 12.5px; justify-content: flex-start;
+}
+.wfb .wfb__archiv-head:hover { border-color: var(--_border); color: var(--_text); }
+.wfb__archiv-caret { width: 10px; font-size: 10px; }
+.wfb__archiv-row { display: flex; align-items: stretch; gap: 4px; }
+.wfb__archiv-row .wfb__load { flex: 1; min-width: 0; }
+.wfb .wfb__load--archiv { opacity: 0.75; }
+.wfb .wfb__load--archiv:hover { opacity: 1; }
+.wfb__archiv-hint { padding: 0 10px 6px 24px; }

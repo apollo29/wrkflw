@@ -39,6 +39,22 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   beim naechsten Speichern um ein Feld reicher, das nichts aendert. Ein automatischer
   Schritt, der auf «Anzeigen» gestellt wird, bekommt dafuer erstmals ein `ui`-Objekt.
 
+- **Archiv fuer alte Definitions-Versionen.** Die Uebersicht «Vorhandene laden»
+  zeigte jede Version jeder Definition; nach einem halben Jahr stand dort ein
+  Dutzend Eintraege zu einem einzigen Ablauf und der aktuelle ging darin unter.
+  Neu haelt sie je Definition nur die neueste Version — plus jede aeltere, an
+  der noch ein Durchlauf laeuft, denn die ist in Gebrauch. Der Rest liegt in
+  einem zugeklappten Archiv und laesst sich dort entfernen
+  (`DELETE /workflows/{id}/versions/{v}`).
+- `listDefinitions()` liefert dafuer zwei neue Zahlen je Version: `instances`
+  (alle Durchlaeufe) und `runningInstances` (die noch laufenden). Der
+  Unterschied entscheidet ueber zwei verschiedene Dinge — ins Archiv darf eine
+  Version, sobald nichts mehr LAEUFT; loeschen laesst sie sich erst, wenn
+  ueberhaupt kein Durchlauf mehr auf sie zeigt. Sonst waeren die abgeschlossenen
+  Durchlaeufe nicht mehr lesbar, weil ihre Definition fehlt.
+- `WorkflowRepositoryInterface::deleteDefinitionVersion()` — BREAKING fuer
+  eigene Repository-Implementierungen: die Methode kommt zum Port dazu.
+
 ### Fixed
 - **Einen Schritt zu loeschen brachte die Reihenfolge im Editor durcheinander.** Der
   Grund war keine Sortierung, sondern ein Abriss: die Uebergaenge zeigten weiter auf

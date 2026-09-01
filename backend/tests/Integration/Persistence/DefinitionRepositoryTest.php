@@ -6,6 +6,7 @@ namespace WorkflowEngine\Tests\Integration\Persistence;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
+use WorkflowEngine\Instance\WorkflowInstance;
 use WorkflowEngine\Persistence\PdoWorkflowRepository;
 use WorkflowEngine\Tests\Support\IntegrationTestCase;
 
@@ -36,6 +37,91 @@ final class DefinitionRepositoryTest extends IntegrationTestCase
 
         self::assertFalse($byVersion[1]);
         self::assertTrue($byVersion[2]);
+    }
+
+    /**
+     * Das Loeschen einer alten Version — gegen eine echte Datenbank, nicht
+     * gegen den In-Memory-Fake.
+     *
+     * Es ist genau die Art SQL, bei der MariaDB und MySQL auseinandergehen:
+     * das DELETE prueft in einer Unterabfrage dieselbe Tabelle, die es
+     * loescht. MySQL verbietet das («You can't specify target table … in FROM
+     * clause»), es sei denn, die Unterabfrage steckt in einer abgeleiteten
+     * Tabelle. Ob die Klammer richtig sitzt, sagt nur ein echter Lauf — und
+     * die CI faehrt beide.
+     */
+    public function testDeleteRemovesOnlyAnOldUnusedVersion(): void
+    {
+        $this->repo->saveDefinition('flow', 'Flow', self::DEF);
+        $this->repo->saveDefinition('flow', 'Flow v2', self::DEF);
+
+        self::assertTrue($this->repo->deleteDefinitionVersion('flow', 1));
+        self::assertSame([2], $this->versionen('flow'));
+    }
+
+    public function testDeleteKeepsTheNewestVersion(): void
+    {
+        $this->repo->saveDefinition('flow', 'Flow', self::DEF);
+        $this->repo->saveDefinition('flow', 'Flow v2', self::DEF);
+
+        self::assertFalse($this->repo->deleteDefinitionVersion('flow', 2));
+        self::assertSame([1, 2], $this->versionen('flow'));
+    }
+
+    public function testDeleteKeepsAVersionThatAnInstanceStillPointsAt(): void
+    {
+        $this->repo->saveDefinition('flow', 'Flow', self::DEF);
+        $this->repo->saveDefinition('flow', 'Flow v2', self::DEF);
+        // Ein ABGESCHLOSSENER Durchlauf auf v1: er laeuft nicht mehr, sein
+        // Verlauf soll aber lesbar bleiben.
+        $this->repo->saveInstance(new WorkflowInstance(
+            id: 'i1',
+            definitionId: 'flow',
+            definitionVersion: 1,
+            currentStep: 'a',
+            status: WorkflowInstance::COMPLETED,
+        ));
+
+        self::assertFalse($this->repo->deleteDefinitionVersion('flow', 1));
+        self::assertSame([1, 2], $this->versionen('flow'));
+    }
+
+    public function testTheOverviewCountsInstancesPerVersion(): void
+    {
+        $this->repo->saveDefinition('flow', 'Flow', self::DEF);
+        $this->repo->saveDefinition('flow', 'Flow v2', self::DEF);
+        foreach ([['i1', 1, WorkflowInstance::COMPLETED], ['i2', 1, WorkflowInstance::WAITING_EVENT]] as [$id, $v, $st]) {
+            $this->repo->saveInstance(new WorkflowInstance(
+                id: $id,
+                definitionId: 'flow',
+                definitionVersion: $v,
+                currentStep: 'a',
+                status: $st,
+            ));
+        }
+
+        $zeilen = [];
+        foreach ($this->repo->listDefinitions() as $d) {
+            $zeilen[$d['version']] = $d;
+        }
+
+        self::assertSame(2, $zeilen[1]['instances']);
+        self::assertSame(1, $zeilen[1]['runningInstances'], 'Der abgeschlossene darf nicht mitzaehlen.');
+        self::assertSame(0, $zeilen[2]['instances']);
+    }
+
+    /** @return list<int> die vorhandenen Versionsnummern, aufsteigend */
+    private function versionen(string $id): array
+    {
+        $out = [];
+        foreach ($this->repo->listDefinitions() as $d) {
+            if ($d['id'] === $id) {
+                $out[] = $d['version'];
+            }
+        }
+        sort($out);
+
+        return $out;
     }
 
     public function testFindDefinitionUsesLatestActiveVersion(): void

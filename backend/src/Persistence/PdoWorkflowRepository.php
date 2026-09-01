@@ -55,8 +55,19 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
 
     public function listDefinitions(): array
     {
+        // Die Zaehlung der Durchlaeufe steht bewusst im SELECT und nicht in
+        // einer zweiten Runde pro Zeile: die Uebersicht traegt bei jedem
+        // Oeffnen des Editors saemtliche Versionen, und N+1 Abfragen dafuer
+        // waeren eine Abfrage zu viel pro Zeile.
         $stmt = $this->pdo->query(
-            'SELECT id, version, name, active, status FROM wf_definition ORDER BY id ASC, version ASC'
+            "SELECT d.id, d.version, d.name, d.active, d.status,
+                    (SELECT COUNT(*) FROM wf_instance i
+                      WHERE i.definition_id = d.id AND i.definition_ver = d.version) AS instances,
+                    (SELECT COUNT(*) FROM wf_instance i
+                      WHERE i.definition_id = d.id AND i.definition_ver = d.version
+                        AND i.status NOT IN ('completed', 'failed')) AS running
+               FROM wf_definition d
+              ORDER BY d.id ASC, d.version ASC"
         );
         if ($stmt === false) {
             return [];
@@ -73,6 +84,8 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
                 'name' => $this->reqString($row, 'name'),
                 'active' => $this->reqInt($row, 'active') === 1,
                 'status' => $this->reqString($row, 'status'),
+                'instances' => $this->reqInt($row, 'instances'),
+                'runningInstances' => $this->reqInt($row, 'running'),
             ];
         }
 
@@ -133,6 +146,61 @@ final class PdoWorkflowRepository implements WorkflowRepositoryInterface
             $this->pdo->commit();
 
             return $version;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    public function deleteDefinitionVersion(string $id, int $version): bool
+    {
+        // Pruefen und loeschen in EINER Transaktion, und die Sperre sitzt auf
+        // der neuesten Zeile dieser id: zwischen «darf ich?» und «dann weg
+        // damit» koennte sonst eine neue Version entstehen und die hier
+        // geloeschte ploetzlich die zweitneueste sein.
+        //
+        // Die Bedingungen stehen bewusst NICHT als Unterabfragen IM DELETE.
+        // Das waere eine Anweisung weniger, aber eine Unterabfrage auf
+        // dieselbe Tabelle, die geloescht wird, behandeln MariaDB und MySQL
+        // verschieden — und diese Engine laeuft auf beiden. Zwei schlichte
+        // Abfragen sind hier die verlaesslichere Antwort.
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT version FROM wf_definition WHERE id = :id ORDER BY version DESC LIMIT 1 FOR UPDATE'
+            );
+            $stmt->execute([':id' => $id]);
+            $neueste = $stmt->fetchColumn();
+
+            // Nichts da, oder es ist die neueste Version: bleibt stehen.
+            if ($neueste === false || $version >= (int) $neueste) {
+                $this->pdo->commit();
+
+                return false;
+            }
+
+            // Jede Version, auf die noch ein Durchlauf zeigt, bleibt ebenfalls
+            // — auch ein abgeschlossener. Seine Schritte stehen in dieser
+            // Definition; ohne sie waere sein Verlauf nicht mehr aufloesbar.
+            $stmt = $this->pdo->prepare(
+                'SELECT COUNT(*) FROM wf_instance WHERE definition_id = :id AND definition_ver = :v'
+            );
+            $stmt->execute([':id' => $id, ':v' => $version]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                $this->pdo->commit();
+
+                return false;
+            }
+
+            $stmt = $this->pdo->prepare('DELETE FROM wf_definition WHERE id = :id AND version = :v');
+            $stmt->execute([':id' => $id, ':v' => $version]);
+            $geloescht = $stmt->rowCount() === 1;
+            $this->pdo->commit();
+
+            return $geloescht;
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();

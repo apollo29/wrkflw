@@ -159,7 +159,7 @@
         <div class="wfb__side-group">
           <div class="wfb__side-label">Vorhandene laden</div>
           <div class="wfb__loadlist">
-            @for (def of definitions(); track def.id + ':' + def.version) {
+            @for (def of aktuelleDefinitionen(); track def.id + ':' + def.version) {
               <button type="button" class="wfb__load" (click)="loadDefinition(def.id)">
                 <span class="wfb__load-text">
                   <span class="wfb__load-name">{{ def.name || def.id }}</span>
@@ -177,6 +177,50 @@
             }
             <button type="button" class="wfb__add-step" (click)="newDefinition()">+ Neuer Workflow</button>
           </div>
+
+          <!--
+            Archiv: aeltere Versionen, an denen nichts mehr laeuft. Zugeklappt,
+            weil es der Ablageort ist und nicht der Arbeitsplatz — vorher
+            standen alle Versionen jeder Definition in derselben Liste, und die
+            aktuelle ging darin unter.
+          -->
+          @if (archivierteDefinitionen(); as archiv) {
+            @if (archiv.length > 0) {
+              <div class="wfb__archiv">
+                <button type="button" class="wfb__archiv-head" (click)="toggleArchiv()"
+                        [attr.aria-expanded]="archivOffen()">
+                  <span class="wfb__archiv-caret" aria-hidden="true">{{ archivOffen() ? '▾' : '▸' }}</span>
+                  <span>Archiv</span>
+                  <span class="wfb__pill">{{ archiv.length }}</span>
+                </button>
+                @if (archivOffen()) {
+                  <div class="wfb__loadlist">
+                    @for (def of archiv; track def.id + ':' + def.version) {
+                      <div class="wfb__archiv-row">
+                        <button type="button" class="wfb__load wfb__load--archiv" (click)="loadDefinition(def.id)">
+                          <span class="wfb__load-text">
+                            <span class="wfb__load-name">{{ def.name || def.id }}</span>
+                            <span class="wfb__load-id">{{ def.id }}</span>
+                          </span>
+                          <span class="wfb__load-meta">
+                            <span class="wfb__load-v">v{{ def.version }}</span>
+                          </span>
+                        </button>
+                        <button type="button" class="wfb__step-x"
+                                [disabled]="busy() || loeschsperre(def) !== ''"
+                                [title]="loeschsperre(def) || 'Diese Version entfernen'"
+                                (click)="deleteVersion(def)"
+                                aria-label="Version entfernen">×</button>
+                      </div>
+                      @if (loeschsperre(def); as grund) {
+                        <div class="wfb__hint wfb__archiv-hint">{{ grund }}</div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            }
+          }
         </div>
       </div>
 
