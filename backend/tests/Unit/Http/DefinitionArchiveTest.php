@@ -64,11 +64,10 @@ final class DefinitionArchiveTest extends TestCase
         // Ein Durchlauf auf v2, keiner auf v1.
         $this->engine->start('flow', []);
 
-        $zeilen = $this->uebersicht();
-        self::assertSame(0, $zeilen['flow:1']['instances']);
-        self::assertSame(0, $zeilen['flow:1']['runningInstances']);
-        self::assertSame(1, $zeilen['flow:2']['instances']);
-        self::assertSame(1, $zeilen['flow:2']['runningInstances']);
+        self::assertSame(0, $this->zeile('flow', 1)['instances']);
+        self::assertSame(0, $this->zeile('flow', 1)['runningInstances']);
+        self::assertSame(1, $this->zeile('flow', 2)['instances']);
+        self::assertSame(1, $this->zeile('flow', 2)['runningInstances']);
     }
 
     public function testAFinishedRunStillCountsButNoLongerRuns(): void
@@ -80,9 +79,8 @@ final class DefinitionArchiveTest extends TestCase
         $this->engine->handleEvent($instanz->id, 'go');
         $this->speichern('flow');   // v2, damit v1 ueberhaupt archivierbar waere
 
-        $zeilen = $this->uebersicht();
-        self::assertSame(1, $zeilen['flow:1']['instances'], 'Der abgeschlossene Durchlauf zaehlt weiter.');
-        self::assertSame(0, $zeilen['flow:1']['runningInstances'], 'Laufen tut er nicht mehr.');
+        self::assertSame(1, $this->zeile('flow', 1)['instances'], 'Der abgeschlossene Durchlauf zaehlt weiter.');
+        self::assertSame(0, $this->zeile('flow', 1)['runningInstances'], 'Laufen tut er nicht mehr.');
     }
 
     public function testAnOldVersionWithoutAnyRunCanBeDeleted(): void
@@ -92,8 +90,8 @@ final class DefinitionArchiveTest extends TestCase
 
         $antwort = $this->send('DELETE', '/workflows/flow/versions/1');
         self::assertSame(204, $antwort->getStatusCode());
-        self::assertArrayNotHasKey('flow:1', $this->uebersicht());
-        self::assertArrayHasKey('flow:2', $this->uebersicht());
+        self::assertFalse($this->hatVersion('flow', 1));
+        self::assertTrue($this->hatVersion('flow', 2));
     }
 
     public function testTheNewestVersionIsNeverDeleted(): void
@@ -103,7 +101,7 @@ final class DefinitionArchiveTest extends TestCase
 
         $antwort = $this->send('DELETE', '/workflows/flow/versions/2');
         self::assertSame(409, $antwort->getStatusCode());
-        self::assertArrayHasKey('flow:2', $this->uebersicht(), 'Die aktuelle Version wurde geloescht.');
+        self::assertTrue($this->hatVersion('flow', 2), 'Die aktuelle Version wurde geloescht.');
     }
 
     public function testAVersionWithAFinishedRunIsKept(): void
@@ -117,7 +115,7 @@ final class DefinitionArchiveTest extends TestCase
         // sonst laesst sich sein Verlauf nicht mehr aufloesen.
         $antwort = $this->send('DELETE', '/workflows/flow/versions/1');
         self::assertSame(409, $antwort->getStatusCode());
-        self::assertArrayHasKey('flow:1', $this->uebersicht());
+        self::assertTrue($this->hatVersion('flow', 1));
     }
 
     public function testDeletingSomethingThatIsNotThereIsRefusedToo(): void
@@ -139,17 +137,59 @@ final class DefinitionArchiveTest extends TestCase
         self::assertContains($antwort->getStatusCode(), [200, 201], 'Speichern fehlgeschlagen.');
     }
 
-    /** @return array<string, array<string,mixed>> je Zeile unter "id:version" */
+    /**
+     * Die Zeilen der Uebersicht.
+     *
+     * Die Typen kommen aus `is_array()`, nicht aus `assert*()`: PHPStan
+     * versteht beides, aber nur das erste auch ohne die PHPUnit-Erweiterung.
+     * Ein Test, dessen Typen von einem Analyse-Plugin abhaengen, ist eine
+     * unnoetige Fussangel.
+     *
+     * @return list<array<string, mixed>>
+     */
     private function uebersicht(): array
     {
-        $body = json_decode((string) $this->send('GET', '/workflows')->getBody(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertIsArray($body);
+        $roh = json_decode((string) $this->send('GET', '/workflows')->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        $zeilen = is_array($roh) && is_array($roh['definitions'] ?? null) ? $roh['definitions'] : [];
+
         $out = [];
-        foreach ($body['definitions'] as $zeile) {
-            $out["{$zeile['id']}:{$zeile['version']}"] = $zeile;
+        foreach ($zeilen as $zeile) {
+            if (is_array($zeile)) {
+                /** @var array<string, mixed> $zeile */
+                $out[] = $zeile;
+            }
         }
 
         return $out;
+    }
+
+    /** Gibt es diese Version in der Uebersicht? */
+    private function hatVersion(string $id, int $version): bool
+    {
+        return $this->zeileOderNull($id, $version) !== null;
+    }
+
+    /**
+     * Die Zeile zu einer Version — der Test scheitert, wenn es sie nicht gibt.
+     *
+     * @return array<string, mixed>
+     */
+    private function zeile(string $id, int $version): array
+    {
+        return $this->zeileOderNull($id, $version)
+            ?? self::fail("Version {$id} v{$version} steht nicht in der Uebersicht.");
+    }
+
+    /** @return array<string, mixed>|null */
+    private function zeileOderNull(string $id, int $version): ?array
+    {
+        foreach ($this->uebersicht() as $zeile) {
+            if (($zeile['id'] ?? null) === $id && ($zeile['version'] ?? null) === $version) {
+                return $zeile;
+            }
+        }
+
+        return null;
     }
 
     /** @param array<string,mixed>|null $body */
