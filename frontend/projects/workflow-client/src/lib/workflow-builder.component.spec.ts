@@ -5,6 +5,7 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WORKFLOW_API_BASE_URL } from './workflow.config';
+import { fromDefinition } from './definition-mapping';
 import { WorkflowBuilderComponent } from './workflow-builder.component';
 
 describe('WorkflowBuilderComponent', () => {
@@ -182,6 +183,95 @@ describe('WorkflowBuilderComponent', () => {
    * Das Archiv trennt zwei Fragen, die man leicht in eine wirft: was ist noch
    * in Gebrauch, und was darf weg?
    */
+  describe('Kontext-Variablen', () => {
+    /**
+     * GEMELDET: «was zusätzlich noch fehlt ist die Darstellung der
+     * Context-Variablen.»
+     *
+     * Die Liste sammelte nur die Eingabefelder. Damit fehlten genau die
+     * Schlüssel, die man am häufigsten braucht — der deklarierte Startkontext
+     * und die Ergebnisse eines Datenchecks. Wer sie benutzen wollte, musste
+     * sie auswendig kennen, und ein Tippfehler fiel erst auf, wenn eine Mail
+     * an eine leere Adresse ging.
+     */
+    it('nennt Startkontext, Eingabefelder und die Ergebnisse eines Datenchecks', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'laden',
+          inputs: [{ name: 'trainer_id', required: true }],
+          steps: {
+            laden: {
+              type: 'automatic',
+              action: 'check_data',
+              config: { entity: 'order', id: '{{trainer_id}}', as: 'p', fields: ['status', 'total'] },
+              transitions: [{ to: 'fragen' }],
+            },
+            fragen: {
+              type: 'interactive',
+              ui: {
+                fields: [
+                  { name: 'p_status', label: 'Status', type: 'display' },
+                  { name: 'bemerkung', label: 'Bemerkung', type: 'text' },
+                ],
+              },
+              transitions: [{ to: 'ende', event: 'submit' }],
+            },
+            ende: { type: 'automatic', transitions: [] },
+          },
+        }),
+      );
+
+      const namen = component.kontextVariablen().map((v) => v.name);
+
+      expect(namen).toContain('trainer_id');
+      expect(namen).toContain('p');
+      expect(namen).toContain('pFound');
+      expect(namen).toContain('p_status');
+      expect(namen).toContain('p_total');
+      expect(namen).toContain('bemerkung');
+    });
+
+    /**
+     * Ein Anzeigefeld ZEIGT einen Wert, es erzeugt keinen. Zählte es mit,
+     * bestätigte sich eine Definition selbst: das Feld zeigt {{p_mail}}, und
+     * {{p_mail}} gilt als vorhanden, weil das Feld es zeigt.
+     */
+    it('zählt ein Anzeigefeld nicht als Quelle', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'fragen',
+          inputs: [{ name: 'trainer_id' }],
+          steps: {
+            fragen: {
+              type: 'interactive',
+              ui: { fields: [{ name: 'nirgends_erzeugt', label: 'X', type: 'display' }] },
+              transitions: [{ to: 'ende', event: 'submit' }],
+            },
+            ende: { type: 'automatic', transitions: [] },
+          },
+        }),
+      );
+
+      expect(component.kontextVariablen().map((v) => v.name)).not.toContain('nirgends_erzeugt');
+    });
+
+    /** Jede Variable sagt, woher sie kommt — sonst ist die Liste nur ein Haufen Namen. */
+    it('nennt zu jeder Variable ihre Herkunft', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'ende',
+          inputs: [{ name: 'trainer_id' }],
+          steps: { ende: { type: 'automatic', transitions: [] } },
+        }),
+      );
+
+      expect(component.kontextVariablen()[0]).toEqual({ name: 'trainer_id', herkunft: 'Startkontext' });
+    });
+  });
+
   describe('Archiv', () => {
     /** Baut eine Zeile der Uebersicht. */
     function zeile(id: string, version: number, instances = 0, runningInstances = 0) {

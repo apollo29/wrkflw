@@ -107,6 +107,9 @@ final class WorkflowController
             'finished' => $instance->isFinished(),
             'ui' => $step->ui,
             'events' => array_keys($events),
+            // Ob es von hier aus zurueckgeht. Die Oberflaeche soll keinen Knopf
+            // zeigen, den die Engine anschliessend mit 409 abweist.
+            'canGoBack' => $this->engine->canGoBack($instance),
             // Ohne engine-interne Schluessel (ADR 0006).
             'context' => ContextKeys::stripInternal($instance->context),
         ]);
@@ -139,6 +142,36 @@ final class WorkflowController
                 $this->assoc($body['payload'] ?? null),
                 $idempotencyKey !== '' ? $idempotencyKey : null,
             );
+        } catch (WorkflowException $e) {
+            return $this->error($response, 'conflict', $e->getMessage(), 409);
+        }
+
+        return $this->json($response, [
+            'id' => $instance->id,
+            'status' => $instance->status,
+            'currentStep' => $instance->currentStep,
+        ]);
+    }
+
+    /**
+     * POST /instances/{id}/back — einen Schritt zurueck.
+     *
+     * Kein Ereignis im Rumpf: wohin es zurueckgeht, weiss die Engine aus der
+     * History, nicht der Aufrufer. Sie geht dafuer notfalls ueber die
+     * Ablauf-Grenze hinweg in den Ablauf, der diesen hier gestartet hat —
+     * berichtet wird dann ueber DEN, denn dieser hier ist abgebrochen.
+     *
+     * @param array<string,string> $args
+     */
+    public function back(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = $args['id'] ?? '';
+        if ($this->repo->findInstance($id) === null) {
+            return $this->error($response, 'not_found', 'Instanz nicht gefunden.', 404);
+        }
+
+        try {
+            $instance = $this->engine->goBack($id);
         } catch (WorkflowException $e) {
             return $this->error($response, 'conflict', $e->getMessage(), 409);
         }

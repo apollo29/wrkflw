@@ -36,6 +36,7 @@ final class ApiFactory
         ['GET', '/instances/{id}', 'show'],
         ['GET', '/instances/{id}/current-step', 'currentStep'],
         ['POST', '/instances/{id}/events', 'postEvent'],
+        ['POST', '/instances/{id}/back', 'back'],
         ['GET', '/instances/{id}/history', 'history'],
     ];
 

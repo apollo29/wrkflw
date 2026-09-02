@@ -5,6 +5,73 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-02
+
+### Warum 2.1.0 und nicht 3.0.0
+
+Kein Port hat sich geaendert. `WorkflowEngine` bekommt zwei Methoden dazu
+(`goBack()`, `canGoBack()`), `WorkflowInstance` eine Konstante, der
+`DefinitionValidator` einen OPTIONALEN Konstruktor-Parameter. Wer die Engine
+benutzt, hat nichts zu tun; wer einen eigenen Evaluator mitbringt, ebenso wenig.
+
+Die eine Stelle, an der etwas anders wird, ohne dass jemand etwas aendert: ein
+interaktiver Schritt ohne Ereignis-Uebergang wird beim Speichern jetzt
+abgewiesen. Das ist Absicht — eine solche Definition war schon vorher kaputt,
+sie sagte es nur nicht.
+
+Der npm-Client geht auf **1.16.0**: `ui.back` im Editor, `cancelled` in den
+Status-Texten, `canGoBack` im `CurrentStep`. Ebenfalls nur Zuwachs.
+
+### Added
+- **`goBack()`: ein Schritt zurueck, generisch und ueber Ablauf-Grenzen hinweg.**
+  `WorkflowEngine::goBack($instanceId)` setzt eine Instanz auf den letzten
+  interaktiven Schritt zurueck, den sie tatsaechlich durchlaufen hat (aus der
+  History). Automatische Schritte dazwischen werden uebersprungen — ihre Aktion
+  soll nicht ein zweites Mal laufen.
+
+  Ist im eigenen Ablauf kein solcher Schritt mehr da, aber ein Eltern-Ablauf
+  wartet auf diesen hier, geht es dort weiter zurueck: das Kind wird
+  `cancelled`, `__awaitWorkflow` faellt weg, und der Eltern-Ablauf landet auf
+  seinem letzten Eingabeschritt. Danach laesst sich derselbe Weg erneut gehen.
+
+  Freigegeben wird das je Schritt ueber `ui.back: true` — Standard ist `false`.
+  `canGoBack()` beantwortet dieselbe Frage, ohne etwas zu aendern, damit eine
+  Oberflaeche keinen Knopf zeigt, den die Engine anschliessend abweist.
+
+  GEMELDET: wer ankreuzt, er habe ein UEFA-Zertifikat, landet in einem
+  Kind-Ablauf auf der Upload-Maske. Wird die Datei abgelehnt, bleibt der Schritt
+  bewusst stehen — sonst gaebe es keinen zweiten Versuch. Wer aber gar keines
+  beibringen kann, sass fest: der Haken, der ihn hergebracht hat, sitzt einen
+  Schritt frueher und in einem anderen Ablauf.
+- **Neuer Endzustand `WorkflowInstance::CANCELLED`.** Ein Ablauf, aus dem jemand
+  herausgegangen ist, bevor er zu Ende war. `completed` waere gelogen (er hat
+  nichts abgeschlossen), `failed` ebenso (es ist nichts schiefgegangen).
+  `isFinished()` zaehlt ihn mit, `advance()` ruht darauf — ein abgebrochenes
+  Kind weckt seinen Eltern-Ablauf nicht.
+- **Ein interaktiver Schritt ohne Ereignis-Uebergang wird abgewiesen.** Die
+  andere Richtung der Sackgassen-Regel: ein interaktiver Schritt WARTET auf ein
+  Ereignis; traegt keiner seiner Uebergaenge eines, entsteht kein Knopf und der
+  Ablauf steht dort fuer immer. Ein interaktiver Schritt OHNE Uebergaenge bleibt
+  erlaubt — das ist ein Endschritt.
+
+  GEMELDET als «bei mir erscheint kein Button»: `ui.events` war deklariert, das
+  `event` am Uebergang fehlte. Die Knoepfe kommen aus den Uebergaengen.
+- **`ExpressionCheckerInterface`: Bedingungen beim SPEICHERN pruefen.** Der
+  `DefinitionValidator` nimmt ihn optional entgegen und uebersetzt damit jedes
+  `when` und jedes `until`, ohne es auszuwerten. `SymfonyExpressionEvaluator`
+  implementiert ihn.
+
+  GEMELDET: `"when": "daten_korrekt == true"` — gemeint war
+  `context['daten_korrekt']`. Die Sprache kennt nur die Wurzeln `context` und
+  `now`; ein blosser Name ist ein Fehler. Beim Auswerten faellt das erst auf,
+  wenn jemand den Knopf drueckt — als Serverfehler mitten im Ablauf, auf der
+  oeffentlichen Seite.
+
+  Bewusst ein eigener Port und nicht eine Methode in
+  `ExpressionEvaluatorInterface`: wer einen eigenen Evaluator mitbringt, soll
+  ihn nicht erweitern muessen, nur damit der Validator laeuft. Ohne Pruefer
+  bleibt der Validator unveraendert — **nicht** breaking.
+
 ## [2.0.0] - 2026-09-01
 
 ### Warum 2.0.0 und nicht 1.19.0

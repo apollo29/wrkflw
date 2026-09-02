@@ -211,6 +211,177 @@ final class WorkflowEngine implements WorkflowStarterInterface
     }
 
     /**
+     * Ein Schritt zurueck — zum letzten interaktiven Schritt, notfalls ueber
+     * die Ablauf-Grenze hinweg.
+     *
+     * GEMELDET: jemand kreuzt an, er habe ein Zertifikat, landet auf der
+     * Upload-Maske, und die Datei wird abgelehnt. Eine abgelehnte Datei loest
+     * bewusst KEINEN Uebergang aus — der Schritt soll offen bleiben, damit man
+     * es nochmal versuchen kann. Wer aber gar kein gueltiges Zertifikat hat,
+     * bleibt genau deshalb stehen, und der Haken, der ihn hergebracht hat,
+     * sitzt einen Schritt frueher.
+     *
+     * Drei Festlegungen:
+     *
+     *  - Ziel ist der letzte INTERAKTIVE Schritt, nicht der unmittelbar
+     *    vorherige. Der kann automatisch sein, und dann liefe seine Aktion ein
+     *    zweites Mal — eine zweite Mail, ein zweiter Kind-Ablauf. Gemeint ist
+     *    «die vorherige Maske», nicht «fuehre das nochmal aus».
+     *  - Nur wo der aktuelle Schritt es erlaubt (`ui.back: true`).
+     *    Zurueckgehen macht Geschehenes nicht rueckgaengig; ob das vertretbar
+     *    ist, weiss allein, wer den Ablauf gebaut hat. Vorgabe ist AUS.
+     *  - Gibt es im eigenen Ablauf kein Ziel, aber einen Eltern-Ablauf, wird
+     *    dieser Ablauf ABGEBROCHEN und der Eltern geht seinerseits zurueck.
+     *
+     * Der Kontext bleibt unveraendert: zurueckgehen bewegt die Position, nicht
+     * die Daten.
+     *
+     * @throws WorkflowException wenn es von hier aus kein Zurueck gibt
+     */
+    public function goBack(string $instanceId): WorkflowInstance
+    {
+        $instance = $this->repo->findInstance($instanceId)
+            ?? throw new WorkflowException("Instanz '{$instanceId}' nicht gefunden.");
+
+        if (!$this->canGoBack($instance)) {
+            throw new WorkflowException(
+                "Von Schritt '{$instance->currentStep}' aus gibt es kein Zurueck."
+            );
+        }
+
+        return $this->zurueckSchieben($instance);
+    }
+
+    /**
+     * Fuehrt den Rueckschritt aus — die Erlaubnis ist an dieser Stelle bereits
+     * geprueft.
+     *
+     * Getrennt von {@see canGoBack()}, weil die Erlaubnis am SICHTBAREN Schritt
+     * haengt, an dem die Person steht. Der Eltern-Schritt darunter ist ein
+     * technischer Platzhalter («starte Upload») und traegt kein `ui.back`;
+     * pruefte die Rekursion dort erneut, scheiterte genau der Fall, fuer den
+     * das Ganze gebaut ist.
+     */
+    private function zurueckSchieben(WorkflowInstance $instance): WorkflowInstance
+    {
+        $ziel = $this->backTarget($instance);
+        if ($ziel !== null) {
+            $von = $instance->currentStep;
+            $instance->currentStep = $ziel;
+            $instance->status = WorkflowInstance::WAITING_EVENT;
+            $instance->wakeAt = null;
+            $instance->attempts = 0;
+            $this->repo->saveInstance($instance);
+            $this->repo->logHistory($instance->id, 'back', $von, ['to' => $ziel]);
+
+            return $instance;
+        }
+
+        // Kein Ziel im eigenen Ablauf: dieser hier ist gegenstandslos, und der
+        // Eltern-Ablauf geht zurueck.
+        $parentId = $this->parentIdOf($instance);
+        $parent = $parentId === null ? null : $this->repo->findInstance($parentId);
+        if ($parent === null) {
+            throw new WorkflowException("Von Schritt '{$instance->currentStep}' aus gibt es kein Zurueck.");
+        }
+
+        $instance->status = WorkflowInstance::CANCELLED;
+        $instance->wakeAt = null;
+        $this->repo->saveInstance($instance);
+        $this->repo->logHistory($instance->id, 'cancelled', $instance->currentStep, [
+            'grund' => 'zurueck',
+        ]);
+
+        // Der Eltern wartet nicht mehr auf dieses Kind. ZUERST loesen, dann
+        // zurueckgehen: sonst weckte ein spaeter eintreffender Abschluss des
+        // Kindes einen Ablauf, der laengst woanders steht.
+        unset($parent->context[WorkflowStarterInterface::AWAIT_WORKFLOW]);
+        $this->repo->saveInstance($parent);
+
+        return $this->zurueckSchieben($parent);
+    }
+
+    /**
+     * Gibt es von hier aus ein Zurueck?
+     *
+     * Zwei Bedingungen: der aktuelle Schritt muss es erlauben (`ui.back`), und
+     * es muss ein Ziel geben — im eigenen Ablauf oder ueber den Eltern.
+     */
+    public function canGoBack(WorkflowInstance $instance): bool
+    {
+        if ($instance->isFinished()) {
+            return false;
+        }
+
+        try {
+            $def = $this->repo->findDefinition($instance->definitionId, $instance->definitionVersion);
+            $step = $def->step($instance->currentStep);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (($step->ui['back'] ?? null) !== true) {
+            return false;
+        }
+
+        if ($this->backTarget($instance) !== null) {
+            return true;
+        }
+
+        $parentId = $this->parentIdOf($instance);
+        $parent = $parentId === null ? null : $this->repo->findInstance($parentId);
+
+        // Beim Eltern zaehlt nur, ob es dort ein ZIEL gibt — sein eigener
+        // Schritt ist ein technischer Platzhalter («starte Upload») und traegt
+        // kein `ui.back`; die Erlaubnis hat die Person am sichtbaren Schritt
+        // bereits bekommen.
+        return $parent !== null && !$parent->isFinished() && $this->backTarget($parent) !== null;
+    }
+
+    /**
+     * Der letzte interaktive Schritt, den diese Instanz VERLASSEN hat.
+     *
+     * Aus dem Verlauf: jede `transition` nennt den Schritt, von dem aus sie
+     * ging. Rueckwaerts der erste, der interaktiv ist — automatische werden
+     * uebersprungen, damit ihre Aktion nicht ein zweites Mal laeuft.
+     */
+    private function backTarget(WorkflowInstance $instance): ?string
+    {
+        try {
+            $def = $this->repo->findDefinition($instance->definitionId, $instance->definitionVersion);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        foreach (array_reverse($this->repo->findHistory($instance->id)) as $eintrag) {
+            if ($eintrag['kind'] !== 'transition') {
+                continue;
+            }
+            $name = $eintrag['step'];
+            if ($name === null || $name === '' || $name === $instance->currentStep) {
+                continue;
+            }
+            if ($def->hasStep($name) && $def->step($name)->isInteractive()) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    /** Die Instanz-ID des Eltern-Ablaufs, falls dieser hier ein Kind ist. */
+    private function parentIdOf(WorkflowInstance $instance): ?string
+    {
+        $link = $instance->context[WorkflowStarterInterface::PARENT_LINK] ?? null;
+        if (!is_array($link)) {
+            return null;
+        }
+        $id = $link['instanceId'] ?? null;
+
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
      * Wendet ein Event auf eine wartende Instanz an (Button-Klick im Frontend
      * oder ein API-Trigger). Payload wird in den Kontext gemerged.
      *

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Definition;
 
+use WorkflowEngine\Contracts\ExpressionCheckerInterface;
+use WorkflowEngine\Exception\ExpressionException;
 use WorkflowEngine\Exception\InvalidDefinitionException;
 
 /**
@@ -14,12 +16,25 @@ use WorkflowEngine\Exception\InvalidDefinitionException;
  *  - es gibt keine unerreichbaren Steps,
  *  - kein erreichbarer Step sitzt in einem Zyklus ohne Ausgang
  *    (jeder erreichbare Step muss einen Endzustand erreichen koennen),
- *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen.
+ *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen, und
+ *    kein interaktiver haengt an lauter ereignislosen,
+ *  - jede Bedingung (`when`) und jeder Timer-Ausdruck (`until`) laesst sich
+ *    uebersetzen — sofern ein {@see ExpressionCheckerInterface} uebergeben wird.
  *
  * Alle gefundenen Fehler werden gesammelt und gebuendelt geworfen.
  */
 final class DefinitionValidator
 {
+    /**
+     * @param ExpressionCheckerInterface|null $checker prueft `when` und `until`
+     *        beim Speichern. Optional, damit eine Anwendung mit eigenem
+     *        Evaluator (und eigenen Wurzeln) den Validator unveraendert
+     *        weiterbenutzen kann — ohne ihn bleibt alles wie zuvor.
+     */
+    public function __construct(private readonly ?ExpressionCheckerInterface $checker = null)
+    {
+    }
+
     /**
      * @throws InvalidDefinitionException wenn die Definition ungueltig ist
      */
@@ -29,6 +44,7 @@ final class DefinitionValidator
 
         $this->checkTransitionTargets($def, $errors);
         $this->checkEventlessExit($def, $errors);
+        $this->checkExpressions($def, $errors);
         $startExists = $def->hasStep($def->startStep);
         if (!$startExists) {
             $errors[] = "Start-Step '{$def->startStep}' existiert nicht.";
@@ -42,6 +58,42 @@ final class DefinitionValidator
 
         if ($errors !== []) {
             throw new InvalidDefinitionException(array_values(array_unique($errors)));
+        }
+    }
+
+    /**
+     * Laesst sich jede Bedingung uebersetzen?
+     *
+     * GEMELDET: `"when": "daten_korrekt == true"` — gemeint war
+     * `context['daten_korrekt']`. Die Sprache kennt nur die Wurzeln `context`
+     * und `now`; ein blosser Name ist ein Fehler. Beim AUSWERTEN faellt das
+     * erst auf, wenn jemand den Knopf drueckt — als Serverfehler auf der
+     * oeffentlichen Seite, mitten im Ablauf.
+     *
+     * @param list<string> $errors
+     */
+    private function checkExpressions(WorkflowDefinition $def, array &$errors): void
+    {
+        if ($this->checker === null) {
+            return;
+        }
+
+        foreach ($def->steps as $name => $step) {
+            foreach ($step->transitions as $t) {
+                try {
+                    $this->checker->check($t->when);
+                } catch (ExpressionException $e) {
+                    $errors[] = "Step '{$name}', Uebergang nach '{$t->to}': {$e->getMessage()}";
+                }
+            }
+
+            if ($step->untilExpr !== null) {
+                try {
+                    $this->checker->check($step->untilExpr);
+                } catch (ExpressionException $e) {
+                    $errors[] = "Step '{$name}', 'until': {$e->getMessage()}";
+                }
+            }
         }
     }
 
@@ -64,7 +116,28 @@ final class DefinitionValidator
     private function checkEventlessExit(WorkflowDefinition $def, array &$errors): void
     {
         foreach ($def->steps as $name => $step) {
-            if ($step->isInteractive() || $step->transitions === []) {
+            if ($step->transitions === []) {
+                continue;
+            }
+
+            // Die andere Richtung derselben Sackgasse: ein interaktiver Schritt
+            // WARTET auf ein Ereignis. Traegt keiner seiner Uebergaenge eines,
+            // gibt es keinen Knopf — die oeffentliche Seite leitet ihre Knoepfe
+            // aus den Uebergaengen ab, nicht aus `ui.events` — und der Ablauf
+            // steht dort fuer immer.
+            if ($step->isInteractive()) {
+                foreach ($step->transitions as $t) {
+                    if ($t->event !== null) {
+                        continue 2;
+                    }
+                }
+
+                $errors[] = "Step '{$name}' hat keinen Uebergang MIT Ereignis. Ein interaktiver "
+                    . 'Schritt wartet auf einen Knopfdruck; ohne Ereignis entsteht kein Knopf, '
+                    . 'und der Ablauf bleibt dort stehen. Ergaenze ein Ereignis am Uebergang '
+                    . '(`ui.events` allein genuegt nicht — die Knoepfe kommen aus den '
+                    . 'Uebergaengen), oder mache den Schritt automatisch.';
+
                 continue;
             }
 
@@ -75,7 +148,8 @@ final class DefinitionValidator
             }
 
             $errors[] = "Step '{$name}' hat keinen Uebergang ohne Ereignis. Ein Schritt vom Typ "
-                . "'{$step->type}' bekommt nie einen Knopfdruck und kaeme nicht weiter.";
+                . "'{$step->type}' bekommt nie einen Knopfdruck und kaeme nicht weiter. "
+                . 'Entferne das Ereignis am Uebergang, oder mache den Schritt interaktiv.';
         }
     }
 

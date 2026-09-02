@@ -14,6 +14,7 @@ export const WORKFLOW_STATUS_LABELS: Readonly<Record<WorkflowStatus, string>> = 
   waiting_timer: 'Wartet auf den nächsten Termin',
   completed: 'Abgeschlossen',
   failed: 'Fehlgeschlagen',
+  cancelled: 'Abgebrochen',
 };
 
 /**
@@ -26,6 +27,7 @@ const WAITING_TEXTS: Readonly<Record<WorkflowStatus, string>> = {
   waiting_timer: 'Wartet auf den nächsten Termin — hier ist gerade nichts zu tun.',
   completed: 'Abgeschlossen.',
   failed: 'Abgebrochen.',
+  cancelled: 'Abgebrochen — jemand ist zurückgegangen, bevor er zu Ende war.',
 };
 
 /**
@@ -49,6 +51,9 @@ export function workflowFinishedText(status: string): string {
   }
   if (status === 'completed') {
     return 'Der Ablauf ist abgeschlossen.';
+  }
+  if (status === 'cancelled') {
+    return 'Der Ablauf wurde abgebrochen.';
   }
 
   return `Der Ablauf ist beendet: ${workflowStatusLabel(status)}.`;
