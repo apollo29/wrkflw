@@ -5,6 +5,23 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-02
+
+### Warum 2.1.0 und nicht 3.0.0
+
+Kein Port hat sich geaendert. `WorkflowEngine` bekommt zwei Methoden dazu
+(`goBack()`, `canGoBack()`), `WorkflowInstance` eine Konstante, der
+`DefinitionValidator` einen OPTIONALEN Konstruktor-Parameter. Wer die Engine
+benutzt, hat nichts zu tun; wer einen eigenen Evaluator mitbringt, ebenso wenig.
+
+Die eine Stelle, an der etwas anders wird, ohne dass jemand etwas aendert: ein
+interaktiver Schritt ohne Ereignis-Uebergang wird beim Speichern jetzt
+abgewiesen. Das ist Absicht — eine solche Definition war schon vorher kaputt,
+sie sagte es nur nicht.
+
+Der npm-Client geht auf **1.16.0**: `ui.back` im Editor, `cancelled` in den
+Status-Texten, `canGoBack` im `CurrentStep`. Ebenfalls nur Zuwachs.
+
 ### Added
 - **`goBack()`: ein Schritt zurueck, generisch und ueber Ablauf-Grenzen hinweg.**
   `WorkflowEngine::goBack($instanceId)` setzt eine Instanz auf den letzten
