@@ -470,6 +470,20 @@
             <div class="wfb__label">Beschreibung</div>
             <input type="text" class="wfb__wide" [(ngModel)]="step.description" />
 
+            <label class="wfb__check" style="margin-top:8px;">
+              <input type="checkbox" [ngModel]="step.backAllowed"
+                     (ngModelChange)="step.backAllowed = $event; bump()" />
+              Ein Schritt zurück erlaubt
+            </label>
+            <div class="wfb__hint">
+              Zeigt auf der öffentlichen Seite einen Knopf, der zum letzten
+              Eingabeschritt zurückgeht — notfalls über die Ablauf-Grenze hinweg
+              in den Ablauf, der diesen hier gestartet hat. Gedacht für Masken,
+              auf denen man steckenbleiben kann: wer auf einer Upload-Maske kein
+              gültiges Dokument hat, kommt sonst nicht mehr weg. Nicht setzen,
+              wo der Schritt davor schon etwas verschickt oder abgelegt hat.
+            </div>
+
             <div class="wfb__fields-head">
               <span class="wfb__label" style="margin:0;">Eingabefelder</span>
               <button type="button" class="wfb__mini" (click)="addField(step)">+ Feld</button>

@@ -54,6 +54,15 @@ export interface BuilderStep {
   /** Referenz auf eine 'page'-Vorlage (nur interaktive Schritte), ui.templateId. */
   pageTemplateId: string;
   /**
+   * `ui.back`: darf man von diesem Schritt aus einen Schritt zurück?
+   *
+   * Die Engine geht dabei zum letzten Eingabeschritt zurück und notfalls über
+   * die Ablauf-Grenze hinweg in den Eltern-Ablauf. Standard ist `false` — ein
+   * Zurück an einer Stelle, an der schon etwas verschickt oder abgelegt wurde,
+   * wäre eine böse Überraschung. Deshalb wird es je Schritt freigegeben.
+   */
+  backAllowed: boolean;
+  /**
    * `ui.public`: erscheint der Schritt auf der öffentlichen Seite?
    *
    * `null` = die Vorgabe der Host-App gilt (dort: nur Eingabe-Schritte). Sie
@@ -198,6 +207,7 @@ function stepFromJson(name: string, raw: Record<string, unknown>): BuilderStep {
       return out;
     }),
     pageTemplateId: asString(ui['templateId']),
+    backAllowed: ui['back'] === true,
     publicVisible: typeof ui['public'] === 'boolean' ? ui['public'] : null,
     delaySeconds: typeof delay === 'number' ? delay : null,
     transitions: asArray(raw['transitions']).map((t) =>
@@ -282,6 +292,11 @@ function stepToJson(step: BuilderStep): Record<string, unknown> {
     };
     if (step.pageTemplateId) {
       ui['templateId'] = step.pageTemplateId;
+    }
+    // Nur schreiben, wenn freigegeben: sonst waere jede bestehende Definition
+    // beim naechsten Speichern um ein `back: false` reicher, das nichts aendert.
+    if (step.backAllowed) {
+      ui['back'] = true;
     }
     if (step.publicVisible !== null) {
       ui['public'] = step.publicVisible;
@@ -476,6 +491,7 @@ export function emptyStep(name: string, type: StepType): BuilderStep {
     description: '',
     fields: [],
     pageTemplateId: '',
+    backAllowed: false,
     publicVisible: null,
     delaySeconds: type === 'timer' ? 3600 : null,
     transitions: [],

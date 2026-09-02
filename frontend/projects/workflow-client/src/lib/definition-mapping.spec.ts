@@ -68,6 +68,7 @@ describe('definition-mapping', () => {
           description: 'Bitte ausfüllen',
           fields: [{ name: 'ok', label: 'OK', type: 'boolean' }],
           pageTemplateId: '',
+          backAllowed: false,
           publicVisible: null,
           delaySeconds: null,
           transitions: [
@@ -90,6 +91,7 @@ describe('definition-mapping', () => {
           description: '',
           fields: [],
           pageTemplateId: '',
+          backAllowed: false,
           publicVisible: null,
           delaySeconds: null,
           transitions: [],

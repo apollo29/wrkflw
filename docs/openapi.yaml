@@ -109,6 +109,12 @@ paths:
                   events:
                     type: array
                     items: { type: string }
+                  canGoBack:
+                    type: boolean
+                    description: >
+                      Ob POST /instances/{id}/back von hier aus etwas bewirkt. Eine
+                      Oberflaeche soll keinen Knopf zeigen, den die Engine
+                      anschliessend mit 409 abweist.
                   context:
                     type: object
                     additionalProperties: true
@@ -166,6 +172,44 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /instances/{id}/back:
+    post:
+      summary: Einen Schritt zurueck
+      operationId: goBack
+      description: >
+        Setzt die Instanz auf den letzten interaktiven Schritt zurueck, den sie
+        tatsaechlich durchlaufen hat (aus der History, nicht aus dem Graphen);
+        automatische Schritte dazwischen werden uebersprungen, damit ihre Aktion
+        nicht ein zweites Mal laeuft. Freigegeben wird das je Schritt ueber
+        ui.back = true.
+
+
+        Ist im eigenen Ablauf kein solcher Schritt mehr da, aber ein
+        Eltern-Ablauf wartet auf diesen hier, geht es ueber die Ablauf-Grenze
+        hinweg weiter zurueck: diese Instanz wird cancelled, und die Antwort
+        berichtet ueber den Eltern-Ablauf.
+
+
+        Kein Rumpf - wohin es zurueckgeht, weiss die Engine, nicht der Aufrufer.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      responses:
+        '200':
+          description: Zurueckgesetzt; berichtet wird die Instanz, die jetzt am Zug ist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceSummary'
+        '404':
+          description: Instanz nicht gefunden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Von diesem Schritt aus gibt es kein Zurueck
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /instances/{id}/history:
     get:
       summary: History-Eintraege einer Instanz
@@ -213,7 +257,10 @@ components:
   schemas:
     Status:
       type: string
-      enum: [running, waiting_event, waiting_timer, completed, failed]
+      enum: [running, waiting_event, waiting_timer, completed, failed, cancelled]
+      description: >
+        cancelled = jemand ist aus diesem Ablauf herausgegangen, bevor er zu Ende
+        war (siehe POST /instances/{id}/back). Endzustand wie completed/failed.
     InstanceSummary:
       type: object
       properties:

@@ -4,7 +4,13 @@ export type WorkflowStatus =
   | 'waiting_event'
   | 'waiting_timer'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  /**
+   * Abgebrochen: jemand ist aus diesem Ablauf herausgegangen, bevor er zu
+   * Ende war — der Rueckschritt ueber eine Ablauf-Grenze hinweg macht einen
+   * gerade begonnenen Kind-Ablauf gegenstandslos.
+   */
+  | 'cancelled';
 
 export type StepType = 'automatic' | 'interactive' | 'timer';
 
@@ -45,6 +51,11 @@ export interface StepUi {
   eventLabels?: Record<string, string>;
   /** Sichtbarkeit auf einer öffentlichen Seite; die Host-App wertet sie aus. */
   public?: boolean;
+  /**
+   * Darf man von diesem Schritt aus einen Schritt zurück? Die Engine geht dabei
+   * zum letzten Eingabeschritt und notfalls über die Ablauf-Grenze hinweg.
+   */
+  back?: boolean;
 }
 
 /** Aktueller Schritt inkl. UI-Metadaten (GET /instances/{id}/current-step). */
@@ -57,6 +68,11 @@ export interface CurrentStep {
   finished: boolean;
   ui: StepUi;
   events: string[];
+  /**
+   * Ob es von hier aus einen Schritt zurückgeht. Entscheidet die Engine — eine
+   * Oberfläche soll keinen Knopf zeigen, den sie anschliessend abweist.
+   */
+  canGoBack?: boolean;
   context: Record<string, unknown>;
 }
 

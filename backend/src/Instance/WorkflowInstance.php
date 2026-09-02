@@ -17,6 +17,17 @@ final class WorkflowInstance
     public const FAILED = 'failed';
 
     /**
+     * Abgebrochen — die Person ist aus diesem Ablauf herausgegangen, bevor er
+     * zu Ende war.
+     *
+     * Entstanden fuer den Rueckschritt ueber eine Ablauf-Grenze hinweg: steht
+     * jemand am Anfang eines Kind-Ablaufs und geht zurueck, ist das Kind
+     * gegenstandslos. Es `completed` zu nennen waere gelogen — es hat nichts
+     * abgeschlossen; `failed` ebenso — es ist nichts schiefgegangen.
+     */
+    public const CANCELLED = 'cancelled';
+
+    /**
      * @param array<string,mixed> $context frei erweiterbarer Variablen-Kontext
      */
     public function __construct(
@@ -36,7 +47,7 @@ final class WorkflowInstance
 
     public function isFinished(): bool
     {
-        return in_array($this->status, [self::COMPLETED, self::FAILED], true);
+        return in_array($this->status, [self::COMPLETED, self::FAILED, self::CANCELLED], true);
     }
 
     public function set(string $key, mixed $value): void

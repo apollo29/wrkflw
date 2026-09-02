@@ -16,7 +16,8 @@ use WorkflowEngine\Exception\InvalidDefinitionException;
  *  - es gibt keine unerreichbaren Steps,
  *  - kein erreichbarer Step sitzt in einem Zyklus ohne Ausgang
  *    (jeder erreichbare Step muss einen Endzustand erreichen koennen),
- *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen,
+ *  - kein nicht-interaktiver Step haengt an lauter Ereignis-Uebergaengen, und
+ *    kein interaktiver haengt an lauter ereignislosen,
  *  - jede Bedingung (`when`) und jeder Timer-Ausdruck (`until`) laesst sich
  *    uebersetzen — sofern ein {@see ExpressionCheckerInterface} uebergeben wird.
  *
@@ -115,7 +116,28 @@ final class DefinitionValidator
     private function checkEventlessExit(WorkflowDefinition $def, array &$errors): void
     {
         foreach ($def->steps as $name => $step) {
-            if ($step->isInteractive() || $step->transitions === []) {
+            if ($step->transitions === []) {
+                continue;
+            }
+
+            // Die andere Richtung derselben Sackgasse: ein interaktiver Schritt
+            // WARTET auf ein Ereignis. Traegt keiner seiner Uebergaenge eines,
+            // gibt es keinen Knopf — die oeffentliche Seite leitet ihre Knoepfe
+            // aus den Uebergaengen ab, nicht aus `ui.events` — und der Ablauf
+            // steht dort fuer immer.
+            if ($step->isInteractive()) {
+                foreach ($step->transitions as $t) {
+                    if ($t->event !== null) {
+                        continue 2;
+                    }
+                }
+
+                $errors[] = "Step '{$name}' hat keinen Uebergang MIT Ereignis. Ein interaktiver "
+                    . 'Schritt wartet auf einen Knopfdruck; ohne Ereignis entsteht kein Knopf, '
+                    . 'und der Ablauf bleibt dort stehen. Ergaenze ein Ereignis am Uebergang '
+                    . '(`ui.events` allein genuegt nicht — die Knoepfe kommen aus den '
+                    . 'Uebergaengen), oder mache den Schritt automatisch.';
+
                 continue;
             }
 
@@ -126,7 +148,8 @@ final class DefinitionValidator
             }
 
             $errors[] = "Step '{$name}' hat keinen Uebergang ohne Ereignis. Ein Schritt vom Typ "
-                . "'{$step->type}' bekommt nie einen Knopfdruck und kaeme nicht weiter.";
+                . "'{$step->type}' bekommt nie einen Knopfdruck und kaeme nicht weiter. "
+                . 'Entferne das Ereignis am Uebergang, oder mache den Schritt interaktiv.';
         }
     }
 

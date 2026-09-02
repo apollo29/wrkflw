@@ -126,6 +126,45 @@ final class DefinitionValidatorTest extends TestCase
         }
     }
 
+    /**
+     * GEMELDET: «bei mir erscheint kein Button.»
+     *
+     * Die andere Richtung derselben Sackgasse. Ein interaktiver Schritt WARTET
+     * auf ein Ereignis; traegt keiner seiner Uebergaenge eines, entsteht kein
+     * Knopf und der Ablauf steht dort fuer immer. Die oeffentliche Seite leitet
+     * ihre Knoepfe aus den UEBERGAENGEN ab — `ui.events` ist reine Zierde, und
+     * genau das verleitet dazu, es dort zu deklarieren und am Uebergang zu
+     * vergessen.
+     */
+    public function testAnInteractiveStepWithoutAnyEventTransitionThrows(): void
+    {
+        $def = $this->def('a', [
+            'a' => ['type' => 'interactive', 'ui' => ['events' => ['submit']], 'transitions' => [['to' => 'b']]],
+            'b' => ['transitions' => []],
+        ]);
+
+        try {
+            $this->validator->validate($def);
+            self::fail('Erwartete InvalidDefinitionException');
+        } catch (InvalidDefinitionException $e) {
+            self::assertStringContainsString('Ereignis', implode(' ', $e->errors()));
+        }
+    }
+
+    /**
+     * Ein interaktiver Schritt OHNE Uebergaenge ist dagegen ein Endschritt und
+     * bleibt erlaubt — dieselbe Ausnahme wie bei den automatischen.
+     */
+    public function testAnInteractiveEndStepIsFine(): void
+    {
+        $def = $this->def('a', [
+            'a' => ['type' => 'interactive', 'transitions' => []],
+        ]);
+
+        $this->expectNotToPerformAssertions();
+        $this->validator->validate($def);
+    }
+
     /** Ein interaktiver Schritt lebt von Ereignissen — dort ist es richtig so. */
     public function testAnInteractiveStepMayHaveOnlyEventTransitions(): void
     {

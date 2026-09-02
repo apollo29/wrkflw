@@ -323,6 +323,19 @@ wird dieser aus dem Header `Idempotency-Key` gelesen. Ein bereits angewendeter K
 No-op (History-Eintrag `event_duplicate`). Angewendete Keys werden im Kontext unter dem
 reservierten Schlüssel `__appliedEventIds` gehalten.
 
+**Ein Schritt zurueck.** `goBack($instanceId)` setzt eine Instanz auf den letzten
+**interaktiven** Schritt zurueck, den sie tatsaechlich durchlaufen hat — aus der History,
+nicht aus dem Graphen. Automatische Schritte dazwischen werden uebersprungen, damit ihre
+Aktion nicht ein zweites Mal laeuft. Freigegeben wird das je Schritt ueber `ui.back: true`;
+`canGoBack($instance)` beantwortet dieselbe Frage, ohne etwas zu aendern, damit eine
+Oberflaeche keinen Knopf zeigt, den die Engine anschliessend abweist.
+
+Ist im eigenen Ablauf kein solcher Schritt mehr da, aber ein Eltern-Ablauf wartet auf
+diesen hier (`__awaitWorkflow`), geht es **ueber die Ablauf-Grenze hinweg** weiter zurueck:
+das Kind wird `cancelled`, das `__awaitWorkflow` faellt weg, und der Eltern-Ablauf landet
+auf seinem letzten Eingabeschritt. `cancelled` ist ein Endzustand wie `completed` und
+`failed` — ein abgebrochenes Kind weckt seinen Eltern-Ablauf nicht.
+
 **Versionierung.** Eine Instanz speichert `definition_ver` und wird über
 `findDefinition(id, version)` immer mit **genau dieser** Version ausgeführt. Nur **neue**
 Instanzen nutzen die neueste aktive Version (`start()`); laufende Instanzen laufen stabil
