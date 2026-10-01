@@ -5,6 +5,8 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-01
+
 ### Fixed
 - **Nach der Zusammenfuehrung ging es sichtbar nicht weiter.** Was danach
   einspurig folgte, stand in einer eigenen Reihe darunter — ohne Pfeil, ohne
