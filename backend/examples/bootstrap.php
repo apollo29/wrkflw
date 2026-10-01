@@ -145,8 +145,13 @@ final class AppDataWriter implements
         return $out;
     }
 
-    public function write(string $entity, string|int $id, array $values, string $herkunft): bool
-    {
+    public function write(
+        string $entity,
+        string|int $id,
+        array $values,
+        string $herkunft,
+        bool $anlegen = false,
+    ): bool {
         if (!isset(self::ERLAUBT[$entity])) {
             return false;
         }
@@ -174,8 +179,31 @@ final class AppDataWriter implements
             "UPDATE {$tabelle} SET " . implode(', ', $setzen) . ' WHERE id = :id'
         );
         $stmt->execute($params);
+        if ($stmt->rowCount() > 0) {
+            return true;
+        }
 
-        return $stmt->rowCount() > 0;
+        // Nichts geaendert: entweder gibt es die Zeile nicht — dann legt
+        // $anlegen sie an — oder es stand schon genau das drin.
+        $da = $this->pdo->prepare("SELECT 1 FROM {$tabelle} WHERE id = :id");
+        $da->execute([':id' => $id]);
+        if ($da->fetchColumn() !== false) {
+            return true;
+        }
+        if (!$anlegen) {
+            return false;
+        }
+
+        // Dieselben Spalten wie oben, nur als Namen — $params traegt bereits
+        // genau diese Platzhalter.
+        $anzulegen = array_keys(array_intersect_key($values, array_flip($spalten)));
+        $ins = $this->pdo->prepare(
+            "INSERT INTO {$tabelle} (id, " . implode(', ', $anzulegen) . ')'
+            . ' VALUES (:id, ' . implode(', ', array_map(static fn($s) => ":v_{$s}", $anzulegen)) . ')'
+        );
+        $ins->execute($params);
+
+        return true;
     }
 }
 

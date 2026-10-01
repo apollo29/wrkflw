@@ -8,7 +8,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Action\WriteDataAction;
-use WorkflowEngine\Contracts\ExpressionEvaluatorInterface;
+use WorkflowEngine\Tests\Support\FakeExpressionEvaluator;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
 use WorkflowEngine\Tests\Support\InMemoryDataWriter;
@@ -330,7 +330,7 @@ final class WriteDataActionTest extends TestCase
     {
         $writer = new InMemoryDataWriter();
         $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => '', 'kodex_datum' => '']);
-        $action = new WriteDataAction($writer, $this->evaluator(true));
+        $action = new WriteDataAction($writer, new FakeExpressionEvaluator(true));
 
         $action->execute(
             $this->instance(['gelesen' => true]),
@@ -359,7 +359,7 @@ final class WriteDataActionTest extends TestCase
     {
         $writer = new InMemoryDataWriter();
         $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => 'unterzeichnet']);
-        $action = new WriteDataAction($writer, $this->evaluator(false));
+        $action = new WriteDataAction($writer, new FakeExpressionEvaluator(false));
 
         $ergebnis = $action->execute(
             $this->instance([]),
@@ -380,7 +380,7 @@ final class WriteDataActionTest extends TestCase
     {
         $writer = new InMemoryDataWriter();
         $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => 'unterzeichnet']);
-        $action = new WriteDataAction($writer, $this->evaluator(false));
+        $action = new WriteDataAction($writer, new FakeExpressionEvaluator(false));
 
         $action->execute(
             $this->instance([]),
@@ -407,10 +407,10 @@ final class WriteDataActionTest extends TestCase
      */
     public function testDerAusdruckKommtMitKontextUndNowAn(): void
     {
-        $gesehen = [];
         $writer = new InMemoryDataWriter();
         $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => '']);
-        $action = new WriteDataAction($writer, $this->evaluator(true, $gesehen));
+        $expr = new FakeExpressionEvaluator(true);
+        $action = new WriteDataAction($writer, $expr);
 
         $action->execute(
             $this->instance(['gelesen' => true]),
@@ -421,9 +421,9 @@ final class WriteDataActionTest extends TestCase
             ]),
         );
 
-        self::assertSame("context['gelesen'] == true", $gesehen['expression'] ?? null);
-        self::assertSame(['gelesen' => true], $gesehen['scope']['context'] ?? null);
-        self::assertArrayHasKey('now', $gesehen['scope'] ?? []);
+        self::assertSame("context['gelesen'] == true", $expr->aufrufe[0]['expression']);
+        self::assertSame(['gelesen' => true], $expr->aufrufe[0]['scope']['context']);
+        self::assertArrayHasKey('now', $expr->aufrufe[0]['scope']);
     }
 
     /** Auch im bedingten Wert gelten die Platzhalter. */
@@ -431,7 +431,7 @@ final class WriteDataActionTest extends TestCase
     {
         $writer = new InMemoryDataWriter();
         $writer->seed('kinderschutz', 'TR-1', ['kodex_datum' => '']);
-        $action = new WriteDataAction($writer, $this->evaluator(true));
+        $action = new WriteDataAction($writer, new FakeExpressionEvaluator(true));
 
         $action->execute(
             $this->instance([]),
@@ -489,36 +489,6 @@ final class WriteDataActionTest extends TestCase
         );
 
         self::assertSame('unterzeichnet', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
-    }
-
-    /**
-     * Ein Evaluator, der eine feste Antwort gibt und auf Wunsch festhaelt,
-     * womit er gerufen wurde.
-     *
-     * @param array<string,mixed> $gesehen
-     */
-    private function evaluator(bool $antwort, array &$gesehen = []): ExpressionEvaluatorInterface
-    {
-        return new class ($antwort, $gesehen) implements ExpressionEvaluatorInterface {
-            /** @param array<string,mixed> $gesehen */
-            public function __construct(
-                private readonly bool $antwort,
-                private array &$gesehen,
-            ) {
-            }
-
-            public function evaluate(string $expression, array $scope): bool
-            {
-                $this->gesehen = ['expression' => $expression, 'scope' => $scope];
-
-                return $this->antwort;
-            }
-
-            public function evaluateValue(string $expression, array $scope): mixed
-            {
-                return $this->antwort;
-            }
-        };
     }
 
     // ------------------------------------------- eingebaute Platzhalter (Uhr)
