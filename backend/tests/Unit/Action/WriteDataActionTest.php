@@ -8,9 +8,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Action\WriteDataAction;
-use WorkflowEngine\Tests\Support\FakeExpressionEvaluator;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
+use WorkflowEngine\Tests\Support\FakeExpressionEvaluator;
 use WorkflowEngine\Tests\Support\InMemoryDataWriter;
 
 #[CoversClass(WriteDataAction::class)]
