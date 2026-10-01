@@ -31,6 +31,14 @@
       <path d="M8 6.5v4.5m0 0 1.6-1.6M8 11l-1.6-1.6" fill="none" stroke="currentColor"
             stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
+    <!-- Der Pfeil der Ablauf-Vorschau. Als Linie mit Spitze und nicht als
+         Zeichen «→», weil er in der Verzweigung die Spur-Linie fortsetzt: ein
+         Schriftzeichen haette dort eine andere Hoehe als die SVG-Linien
+         daneben und der Weg bekaeme einen Versatz. -->
+    <symbol id="wfb-i-arrow" viewBox="0 0 26 12">
+      <path d="M2 6h21M18.5 2 23 6l-4.5 4" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -105,24 +113,87 @@
     <!-- ── Ablauf-Vorschau ── -->
     <div class="wfb__panel wfb__panel--soft">
       <div class="wfb__panel-label">Ablauf-Vorschau</div>
-      <div class="wfb__preview">
-        @for (name of preview(); track name; let last = $last) {
-          @if (stepByName(name); as s) {
-            <span class="wfb__chip"
+
+      <!-- Ein Schritt-Plaettchen. Dreimal gebraucht (Reihe, Spur,
+           Zusammenfuehrung), deshalb einmal geschrieben. Ein Knopf, weil es
+           einer ist: der Klick waehlt den Schritt aus, wie in der Liste
+           links. -->
+      <ng-template #chip let-name>
+        @if (stepByName(name); as s) {
+          <button type="button" class="wfb__chip wfb__chip--pick"
                   [class.wfb__chip--automatic]="stepKind(s) === 'automatic'"
                   [class.wfb__chip--interactive]="stepKind(s) === 'interactive'"
                   [class.wfb__chip--timer]="stepKind(s) === 'timer'"
                   [class.wfb__chip--workflow]="stepKind(s) === 'workflow'"
                   [class.wfb__chip--datacheck]="stepKind(s) === 'datacheck'"
                   [class.wfb__chip--datawrite]="stepKind(s) === 'datawrite'"
-                  [class.wfb__chip--active]="selectedStep()?.name === name">
-              <svg class="wfb__icon" aria-hidden="true">
-                <use [attr.href]="stepIcon(s)"/>
-              </svg>
-              {{ name }}
-            </span>
+                  [class.wfb__chip--active]="selectedStep()?.name === name"
+                  [attr.aria-pressed]="selectedStep()?.name === name"
+                  (click)="selectByName(name)">
+            <svg class="wfb__icon" aria-hidden="true">
+              <use [attr.href]="stepIcon(s)"/>
+            </svg>
+            {{ name }}
+          </button>
+        }
+      </ng-template>
+
+      <div class="wfb__flow">
+        @for (sec of flow(); track $index) {
+          @if (sec.kind === 'chain') {
+            <div class="wfb__flow-row">
+              @for (name of sec.steps; track name; let last = $last) {
+                <ng-container *ngTemplateOutlet="chip; context: { $implicit: name }"></ng-container>
+                @if (!last) {
+                  <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
+                }
+              }
+            </div>
           }
-          @if (!last) { <span class="wfb__preview-arrow" aria-hidden="true">→</span> }
+          @if (sec.kind === 'fork') {
+            <div class="wfb__branch">
+              <div class="wfb__branch-row">
+                @if (sec.continued) {
+                  <span class="wfb__branch-prev" title="die Schritte davor">…</span>
+                  <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
+                }
+                <ng-container *ngTemplateOutlet="chip; context: { $implicit: sec.from }"></ng-container>
+
+                <svg class="wfb__fork" aria-hidden="true"
+                     width="56" [attr.height]="sec.height" [attr.viewBox]="'0 0 56 ' + sec.height">
+                  @for (d of sec.forkPaths; track $index) { <path [attr.d]="d"/> }
+                </svg>
+
+                <div class="wfb__lanes">
+                  @for (lane of sec.lanes; track $index) {
+                    <div class="wfb__lane">
+                      @if (lane.isElse) {
+                        <span class="wfb__lane-else">Sonst</span>
+                      } @else {
+                        <span class="wfb__lane-cond">{{ lane.condition }}</span>
+                      }
+                      @for (name of lane.steps; track name) {
+                        <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
+                        <ng-container *ngTemplateOutlet="chip; context: { $implicit: name }"></ng-container>
+                      }
+                      <span class="wfb__lane-line"></span>
+                    </div>
+                  }
+                </div>
+
+                @if (sec.merge) {
+                  <svg class="wfb__merge-lines" aria-hidden="true"
+                       width="60" [attr.height]="sec.height" [attr.viewBox]="'0 0 60 ' + sec.height">
+                    @for (d of sec.mergePaths; track $index) { <path [attr.d]="d"/> }
+                  </svg>
+                  <div class="wfb__merge">
+                    <span class="wfb__merge-label">Zusammenführung</span>
+                    <ng-container *ngTemplateOutlet="chip; context: { $implicit: sec.merge }"></ng-container>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         } @empty {
           <span class="wfb__panel-label" style="margin:0;">noch keine Schritte</span>
         }

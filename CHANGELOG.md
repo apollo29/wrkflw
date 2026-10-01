@@ -5,6 +5,45 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Die Ablauf-Vorschau zeigte eine Verzweigung als Reihe.** Die Vorschau war
+  eine Breitensuche und damit eine flache Liste. Bei einem Schritt mit zwei
+  Ausgaengen standen danach BEIDE Ziele nebeneinander, mit einem Pfeil
+  dazwischen — als liefe der eine nach dem anderen. Es laeuft aber entweder der
+  eine oder der andere, und wovon das abhaengt, war ueberhaupt nicht zu sehen.
+  Das Bild war nicht unvollstaendig, es war falsch.
+
+  Ein Schritt mit zwei oder mehr Uebergaengen wird jetzt zur Verzweigung
+  gezeichnet: je Uebergang eine Spur mit ihrer Bedingung (oder «Sonst», wenn es
+  keine gibt), und wo die Spuren wieder in einem Schritt zusammenlaufen, fuehrt
+  ein zweites Buendel sie dorthin. Danach geht es einspurig weiter. Die Kurven
+  rechnen sich aus der Anzahl der Spuren — zwei, drei, vier, mehr; der Editor
+  kennt fuer Uebergaenge keine Obergrenze, das Bild jetzt auch nicht.
+
+  Was die Vorschau BEWUSST NICHT zeigt: eine Verzweigung innerhalb einer Spur.
+  Eine Spur endet am naechsten Schritt, der selbst verzweigt; der steht noch da,
+  seine Ausgaenge nicht. Ein Bild, das jede Ebene aufklappt, wird bei drei
+  Ebenen unlesbar — und die Ausgaenge eines Schritts stehen vollstaendig in
+  seinem Detail-Panel.
+
+  Nachgerechnet statt angesehen: die Pfade in `flow-geometry.spec.ts` gegen von
+  Hand aus dem Entwurf abgeleitete Werte, das Ergebnis in Chromium gemessen
+  (Spurhoehe genau 56px ohne Ueberlauf, alle Spur-Linien enden auf derselben
+  x-Position, das Plaettchen der Zusammenfuehrung exakt auf der Mitte des
+  Buendels — bei 2, 3 und 4 Zweigen).
+- **Ein Uebergang ohne Bedingung stand in der Vorschau als Bedingung `true`.**
+  «Immer» wird als `when: "true"` gespeichert und kommt als roher Ausdruck
+  zurueck, nicht als leerer Assistent. In der Spur gehoert dort «Sonst» hin.
+
+### Added
+- **Die Plaettchen der Ablauf-Vorschau waehlen den Schritt aus**, wie der
+  Eintrag in der Liste links. In einer Verzweigung steht ein Schritt, den man in
+  der Liste sonst erst suchen muesste. Sie sind dafuer jetzt Knoepfe und damit
+  auch mit der Tastatur erreichbar.
+
+### Changed
+- Client **1.18.0**.
+
 ## [2.2.0] - 2026-10-01
 
 ### Warum 2.2.0 und nicht 3.0.0
@@ -67,11 +106,12 @@ Feldtypen `write-entity-ref` und `field-value-map`, und
   nachher nicht gilt, ist schlimmer als keine: der Fehler fiele erst im Log auf,
   lange nach dem Speichern.
 
-  Was die Aktion bewusst NICHT kann: Datensaetze anlegen oder loeschen, mehrere
-  Zeilen auf einmal (kein `where`), und den Spaltennamen aus dem Kontext
-  bestimmen. Welche Spalten ein Schritt anfasst, steht in der Definition und ist
-  dort nachlesbar; stammte der Name aus dem Kontext, waere er von einer Eingabe
-  abhaengig und damit von aussen steuerbar.
+  Was die Aktion bewusst NICHT kann: Datensaetze loeschen, mehrere Zeilen auf
+  einmal (kein `where`), und den Spaltennamen aus dem Kontext bestimmen. Welche
+  Spalten ein Schritt anfasst, steht in der Definition und ist dort nachlesbar;
+  stammte der Name aus dem Kontext, waere er von einer Eingabe abhaengig und
+  damit von aussen steuerbar. Anlegen kann sie, aber nur wenn es am Schritt
+  ausdruecklich angehakt ist — siehe `anlegen` weiter unten.
 
   `<as> == false` ist eine ANTWORT, kein Abbruch: kein Datensatz, keine erlaubte
   Spalte uebrig — darauf kann eine Uebergangs-Bedingung verzweigen. Fuer echte

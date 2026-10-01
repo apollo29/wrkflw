@@ -35,7 +35,16 @@
 }
 .wfb__mono { font-family: var(--_mono); font-size: 12.5px; }
 
-.wfb button {
+/*
+ * `:not(.wfb__chip)`, weil das Plaettchen der Ablauf-Vorschau ein Knopf ist
+ * (der Klick waehlt den Schritt aus) und seine eigenen Farben mitbringt.
+ * `.wfb button` ist mit (0,1,1) spezifischer als `.wfb__chip--workflow` mit
+ * (0,1,0) — ohne diesen Ausschluss gewinnt der allgemeine Knopf, und zwar
+ * lautlos: das Plaettchen wird weiss, 34px hoch und mittig gesetzt, die
+ * Typ-Farbe ist weg. Gemessen, nicht vermutet: derselbe Klassensatz ergab auf
+ * einem <span> #ecfdf5 und auf einem <button> #ffffff.
+ */
+.wfb button:not(.wfb__chip) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,7 +61,7 @@
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
-.wfb button:hover { border-color: var(--_primary); color: var(--_primary); }
+.wfb button:not(.wfb__chip):hover { border-color: var(--_primary); color: var(--_primary); }
 .wfb button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .wfb__icon { width: 15px; height: 15px; flex-shrink: 0; }
@@ -216,6 +225,103 @@
 /* ── Ablauf-Vorschau ── */
 .wfb__preview { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .wfb__preview-arrow { color: var(--_border-strong); font-size: 15px; }
+
+/* ── Ablauf-Vorschau: Reihen und Verzweigungen (Entwurf 01b) ──
+ *
+ * Die flache Reihe mit Pfeilen reichte fuer einen Ablauf, der geradeaus laeuft.
+ * Bei einem Schritt mit zwei Ausgaengen standen danach beide Ziele
+ * nebeneinander, mit einem Pfeil dazwischen — als liefe der eine nach dem
+ * anderen. Es laeuft aber entweder der eine oder der andere. Das Bild war
+ * nicht unvollstaendig, es war falsch.
+ */
+.wfb__flow { display: flex; flex-direction: column; gap: 14px; }
+.wfb__flow-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Der Pfeil als Linie: in der Spur setzt er die Linie fort. */
+.wfb__arrow { width: 26px; height: 12px; flex: 0 0 auto; color: var(--_text); }
+
+/* Das Bild ist so breit, wie die laengste Spur es braucht — es umbricht nicht,
+ * denn eine umgebrochene Verzweigung ist keine mehr. Also scrollt es. */
+.wfb__branch {
+  background: var(--_surface);
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+.wfb__branch-row { display: flex; align-items: center; gap: 6px; width: max-content; }
+.wfb__branch-prev { font-size: 13px; color: var(--_muted); padding-right: 2px; cursor: default; }
+
+.wfb__fork, .wfb__merge-lines {
+  flex: 0 0 auto;
+  color: var(--_text);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Die Buendel setzen am Plaettchen an; die 6px heben den gap wieder auf. */
+.wfb__fork { margin-left: -6px; }
+
+/*
+ * Keine feste Breite: als Flex-Spalte ist sie so breit wie ihre breiteste
+ * Spur, und `.wfb__lane-line` streckt die kuerzeren bis dorthin — alle Linien
+ * enden damit auf derselben x-Position, ohne dass jemand eine Zahl pflegt.
+ * Der Entwurf setzt hier 520px; gemessen hat das nur gepolstert.
+ */
+.wfb__lanes { display: flex; flex-direction: column; margin: 0 -6px; flex: 0 0 auto; }
+
+/* 56px: dieselbe Zahl wie LANE_H in workflow-builder.component.ts. Daran
+ * haengen die Kurven der Verzweigung — wer sie hier aendert, muss sie dort
+ * auch aendern. */
+.wfb__lane { height: 56px; display: flex; align-items: center; gap: 6px; }
+.wfb__lane-cond {
+  font-family: var(--_mono);
+  font-size: 11.5px;
+  color: var(--_text);
+  background: var(--_surface);
+  border: 1px solid var(--_border-strong);
+  border-radius: 6px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.wfb__lane-else {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--_text);
+  border: 1px dashed var(--_border-strong);
+  border-radius: 6px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+/* Fuellt den Rest der Spur bis zur Zusammenfuehrung. */
+.wfb__lane-line { flex: 1; min-width: 16px; height: 1.5px; background: var(--_text); }
+
+/*
+ * Das Plaettchen muss auf der Mitte des Buendels sitzen, dort wo die
+ * Pfeilspitze endet — die Beschriftung darueber darf es nicht verschieben.
+ *
+ * Der Entwurf loest das mit `margin-top:-20px` an der Spalte. Gemessen sass das
+ * Plaettchen damit 2px zu hoch, und die 20 haengen an der Zeilenhoehe der
+ * Beschriftung: eine andere Schrift, ein anderer Versatz. Die Beschriftung
+ * steht deshalb absolut darueber; die Spalte ist dann genau so hoch wie das
+ * Plaettchen und `align-items: center` der Zeile trifft von selbst.
+ */
+.wfb__merge { position: relative; flex: 0 0 auto; }
+.wfb__merge-label {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--_muted);
+}
 .wfb__chip {
   display: inline-flex; align-items: center; gap: 7px;
   font-size: 13px; font-weight: 500;
@@ -233,6 +339,11 @@
 .wfb__chip--datacheck { background: var(--_dc-bg); border-color: var(--_dc-bd); color: var(--_dc-fg); }
 .wfb__chip--datawrite { background: var(--_dw-bg); border-color: var(--_dw-bd); color: var(--_dw-fg); }
 .wfb__chip--active { box-shadow: 0 0 0 2px var(--_primary); }
+/* Als Knopf, weil der Klick den Schritt auswaehlt — wie der Eintrag in der
+ * Liste links. Ein Span mit (click) waere mit der Tastatur nicht erreichbar. */
+.wfb__chip--pick { font: inherit; cursor: pointer; text-align: left; }
+.wfb__chip--pick:hover { border-color: var(--_primary); }
+.wfb__chip--pick:focus-visible { outline: 2px solid var(--_primary); outline-offset: 2px; }
 
 /* ── Spalten: Sidebar / Detail ── */
 .wfb__cols {

@@ -4,6 +4,8 @@ import {
   fromDefinition,
   orderedStepNames,
   parseCondition,
+  PreviewNode,
+  previewFlow,
   removeStep,
   toDefinition,
 } from './definition-mapping';
@@ -621,4 +623,235 @@ describe('definition-mapping', () => {
 
     expect(json['steps']['a']['ui']).toBeUndefined();
   });
+  /**
+   * Die Vorschau eines Ablaufs mit Verzweigung.
+   *
+   * `orderedStepNames()` ist eine Breitensuche und liefert eine flache Liste.
+   * Bei einem Schritt mit zwei Ausgaengen standen danach beide Ziele
+   * nebeneinander in der Reihe, mit einem Pfeil dazwischen — als liefe der eine
+   * nach dem anderen. Es laeuft aber entweder der eine oder der andere, und
+   * wovon das abhaengt, war nicht zu sehen. Das Bild war nicht unvollstaendig,
+   * es war falsch.
+   *
+   * Die Faelle unten gehen alle durch `fromDefinition()` und damit durch den
+   * echten Lese-Weg. Das ist hier wesentlich: ein Uebergang ohne Bedingung
+   * steht in der JSON als `when: "true"` und kommt als `mode: 'raw'` zurueck,
+   * nicht als leerer Assistent. Mit handgebauten Objekten waere genau dieser
+   * Fall nie aufgefallen.
+   */
+  describe('previewFlow', () => {
+    /** Kompakte Schreibweise, damit die Erwartung in eine Zeile passt. */
+    function kurz(nodes: PreviewNode[]): string[] {
+      return nodes.map((n) =>
+        n.kind === 'step'
+          ? `S:${n.name}`
+          : `F:${n.from}[`
+            + n.lanes
+              .map((l) => `${l.isElse ? 'sonst' : l.condition}>${l.steps.join('+')}`)
+              .join('|')
+            + `]=>${n.merge ?? '-'}`,
+      );
+    }
+
+    function ablauf(steps: Record<string, unknown>, startStep = 'a'): BuilderModel {
+      return fromDefinition({ id: 'f', startStep, steps });
+    }
+
+    it('reiht einen geraden Ablauf als Schritte', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b' }] },
+              b: { type: 'automatic', transitions: [{ to: 'c' }] },
+              c: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b', 'S:c']);
+    });
+
+    it('macht aus zwei Ausgaengen eine Verzweigung mit Zusammenfuehrung', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [
+                  { to: 'b', when: "context['status'] == 'paid'" },
+                  { to: 'c' },
+                ],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['status'] == 'paid'>b|sonst>c]=>d"]);
+    });
+
+    /**
+     * Der Fall, den nur der echte Lese-Weg zeigt: `{ to: 'c' }` ohne `when`
+     * wird beim Speichern zu `when: "true"`. Ohne diese Zusage stuende in der
+     * Vorschau die «Bedingung» `true`, wo «Sonst» hingehoert.
+     */
+    it('liest `when: "true"` als bedingungslos, nicht als Bedingung', () => {
+      const [fork] = previewFlow(
+        ablauf({
+          a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c', when: 'true' }] },
+          b: { type: 'automatic', transitions: [] },
+          c: { type: 'automatic', transitions: [] },
+        }),
+      );
+
+      expect(fork.kind).toBe('fork');
+      if (fork.kind !== 'fork') {
+        return;
+      }
+      expect(fork.lanes[1].isElse).toBeTrue();
+      expect(fork.lanes[1].condition).toBe('');
+    });
+
+    it('nimmt mehrere Schritte auf eine Spur und findet die gemeinsame Zusammenfuehrung', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [
+                  { to: 'b', when: "context['x'] == 1" },
+                  { to: 'c', when: "context['x'] == 2" },
+                  { to: 'e' },
+                ],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'z' }] },
+              c: { type: 'automatic', transitions: [{ to: 'c2' }] },
+              c2: { type: 'automatic', transitions: [{ to: 'z' }] },
+              e: { type: 'automatic', transitions: [{ to: 'z' }] },
+              z: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|context['x'] == 2>c+c2|sonst>e]=>z"]);
+    });
+
+    it('laesst die Spuren offen, wenn sie nirgends zusammenlaufen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+              b: { type: 'automatic', transitions: [] },
+              c: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>-"]);
+    });
+
+    /**
+     * Zwei Bedingungen auf dasselbe Ziel: die Spuren sind leer, die
+     * Zusammenfuehrung ist dieses Ziel. Im Bild zwei Spuren, die nur ihre
+     * Bedingung tragen — und genau das ist richtig, denn mehr passiert nicht.
+     */
+    it('fuehrt zwei Uebergaenge auf dasselbe Ziel sofort zusammen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'b' }] },
+              b: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>|sonst>]=>b"]);
+    });
+
+    it('geht nach der Zusammenfuehrung einspurig weiter', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [{ to: 'e' }] },
+              e: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>d", 'S:e']);
+    });
+
+    it('zeichnet eine zweite Verzweigung, wenn die Zusammenfuehrung selbst verzweigt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [{ to: 'e', when: "context['y'] == 2" }, { to: 'f' }] },
+              e: { type: 'automatic', transitions: [{ to: 'g' }] },
+              f: { type: 'automatic', transitions: [{ to: 'g' }] },
+              g: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual([
+        "F:a[context['x'] == 1>b|sonst>c]=>d",
+        "F:d[context['y'] == 2>e|sonst>f]=>g",
+      ]);
+    });
+
+    /**
+     * Ein Ablauf darf im Kreis laufen — eine Erinnerung, die erneut wartet.
+     * Die Vorschau darf es nicht.
+     */
+    it('endet an einem Zyklus statt sich zu verlaufen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b' }] },
+              b: { type: 'automatic', transitions: [{ to: 'a' }] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b']);
+    });
+
+    it('haengt nicht erreichbare Schritte hinten an, aber keinen zweimal', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [] },
+              waise: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>d", 'S:waise']);
+    });
+
+    it('ignoriert einen Uebergang auf einen Schritt, den es nicht gibt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'gibtsnicht' }] },
+              b: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b']);
+    });
+  });
+
 });
