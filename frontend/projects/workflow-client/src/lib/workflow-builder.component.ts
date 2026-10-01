@@ -34,8 +34,22 @@ const START_WORKFLOW_ACTION = 'start_workflow';
 /** Action-Key hinter dem Builder-Schritt-Typ „Datencheck". */
 const CHECK_DATA_ACTION = 'check_data';
 
-/** Builder-Schritt-Art inkl. der Pseudo-Arten „workflow"/„datacheck". */
-type StepKind = StepType | 'workflow' | 'datacheck';
+/** Action-Key hinter dem Builder-Schritt-Typ „Daten schreiben". */
+const WRITE_DATA_ACTION = 'write_data';
+
+/**
+ * Ein Eintrag in `values` eines Schreib-Schritts. `wenn` und `sonst` sind
+ * optional: ohne sie wird immer geschrieben, mit `wenn` nur dann, und ohne
+ * `sonst` bleibt die Spalte im anderen Fall unberührt.
+ */
+interface WriteValue {
+  wert: string;
+  wenn?: string;
+  sonst?: string;
+}
+
+/** Builder-Schritt-Art inkl. der Pseudo-Arten „workflow"/„datacheck"/„datawrite". */
+type StepKind = StepType | 'workflow' | 'datacheck' | 'datawrite';
 
 const OPERATORS: { op: ConditionOp; label: string }[] = [
   { op: '==', label: 'ist' },
@@ -64,13 +78,14 @@ const TYPE_BADGES: Record<StepType, string> = {
   timer: 'Timer · wartet',
 };
 
-/** Kurz-Label (Typ-Pille) inkl. der Pseudo-Arten „workflow"/„datacheck". */
+/** Kurz-Label (Typ-Pille) inkl. der Pseudo-Arten „workflow"/„datacheck"/„datawrite". */
 const KIND_LABELS: Record<StepKind, string> = {
   automatic: 'Automatisch',
   interactive: 'Interaktiv',
   timer: 'Timer',
   workflow: 'Workflow',
   datacheck: 'Datencheck',
+  datawrite: 'Daten schreiben',
 };
 
 /**
@@ -100,6 +115,8 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly archivOffen = signal(false);
   readonly templates = signal<TemplateSummary[]>([]);
   readonly dataEntities = signal<DataCatalogEntry[]>([]);
+  /** Beschreibbare Entitäten — eine eigene, engere Liste (siehe Service). */
+  readonly writeEntities = signal<DataCatalogEntry[]>([]);
   readonly model = signal<BuilderModel>(emptyModel());
   /**
    * Version der geladenen Definition — `null`, solange nichts geladen oder
@@ -190,6 +207,9 @@ export class WorkflowBuilderComponent implements OnInit {
     if (kind === 'datacheck') {
       return 'Datencheck · liest einen Wert aus einer Tabelle';
     }
+    if (kind === 'datawrite') {
+      return 'Daten schreiben · ändert Werte in einer Tabelle';
+    }
     return this.typeBadge(step.type);
   }
 
@@ -229,6 +249,13 @@ export class WorkflowBuilderComponent implements OnInit {
     this.service.dataCatalog().subscribe({
       next: (res) => this.dataEntities.set(res.entities),
       error: (err: unknown) => this.error.set(this.apiError(err)),
+    });
+    // Still wie die Datei-Prüfungen: eine Host-App ohne Schreib-Port hat den
+    // Schritt gar nicht. Eine rote Meldung über dem ganzen Editor wäre dort
+    // eine Fehlmeldung — die Liste bleibt leer, und das Feld sagt es selbst.
+    this.service.writableDataCatalog().subscribe({
+      next: (res) => this.writeEntities.set(res.entities),
+      error: () => this.writeEntities.set([]),
     });
   }
 
@@ -418,6 +445,11 @@ export class WorkflowBuilderComponent implements OnInit {
           out.set(`${as}_${spalte}`, `Datencheck «${step.name}»`);
         }
       }
+      if (this.isDataWriteStep(step)) {
+        const as = this.configValue(step, 'as') || 'written';
+        out.set(as, `Schreib-Schritt «${step.name}»`);
+        out.set(`${as}Count`, `Schreib-Schritt «${step.name}»`);
+      }
       if (this.isWorkflowStep(step)) {
         out.set('startedWorkflow', `Workflow-Schritt «${step.name}»`);
         out.set('subWorkflow', `Workflow-Schritt «${step.name}»`);
@@ -568,6 +600,11 @@ export class WorkflowBuilderComponent implements OnInit {
     return step.type === 'automatic' && step.action === CHECK_DATA_ACTION;
   }
 
+  /** Ist der Schritt ein „Daten schreiben"-Schritt (ändert Werte in einer Tabelle)? */
+  isDataWriteStep(step: BuilderStep): boolean {
+    return step.type === 'automatic' && step.action === WRITE_DATA_ACTION;
+  }
+
   /** Anzeige-Art des Schritts inkl. der Pseudo-Arten „workflow"/„datacheck". */
   stepKind(step: BuilderStep): StepKind {
     if (this.isWorkflowStep(step)) {
@@ -575,6 +612,9 @@ export class WorkflowBuilderComponent implements OnInit {
     }
     if (this.isDataCheckStep(step)) {
       return 'datacheck';
+    }
+    if (this.isDataWriteStep(step)) {
+      return 'datawrite';
     }
     return step.type;
   }
@@ -590,6 +630,8 @@ export class WorkflowBuilderComponent implements OnInit {
         return '#wfb-i-flow';
       case 'datacheck':
         return '#wfb-i-db';
+      case 'datawrite':
+        return '#wfb-i-dbwrite';
       default:
         return '#wfb-i-auto';
     }
@@ -599,6 +641,16 @@ export class WorkflowBuilderComponent implements OnInit {
   entityFields(step: BuilderStep): string[] {
     const entity = this.configValue(step, 'entity');
     return this.dataEntities().find((e) => e.entity === entity)?.fields ?? [];
+  }
+
+  /**
+   * Die BESCHREIBBAREN Felder der im Schreib-Schritt gewählten Entity (für
+   * 'field-value-map'). Aus dem Schreib-Katalog, nicht aus dem Lese-Katalog:
+   * eine Spalte, die hier zur Auswahl steht, wird auch geschrieben.
+   */
+  writeEntityFields(step: BuilderStep): string[] {
+    const entity = this.configValue(step, 'entity');
+    return this.writeEntities().find((e) => e.entity === entity)?.fields ?? [];
   }
 
   /**
@@ -643,6 +695,146 @@ export class WorkflowBuilderComponent implements OnInit {
     this.bump();
   }
 
+  // -- 'field-value-map': Spalte => Wert (Schreib-Schritt, `values`) --------
+
+  /**
+   * Der Wert eines Konfigurationsfeldes vom Typ `field-value-map` — welche
+   * Spalte mit welchem Wert geschrieben wird.
+   *
+   * Robust gegen alles, was nicht danach aussieht: die Definition ist im
+   * Editor bearbeitbar, und aus einer früheren Version kann an dieser Stelle
+   * etwas anderes stehen.
+   */
+  configMap(step: BuilderStep, name: string): Record<string, WriteValue> {
+    const value = step.config[name];
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return {};
+    }
+    const out: Record<string, WriteValue> = {};
+    for (const [spalte, wert] of Object.entries(value as Record<string, unknown>)) {
+      if (typeof wert === 'string' || typeof wert === 'number' || typeof wert === 'boolean') {
+        out[spalte] = { wert: String(wert) };
+        continue;
+      }
+      // Die bedingte Form {wert, wenn, sonst}. Nur die drei Schlüssel, und nur
+      // als Text — was eine Definition sonst dort stehen hat, gehört nicht in
+      // die Eingabefelder.
+      if (typeof wert === 'object' && wert !== null && !Array.isArray(wert)) {
+        const o = wert as Record<string, unknown>;
+        const eintrag: WriteValue = { wert: typeof o['wert'] === 'string' ? o['wert'] : '' };
+        if (typeof o['wenn'] === 'string') {
+          eintrag.wenn = o['wenn'];
+        }
+        if (typeof o['sonst'] === 'string') {
+          eintrag.sonst = o['sonst'];
+        }
+        out[spalte] = eintrag;
+      }
+    }
+    return out;
+  }
+
+  isInConfigMap(step: BuilderStep, name: string, spalte: string): boolean {
+    return spalte in this.configMap(step, name);
+  }
+
+  /** Ein Teil eines Eintrags — `wert`, `wenn` oder `sonst`. */
+  configMapTeil(step: BuilderStep, name: string, spalte: string, teil: keyof WriteValue): string {
+    return this.configMap(step, name)[spalte]?.[teil] ?? '';
+  }
+
+  /** Hat die Spalte eine Bedingung? Steuert, ob die zweite Zeile erscheint. */
+  hatBedingung(step: BuilderStep, name: string, spalte: string): boolean {
+    const e = this.configMap(step, name)[spalte];
+    return e !== undefined && (e.wenn !== undefined || e.sonst !== undefined);
+  }
+
+  /** Bedingung an- oder abschalten. Abschalten wirft `wenn` und `sonst` weg. */
+  toggleBedingung(step: BuilderStep, name: string, spalte: string, an: boolean): void {
+    const vorher = this.configMap(step, name);
+    const eintrag = vorher[spalte];
+    if (!eintrag) {
+      return;
+    }
+    if (an) {
+      eintrag.wenn = eintrag.wenn ?? '';
+    } else {
+      delete eintrag.wenn;
+      delete eintrag.sonst;
+    }
+    this.schreibeMap(step, name, vorher);
+  }
+
+  configMapValue(step: BuilderStep, name: string, spalte: string): string {
+    return this.configMapTeil(step, name, spalte, 'wert');
+  }
+
+  /**
+   * Eine Spalte zum Schreiben an- oder abwählen.
+   *
+   * Wie bei `field-ref-list` folgt die Reihenfolge der Tabelle und nicht der
+   * des Anklickens — sonst erzeugte dieselbe Auswahl je nach Bedienung einen
+   * Diff, der nichts bedeutet.
+   */
+  toggleConfigMap(step: BuilderStep, name: string, spalte: string, an: boolean): void {
+    const vorher = this.configMap(step, name);
+    if (an) {
+      // Neu angehakt heisst: noch kein Wert. Ein vorhandener bleibt stehen,
+      // damit ein versehentliches Abwählen nicht das Eingetippte wegwirft.
+      vorher[spalte] = vorher[spalte] ?? { wert: '' };
+    } else {
+      delete vorher[spalte];
+    }
+    this.schreibeMap(step, name, vorher);
+  }
+
+  setConfigMapTeil(
+    step: BuilderStep,
+    name: string,
+    spalte: string,
+    teil: keyof WriteValue,
+    wert: string,
+  ): void {
+    const vorher = this.configMap(step, name);
+    const eintrag = vorher[spalte];
+    if (!eintrag) {
+      return;
+    }
+    eintrag[teil] = wert;
+    this.schreibeMap(step, name, vorher);
+  }
+
+  setConfigMapValue(step: BuilderStep, name: string, spalte: string, wert: string): void {
+    this.setConfigMapTeil(step, name, spalte, 'wert', wert);
+  }
+
+  private schreibeMap(step: BuilderStep, name: string, werte: Record<string, WriteValue>): void {
+    // Nur Spalten, die der Schreib-Katalog nennt. Eine Spalte, die in einer
+    // älteren Definition steht und inzwischen nicht mehr freigegeben ist, fällt
+    // damit beim nächsten Bearbeiten heraus — sie würde ohnehin nicht
+    // geschrieben, und so sagt die Definition dasselbe wie der Server.
+    const geordnet: Record<string, string | WriteValue> = {};
+    for (const spalte of this.writeEntityFields(step)) {
+      if (!(spalte in werte)) {
+        continue;
+      }
+      const e = werte[spalte];
+      // Ohne Bedingung bleibt die kurze Form: `{"spalte": "wert"}`. Die lange
+      // nur dort zu schreiben, wo sie etwas bedeutet, hält die Definition
+      // lesbar — und einen Diff klein.
+      geordnet[spalte] =
+        e.wenn === undefined && e.sonst === undefined ? e.wert : { ...e };
+    }
+    if (Object.keys(geordnet).length > 0) {
+      step.config[name] = geordnet;
+    } else {
+      // Ein leeres Feld gehört nicht in die Definition — es sähe aus wie eine
+      // Einstellung, wäre aber keine.
+      delete step.config[name];
+    }
+    this.bump();
+  }
+
   stepIcon(step: BuilderStep): string {
     return this.kindIcon(this.stepKind(step));
   }
@@ -655,8 +847,15 @@ export class WorkflowBuilderComponent implements OnInit {
     } else if (kind === 'datacheck') {
       step.type = 'automatic';
       step.action = CHECK_DATA_ACTION;
+    } else if (kind === 'datawrite') {
+      step.type = 'automatic';
+      step.action = WRITE_DATA_ACTION;
     } else {
-      if (step.action === START_WORKFLOW_ACTION || step.action === CHECK_DATA_ACTION) {
+      if (
+        step.action === START_WORKFLOW_ACTION ||
+        step.action === CHECK_DATA_ACTION ||
+        step.action === WRITE_DATA_ACTION
+      ) {
         step.action = null;
       }
       step.type = kind as StepType;
@@ -672,6 +871,11 @@ export class WorkflowBuilderComponent implements OnInit {
   /** Fügt einen „Datencheck"-Schritt hinzu (automatic + check_data). */
   addDataCheckStep(): void {
     this.addActionStep(CHECK_DATA_ACTION);
+  }
+
+  /** Fügt einen „Daten schreiben"-Schritt hinzu (automatic + write_data). */
+  addDataWriteStep(): void {
+    this.addActionStep(WRITE_DATA_ACTION);
   }
 
   private addActionStep(action: string): void {

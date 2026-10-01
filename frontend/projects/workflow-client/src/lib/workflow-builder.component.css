@@ -70,6 +70,26 @@
 .wfb__fieldlist { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-bottom: 4px; }
 .wfb__fieldlist .wfb__check { margin: 0; }
 
+/* Der Schalter fuer eine Bedingung: klein und direkt unter dem Wert, damit
+   sichtbar ist, dass er zu diesem Feld gehoert und nicht zum naechsten. */
+.wfb__wenn-schalter { margin: 4px 0 0; font-size: 12px; color: var(--_muted); }
+/* Der eingerueckte Block macht die Zugehoerigkeit auch dann klar, wenn
+   mehrere Spalten eine Bedingung haben. */
+.wfb__wenn {
+  margin: 4px 0 2px 18px;
+  padding-left: 10px;
+  border-left: 2px solid var(--_border);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.wfb__wenn .wfb__hint { margin-top: 4px; }
+
+/* Schreib-Schritt: je Zeile eine Spalte und der Wert, der hineingeschrieben
+   wird. Untereinander statt nebeneinander — die Werte sind Texte mit
+   Platzhaltern und brauchen die ganze Breite. */
+.wfb__valuemap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.wfb__valuerow { display: flex; flex-direction: column; gap: 3px; }
+.wfb__valuerow .wfb__check { margin: 0; }
+
 /* ── Kopfleiste ── */
 .wfb__bar {
   display: flex;
@@ -211,6 +231,7 @@
 .wfb__chip--timer { background: var(--_tim-bg); border-color: var(--_tim-bd); color: var(--_tim-fg); }
 .wfb__chip--workflow { background: var(--_wf-bg); border-color: var(--_wf-bd); color: var(--_wf-fg); }
 .wfb__chip--datacheck { background: var(--_dc-bg); border-color: var(--_dc-bd); color: var(--_dc-fg); }
+.wfb__chip--datawrite { background: var(--_dw-bg); border-color: var(--_dw-bd); color: var(--_dw-fg); }
 .wfb__chip--active { box-shadow: 0 0 0 2px var(--_primary); }
 
 /* ── Spalten: Sidebar / Detail ── */
@@ -260,6 +281,7 @@
 .wfb__step--timer .wfb__step-dot { background: var(--_tim-bg); border-color: var(--_tim-fg); }
 .wfb__step--workflow .wfb__step-dot { background: var(--_wf-bg); border-color: var(--_wf-fg); }
 .wfb__step--datacheck .wfb__step-dot { background: var(--_dc-bg); border-color: var(--_dc-fg); }
+.wfb__step--datawrite .wfb__step-dot { background: var(--_dw-bg); border-color: var(--_dw-fg); }
 .wfb__step-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .wfb__step-name {
   font-size: 13px; font-weight: 500;
@@ -323,6 +345,7 @@
 .wfb__badge--timer { background: var(--_tim-bg); border: 1px solid var(--_tim-bd); color: var(--_tim-fg); }
 .wfb__badge--workflow { background: var(--_wf-bg); border: 1px solid var(--_wf-bd); color: var(--_wf-fg); }
 .wfb__badge--datacheck { background: var(--_dc-bg); border: 1px solid var(--_dc-bd); color: var(--_dc-fg); }
+.wfb__badge--datawrite { background: var(--_dw-bg); border: 1px solid var(--_dw-bd); color: var(--_dw-fg); }
 
 .wfb__detail-sub { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
 .wfb .wfb__typesel { width: 190px; }
@@ -354,7 +377,14 @@
    und der Text sitzt buendig unter dem Label-Feld. */
 .wfb__field-row--sub { padding-top: 0; }
 .wfb__field-row + .wfb__field-row--sub { border-top: none; }
-.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); }
+.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); flex: 0 0 auto; }
+/* Ohne min-width:0 schrumpft ein <input> im Flex-Container nicht unter seine
+   Mindestbreite — die Zeile laeuft dann aus der Spalte heraus, statt sich zu
+   teilen. Das ist die Vorgabe des Browsers und selten die gewollte. */
+.wfb .wfb__field-row input[type="text"] { min-width: 0; }
+/* Startkontext in der 284px schmalen Seitenspalte: schmalere Beschriftung,
+   damit fuer das Eingabefeld daneben etwas uebrig bleibt. */
+.wfb__fields--eng .wfb__field-sub-label { width: 68px; }
 .wfb__fields .wfb__hint { padding: 0 10px 6px; margin: 0; }
 
 /* Übergänge */
@@ -418,6 +448,7 @@
 .wfb .wfb__typecard--timer { background: var(--_tim-bg); border-color: var(--_tim-bd); color: var(--_tim-fg); }
 .wfb .wfb__typecard--workflow { background: var(--_wf-bg); border-color: var(--_wf-bd); color: var(--_wf-fg); }
 .wfb .wfb__typecard--datacheck { background: var(--_dc-bg); border-color: var(--_dc-bd); color: var(--_dc-fg); }
+.wfb .wfb__typecard--datawrite { background: var(--_dw-bg); border-color: var(--_dw-bd); color: var(--_dw-fg); }
 
 /* ── JSON-Modus ── */
 .wfb__jsonwrap { display: flex; flex-direction: column; gap: 12px; }

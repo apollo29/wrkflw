@@ -1,0 +1,151 @@
+name: Release bei Merge
+
+# Ein Merge nach `main` erzeugt das Release selbst — ohne dass jemand einen Tag
+# von Hand setzt.
+#
+# WAS DEN SPRUNG ENTSCHEIDET: ein Label am Pull Request.
+#
+#   release:major   2.1.0 -> 3.0.0
+#   release:minor   2.1.0 -> 2.2.0
+#   release:patch   2.1.0 -> 2.1.1   (Vorgabe, auch ohne Label)
+#
+# Die Groesse einer Aenderung liest kein Werkzeug aus einem Diff ab. Sie steht
+# deshalb da, wo sie ohnehin beurteilt wird: am PR. Ohne Label gilt `patch` —
+# die Annahme, die am wenigsten verspricht.
+#
+# WANN GAR NICHTS PASSIERT: wenn `[Unreleased]` im CHANGELOG leer ist. Ein
+# Merge, der nichts Nennenswertes bringt (Tippfehler in der README, ein
+# Workflow-Umbau wie dieser hier), soll keine Version verbrauchen. Wer ein
+# Release will, schreibt einen CHANGELOG-Eintrag — dieselbe Regel wie vorher,
+# nur dass sie jetzt auch den Tag ausloest.
+#
+# WENN DER AUTOR DIE VERSION SCHON BENANNT HAT: steht im CHANGELOG bereits
+# `## [2.2.0]` und gibt es dazu keinen Tag, nimmt der Lauf genau diese Version
+# und rechnet nichts. Das ist die bisherige Handarbeit, und sie behaelt recht —
+# etwa wenn ein Abschnitt «Warum 2.2.0 und nicht 3.0.0» begruendet, warum es
+# kein Major ist.
+#
+# WARUM DER TAG HIER AUCH DAS RELEASE ERZEUGT und nicht `release.yml`
+# ueberlaesst: ein mit GITHUB_TOKEN gepushter Tag loest keine weiteren
+# Workflows aus. `release.yml` bleibt fuer Tags, die jemand von Hand setzt.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+# Zwei Merges kurz nacheinander duerfen sich nicht ins Gehege kommen: beide
+# lesen den letzten Tag.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version bestimmen und veroeffentlichen
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Tags und Historie, sonst findet `version.sh naechste` nichts.
+          fetch-depth: 0
+
+      - name: Version bestimmen
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Hat der Autor die Version schon benannt und fehlt nur der Tag?
+          AUS_CHANGELOG="$(scripts/version.sh aus-changelog || true)"
+          if [ -n "$AUS_CHANGELOG" ] && ! git rev-parse -q --verify "refs/tags/v${AUS_CHANGELOG}" >/dev/null; then
+            echo "version=${AUS_CHANGELOG}" >> "$GITHUB_OUTPUT"
+            echo "schreiben=nein" >> "$GITHUB_OUTPUT"
+            echo "Version aus dem CHANGELOG: ${AUS_CHANGELOG}"
+            exit 0
+          fi
+
+          # Sonst: nur weiter, wenn es ueberhaupt etwas zu veroeffentlichen gibt.
+          if scripts/version.sh unreleased-leer; then
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "[Unreleased] ist leer — kein Release."
+            exit 0
+          fi
+
+          # Das Label des Pull Requests, aus dem dieser Commit kam. Kein PR
+          # (direkter Push) oder kein Label: patch.
+          BUMP=patch
+          LABELS="$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+                      --jq '.[].labels[].name' 2>/dev/null || true)"
+          case "$LABELS" in
+            *release:major*) BUMP=major ;;
+            *release:minor*) BUMP=minor ;;
+          esac
+
+          VERSION="$(scripts/version.sh naechste "$BUMP")"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "schreiben=ja" >> "$GITHUB_OUTPUT"
+          echo "Bump: ${BUMP} -> ${VERSION}"
+
+      - name: CHANGELOG-Abschnitt benennen
+        if: steps.version.outputs.version != '' && steps.version.outputs.schreiben == 'ja'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # `## [Unreleased]` bekommt einen neuen, leeren Nachfolger und wird
+          # selbst zur benannten Version. Der Datums-Stempel folgt dem Format
+          # der bisherigen Eintraege.
+          python3 - "$VERSION" <<'PY'
+          import datetime, io, sys
+          version = sys.argv[1]
+          pfad = 'CHANGELOG.md'
+          text = io.open(pfad, encoding='utf-8').read()
+          alt = '## [Unreleased]\n'
+          neu = f'## [Unreleased]\n\n## [{version}] - {datetime.date.today().isoformat()}\n'
+          assert alt in text, 'Im CHANGELOG fehlt die Ueberschrift [Unreleased].'
+          io.open(pfad, 'w', encoding='utf-8').write(text.replace(alt, neu, 1))
+          PY
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "CHANGELOG: ${VERSION}"
+          git push origin HEAD:main
+
+      - name: Tag setzen
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "v${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Release-Notes aus CHANGELOG
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          scripts/version.sh notes "$VERSION" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release v${VERSION}" > release-notes.md
+          fi
+
+      - name: GitHub Release erstellen
+        if: steps.version.outputs.version != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: release-notes.md

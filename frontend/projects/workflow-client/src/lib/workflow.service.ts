@@ -118,6 +118,19 @@ export class WorkflowService {
     return this.http.get<DataCatalogResponse>(`${this.baseUrl}/data-catalog`);
   }
 
+  /**
+   * Katalog BESCHREIBBARER Entitäten/Felder für den Schreib-Schritt
+   * (GET /data-catalog/writable).
+   *
+   * Eine eigene Liste, nicht dieselbe wie oben: was ein Ablauf ändern darf,
+   * ist deutlich weniger als das, was er lesen darf. Stünde im Schreib-Schritt
+   * die Lese-Liste, liesse sich eine Spalte wählen, die der Server beim
+   * Ausführen abweist — der Fehler fiele erst im Log auf.
+   */
+  writableDataCatalog(): Observable<DataCatalogResponse> {
+    return this.http.get<DataCatalogResponse>(`${this.baseUrl}/data-catalog/writable`);
+  }
+
   // -- Wiederverwendbare Templates ----------------------------------------
 
   listTemplates(type?: TemplateType): Observable<TemplateListResponse> {

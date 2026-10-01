@@ -5,6 +5,129 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-01
+
+### Warum 2.2.0 und nicht 3.0.0
+
+Kein bestehender Port aendert sich. Dazu kommen zwei neue
+(`DataWriterInterface`, `DataWriteCatalogInterface`), eine neue eingebaute
+Aktion und eine neue Route. Der `DataCatalogController` und
+`ApiFactory::create()` bekommen je einen OPTIONALEN Parameter ans Ende. Wer die
+Engine benutzt, hat nichts zu tun; wer den Schreib-Schritt will, bindet die
+zwei neuen Ports.
+
+Eine Host-App, die sie NICHT bindet, hat `write_data` gar nicht — die Aktion
+erscheint dann nicht im Katalog, und `/data-catalog/writable` antwortet mit
+einer leeren Liste. Das ist die Vorgabe und keine Fehlkonfiguration: Schreiben
+ist etwas, das eine Anwendung ausdruecklich dazunimmt.
+
+Der npm-Client geht auf **1.17.0**: die Builder-Karte «Daten schreiben», die
+Feldtypen `write-entity-ref` und `field-value-map`, und
+`WorkflowService.writableDataCatalog()`. Ebenfalls nur Zuwachs.
+
+### Fixed
+- **Startkontext: die Eingabezeile lief aus der Seitenspalte heraus.** Name,
+  Label, «Pflicht» und das Entfernen-Kreuz standen nebeneinander und brauchten
+  486px — die Spalte hat 284px. Weil ein `<input>` im Flex-Container nicht
+  unter seine Mindestbreite schrumpft und `.wfb__fields` den Ueberlauf
+  abschneidet, war der Name links angeschnitten und nicht mehr erreichbar.
+  Je Angabe stehen Name, Label und Beispiel jetzt untereinander.
+
+### Changed
+- **Ein Merge nach `main` erzeugt das Release selbst** (`auto-release.yml`).
+  Den Sprung entscheidet ein Label am Pull Request (`release:major|minor|patch`,
+  Vorgabe `patch`) — die Groesse einer Aenderung liest kein Werkzeug aus einem
+  Diff ab, also steht sie da, wo sie ohnehin beurteilt wird. Steht im CHANGELOG
+  schon eine benannte Version ohne Tag, gilt diese; ist `[Unreleased]` leer,
+  passiert gar nichts. `release.yml` bleibt fuer Tags von Hand, und beide lesen
+  den CHANGELOG-Abschnitt jetzt mit demselben Skript (`scripts/version.sh`).
+
+### Added
+- **Schreib-Schritt (`write_data`): ein automatischer Schritt, der Werte in eine
+  Host-Tabelle schreibt.** Gleich aufgebaut wie der Datencheck — eine eingebaute
+  Aktion, im Builder eine eigene Karte, Tabellen- und Feld-Auswahl aus einem
+  Katalog —, nur in die andere Richtung.
+
+  Konfiguration: `entity`, `id` (mit `{{platzhalter}}`), `values` (Spalte => Wert,
+  der Wert ebenfalls mit `{{platzhalter}}`) und `as` (Default `written`). Im
+  Kontext entstehen `<as>` (ob geschrieben wurde) und `<as>Count`.
+
+  **ZWEI PORTS, NICHT EINER MEHR AM DataProvider.** `DataWriterInterface` und
+  `DataWriteCatalogInterface` sind getrennt vom Lesen, und zwar aus einem Grund,
+  der sich im Betrieb zeigt: wer den Lese-Port implementiert, hat damit noch
+  nicht entschieden, dass eine im Editor bearbeitbare Definition seine Tabellen
+  auch aendern darf. Als eigener Port ist Schreiben etwas, das eine Host-App
+  ausdruecklich dazunimmt — und eine, die ihn nicht bindet, hat die Aktion gar
+  nicht: `write_data` erscheint dann nicht im Katalog, und der Schreib-Schritt
+  sagt im Editor, dass keine Tabelle freigegeben ist.
+
+  Der Schreib-Katalog ist bewusst eine EIGENE, engere Liste und nicht der
+  Lese-Katalog. Stuende im Schreib-Schritt die Lese-Liste, liesse sich eine
+  Spalte waehlen, die der Host beim Ausfuehren abweist — eine Auswahl, die
+  nachher nicht gilt, ist schlimmer als keine: der Fehler fiele erst im Log auf,
+  lange nach dem Speichern.
+
+  Was die Aktion bewusst NICHT kann: Datensaetze anlegen oder loeschen, mehrere
+  Zeilen auf einmal (kein `where`), und den Spaltennamen aus dem Kontext
+  bestimmen. Welche Spalten ein Schritt anfasst, steht in der Definition und ist
+  dort nachlesbar; stammte der Name aus dem Kontext, waere er von einer Eingabe
+  abhaengig und damit von aussen steuerbar.
+
+  `<as> == false` ist eine ANTWORT, kein Abbruch: kein Datensatz, keine erlaubte
+  Spalte uebrig — darauf kann eine Uebergangs-Bedingung verzweigen. Fuer echte
+  Fehler wirft der Host, dann faellt die Instanz auf `failed` und der Grund steht
+  in `wf_instance.last_error`, statt lautlos zu verschwinden.
+
+  Jeder Schreibversuch nennt dem Host seine Herkunft (`workflow:<definition>#<instanz>`)
+  — fuer dessen Audit. Steht in einer geaenderten Zeile nur «ein Workflow», ist
+  im Nachhinein nicht mehr zuzuordnen, welcher.
+- **Bedingte Werte in `write_data`.** Ein Eintrag in `values` darf statt eines
+  Wertes `{"wert": ..., "wenn": ..., "sonst": ...}` sein. `wenn` ist dieselbe
+  Sprache und derselbe Geltungsbereich wie bei den Uebergangs-Bedingungen
+  (`context[...]`, `now`) — ein Ausdruck bedeutet an beiden Stellen dasselbe.
+
+  GEMELDET: ein Ja/Nein-Wert im Kontext soll zu einem Status werden —
+  «unterzeichnet», wenn der Kodex gelesen wurde, und sonst nichts. Bisher
+  liess sich das nur ueber zwei Schritte und eine Verzweigung bauen.
+
+  Fehlt `sonst`, wird die Spalte im anderen Fall GAR NICHT angefasst. «Auf leer
+  setzen» und «stehen lassen» sind verschiedene Dinge: ein Status, der
+  zurueckgesetzt werden soll, und ein Datum, das bleiben soll, wie es ist.
+
+  Die Aktion nimmt den `ExpressionEvaluatorInterface` dafuer optional entgegen.
+  Benutzt eine Definition `wenn` und ist keiner gebunden, wirft sie — eine
+  ignorierte Bedingung schriebe, wo gerade nicht geschrieben werden sollte.
+
+  Im Builder: ein Schalter «nur unter einer Bedingung» je angehakter Spalte,
+  darunter die beiden Felder. Ohne Bedingung bleibt die kurze Schreibweise
+  (`"spalte": "wert"`) — die lange nur dort, wo sie etwas bedeutet.
+- **`anlegen` in `write_data`.** Fehlt der Datensatz, entsteht er unter der
+  angegebenen ID — statt dass der Schritt `false` meldet. Im Builder eine
+  Checkbox am Schritt, Vorgabe AUS: eine Zeile, die aus einer ID und ein paar
+  Werten entsteht, ist in manchen Tabellen sinnvoll und in anderen eine
+  halbe. Der Host darf weiterhin ablehnen; verlangt die Tabelle eine Spalte,
+  die nicht freigegeben ist, scheitert das Anlegen hoerbar statt still.
+- **Eingebaute Platzhalter fuer die Uhr in `write_data`:** `{{now}}` (Datum,
+  ISO — `2026-10-25`), gleichbedeutend `{{now.ymd}}` und `{{now.date}}`, dazu
+  `{{now.datetime}}` und `{{now.year}}`. «Setze das Datum auf heute» ist
+  der Normalfall eines Schreib-Schritts; ohne eingebaute Uhr muesste der Wert
+  von aussen in den Kontext kommen, und bei einem Ablauf, der durch einen Timer
+  weiterlaeuft, waere das der Zeitpunkt des STARTS — also nicht das, was
+  jemand meint, der «heute» schreibt. `now` ist in den Uebergangs-Bedingungen
+  schon ein eingebauter Name; dass er hier dasselbe bedeutet, ist Absicht, und
+  ein Kontext-Schluessel gleichen Namens wird verdeckt. Alles andere unter
+  `now.` ist ein gewoehnlicher Kontext-Schluessel und bleibt leer — die drei
+  oben sind die Liste.
+- `GET /data-catalog/writable` — der Schreib-Katalog. Antwortet mit einer leeren
+  Liste statt mit 404, wenn die Host-App keinen bindet: sonst schriebe jedes
+  Oeffnen des Editors einen Fehler ins Log.
+- Builder (Client, noch unveroeffentlicht): Karte **Daten schreiben**, eigener
+  Farbton und eigenes Symbol (dieselbe Trommel wie der Datencheck, mit einem
+  Pfeil hinein — an der Richtung ist der Schritt in der Liste zu unterscheiden),
+  neuer Feldtyp `field-value-map` (Spalte anhaken, Wert daneben) und
+  `write-entity-ref`. Die Ergebnis-Variablen des Schritts stehen in der Liste der
+  Kontext-Variablen, damit sie sich nicht erraten lassen muessen.
+
 ## [2.1.0] - 2026-09-02
 
 ### Warum 2.1.0 und nicht 3.0.0

@@ -31,9 +31,10 @@ Engine-Step-Typen:
 | `timer` | wartet bis zu einem Zeitpunkt; der Cron-Runner weckt die Instanz auf |
 
 Damit deckt dasselbe Modell Hintergrund-Abläufe **und** benutzergeführte Abläufe ab.
-Der visuelle Builder bietet darüber hinaus zwei **Schritt-Karten als Komfort** an, die
+Der visuelle Builder bietet darüber hinaus drei **Schritt-Karten als Komfort** an, die
 intern automatische Schritte mit einer eingebauten Action sind: **Workflow**
-(`start_workflow`) und **Datencheck** (`check_data`).
+(`start_workflow`), **Datencheck** (`check_data`) und **Daten schreiben**
+(`write_data`).
 
 ## Eingebaute Actions
 
@@ -45,6 +46,47 @@ Mitgeliefert:
 | `send_email` | E-Mail versenden | `to`, `from` (leer = Standard-Mailbox), `cc`, `bcc`, `subject`, `body` (HTML); optional `templateId` (eine Vorlage überschreibt Betreff + Inhalt) |
 | `start_workflow` | einen anderen Workflow **verknüpfen** | `workflowId`; `waitForCompletion` (true = Eltern wartet auf das Kind, dann Ergebnis unter `subWorkflow`; false = feuer-und-vergiss, ID unter `startedWorkflow`) |
 | `check_data` | einen **Wert aus einer Tabelle** lesen | `entity`, `id` (mit `{{platzhalter}}`), `field`, `as` (Kontext-Key); schreibt `<as>` und `<as>Found` — der Vergleich läuft danach über die Übergangs-Bedingung |
+| `write_data` | Werte **in eine Tabelle** schreiben | `entity`, `id` (mit `{{platzhalter}}`), `values` (Spalte => Wert, Wert mit `{{platzhalter}}`), `as` (Default `written`); schreibt `<as>` (ob geschrieben wurde) und `<as>Count`. Nur verfügbar, wenn die Host-App `DataWriterInterface` bindet |
+
+Ein Eintrag in `values` darf statt eines Wertes auch eine **Bedingung** tragen:
+
+```jsonc
+"values": {
+  "kodex_datum":  "{{now}}",
+  "kodex_status": {
+    "wert":  "unterzeichnet",
+    "wenn":  "context['kodex_gelesen'] == true",
+    "sonst": ""          // weglassen = Spalte bleibt unberührt
+  }
+}
+```
+
+`wenn` ist dieselbe Sprache und derselbe Geltungsbereich wie bei den
+Übergangs-Bedingungen (`context[...]`, `now`) — ein Ausdruck bedeutet an beiden
+Stellen dasselbe. Fehlt `sonst`, wird die Spalte im anderen Fall **gar nicht
+angefasst**: «auf leer setzen» und «stehen lassen» sind verschiedene Dinge, und
+beides kommt vor. Benutzt eine Definition `wenn` und bindet die Host-App keinen
+`ExpressionEvaluatorInterface`, wirft die Aktion — eine ignorierte Bedingung
+schriebe, wo gerade nicht geschrieben werden sollte.
+
+In `write_data` gibt es neben den Kontext-Schlüsseln **eingebaute** Platzhalter
+für die Uhr: `{{now}}` (Datum, ISO — `2026-10-25`), gleichbedeutend
+`{{now.ymd}}` und `{{now.date}}`, dazu `{{now.datetime}}` und `{{now.year}}`. «Setze das Datum auf heute» ist der Normalfall eines
+Schreib-Schritts, und ohne eingebaute Uhr müsste der Wert von aussen in den
+Kontext kommen — bei einem Ablauf, der durch einen Timer weiterläuft, wäre das
+der Zeitpunkt des *Starts*. `now` ist in den Übergangs-Bedingungen bereits ein
+eingebauter Name; dass er hier dasselbe bedeutet, ist Absicht, und ein
+Kontext-Schlüssel gleichen Namens wird verdeckt.
+
+`write_data` ändert **einen** Datensatz. Mit `anlegen: true` entsteht er, wenn es
+ihn noch nicht gibt — im Builder eine Checkbox am Schritt, Vorgabe aus; der Host
+darf trotzdem ablehnen, denn nicht jede Tabelle lässt sich aus ID und ein paar
+Werten sinnvoll füllen. Gelöscht wird nie, und `where` gibt es nicht — ein Tippfehler in einer Definition soll höchstens eine Zeile
+treffen. Welche Entität und welche Spalte überhaupt beschreibbar ist, entscheidet
+allein die Host-App; eine Spalte, die ihr Schreib-Katalog nicht nennt, steht im Editor
+nicht zur Wahl und wird auch nicht geschrieben. `<as> == false` ist dabei eine
+**Antwort** (nichts geschrieben, etwa weil es den Datensatz nicht gibt), auf die eine
+Übergangs-Bedingung verzweigen kann — kein Abbruch.
 
 Eigene Actions implementieren `ActionInterface`; für Editor-Felder zusätzlich optional
 `ConfigurableActionInterface` (`configSchema()`), dann erscheinen sie im Action-Katalog
@@ -57,6 +99,8 @@ Host-App als **Adapter** implementiert:
 
 - `DataProviderInterface` – Zugriff auf die Datenstruktur der App (Bedingungen, Trigger, `check_data`)
 - `DataCatalogInterface` – Katalog abfragbarer Tabellen/Felder (für die Editor-Dropdowns des Datencheck)
+- `DataWriterInterface` – **Schreiben** in die Datenstruktur der App (`write_data`); ein eigener Port, weil Lesen und Schreiben nicht dieselbe Erlaubnis sind. Ohne Bindung gibt es die Aktion nicht
+- `DataWriteCatalogInterface` – Katalog **beschreibbarer** Tabellen/Felder (für die Dropdowns des Schreib-Schritts); bewusst eine engere Liste als der Lese-Katalog
 - `MailerInterface` – E-Mail-Versand; erhält ein `EmailMessage`-Wertobjekt (to/from/cc/bcc/subject/body/vars)
 - `ActionInterface` (+ optional `ConfigurableActionInterface`) – eigene Aktionen
 - `ExpressionEvaluatorInterface` – Auswertung der Bedingungen (Default: Symfony ExpressionLanguage)
@@ -188,6 +232,7 @@ drei Tabs:
 | `GET /actions` | Action-Katalog inkl. Config-Schema |
 | `GET /templates` · `GET/POST/DELETE /templates/{id}` · `GET /templates/{id}/usage` | Vorlagen |
 | `GET /data-catalog` | abfragbare Tabellen/Felder für den Datencheck |
+| `GET /data-catalog/writable` | **beschreibbare** Tabellen/Felder für den Schreib-Schritt (leer, wenn die Host-App keinen Schreib-Katalog bindet) |
 
 ## Frontend (Angular-Client)
 

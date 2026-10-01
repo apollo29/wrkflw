@@ -45,6 +45,11 @@ describe('WorkflowBuilderComponent', () => {
     httpMock.expectOne('/data-catalog').flush({
       entities: [{ entity: 'order', label: 'Bestellung', fields: ['id', 'status', 'total'] }],
     });
+    // Eigene, engere Liste: der Schreib-Schritt darf an `order` nur `status`
+    // und `bemerkung` anfassen — `id` und `total` stehen dort nicht zur Wahl.
+    httpMock.expectOne('/data-catalog/writable').flush({
+      entities: [{ entity: 'order', label: 'Bestellung', fields: ['status', 'bemerkung'] }],
+    });
   });
 
   afterEach(() => httpMock.verify());
@@ -381,5 +386,196 @@ describe('WorkflowBuilderComponent', () => {
     component.setConfigBool(step, 'waitForCompletion', true);
     expect(component.configBool(step, 'waitForCompletion')).toBeTrue();
     expect(step.config['waitForCompletion']).toBe(true);
+  });
+
+  /**
+   * Der Schreib-Schritt ist das Gegenstück zum Datencheck: dieselbe
+   * Konstruktion (automatic + eine eingebaute Aktion, im Builder eine eigene
+   * Karte), nur in die andere Richtung.
+   */
+  describe('Schreib-Schritt', () => {
+    /**
+     * Eine Definition, wie der Builder sie speichert. `values` wird nur
+     * geschrieben, wenn es Werte gibt — ein leeres Feld löscht `schreibeMap`,
+     * es kommt also in einer gespeicherten Definition gar nicht vor. Stünde
+     * hier trotzdem `values: {}`, prüften die Tests unten einen Zustand, den
+     * es nicht gibt.
+     */
+    function schreibSchritt(values: Record<string, string>, as?: string) {
+      const config: Record<string, unknown> = { entity: 'order', id: '{{orderId}}' };
+      if (Object.keys(values).length > 0) {
+        config['values'] = values;
+      }
+      if (as) {
+        config['as'] = as;
+      }
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'speichern',
+          steps: {
+            speichern: { type: 'automatic', action: 'write_data', config, transitions: [] },
+          },
+        }),
+      );
+      return component.model().steps[0];
+    }
+
+    it('zählt als eigene Schritt-Art', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      expect(component.stepKind(step)).toBe('datawrite');
+      expect(component.kindLabel(step)).toBe('Daten schreiben');
+    });
+
+    /**
+     * Die Auswahl kommt aus dem SCHREIB-Katalog, nicht aus dem Lese-Katalog.
+     * Stünde dort `total`, liesse sich eine Spalte wählen, die der Server
+     * beim Ausführen abweist — und der Fehler fiele erst im Log auf.
+     */
+    it('bietet nur beschreibbare Spalten an', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      expect(component.writeEntityFields(step)).toEqual(['status', 'bemerkung']);
+      expect(component.entityFields(step)).toContain('total');
+    });
+
+    it('nennt sein Ergebnis in den Kontext-Variablen', () => {
+      schreibSchritt({ status: 'bezahlt' }, 'gespeichert');
+
+      const namen = component.kontextVariablen().map((v) => v.name);
+
+      expect(namen).toContain('gespeichert');
+      expect(namen).toContain('gespeichertCount');
+    });
+
+    it('nimmt ohne Ergebnis-Variable den Vorgabe-Namen', () => {
+      schreibSchritt({ status: 'bezahlt' });
+
+      const namen = component.kontextVariablen().map((v) => v.name);
+
+      expect(namen).toContain('written');
+      expect(namen).toContain('writtenCount');
+    });
+
+    /**
+     * Die Reihenfolge folgt der Tabelle, nicht der des Anklickens — sonst sähe
+     * dieselbe Auswahl je nach Bedienung anders aus und erzeugte einen Diff,
+     * der nichts bedeutet.
+     */
+    it('ordnet die Spalten wie die Tabelle, nicht wie das Anklicken', () => {
+      const step = schreibSchritt({});
+
+      component.toggleConfigMap(step, 'values', 'bemerkung', true);
+      component.toggleConfigMap(step, 'values', 'status', true);
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+
+      expect(Object.keys(step.config['values'] as object)).toEqual(['status', 'bemerkung']);
+      expect(component.configMapValue(step, 'values', 'status')).toBe('bezahlt');
+    });
+
+    /**
+     * Ein Wert zu einer nicht angehakten Spalte entsteht nicht nebenbei: erst
+     * anhaken, dann schreiben. Sonst stünde in der Definition eine Spalte, die
+     * in der Oberfläche gar nicht gewählt ist.
+     */
+    it('schreibt keinen Wert zu einer nicht gewählten Spalte', () => {
+      const step = schreibSchritt({});
+
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+
+      expect(component.configMap(step, 'values')).toEqual({});
+      expect(step.config['values']).toBeUndefined();
+    });
+
+    /** Die letzte Spalte abwählen entfernt `values` ganz — ein leeres Feld sähe aus wie eine Einstellung. */
+    it('entfernt die Angabe, wenn keine Spalte übrig ist', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      component.toggleConfigMap(step, 'values', 'status', false);
+
+      expect(step.config['values']).toBeUndefined();
+    });
+
+    /**
+     * GEMELDET: `verhaltenskodex_gelesen` ist ein Ja/Nein-Wert, und daraus soll
+     * «unterzeichnet» werden — oder eben nichts.
+     */
+    it('schreibt eine Bedingung in der langen Form', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      component.toggleBedingung(step, 'values', 'status', true);
+      component.setConfigMapTeil(step, 'values', 'status', 'wenn', "context['gelesen'] == true");
+
+      expect(step.config['values']).toEqual({
+        status: { wert: 'bezahlt', wenn: "context['gelesen'] == true" },
+      });
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(true);
+    });
+
+    /**
+     * Ohne Bedingung bleibt die kurze Form. Die lange nur dort zu schreiben, wo
+     * sie etwas bedeutet, hält die Definition lesbar und den Diff klein.
+     */
+    it('bleibt ohne Bedingung bei der kurzen Form', () => {
+      const step = schreibSchritt({});
+
+      component.toggleConfigMap(step, 'values', 'status', true);
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+
+      expect(step.config['values']).toEqual({ status: 'bezahlt' });
+    });
+
+    /** Die Bedingung abschalten wirft `wenn` und `sonst` weg, der Wert bleibt. */
+    it('nimmt beim Abschalten die Bedingung weg und lässt den Wert stehen', () => {
+      const step = schreibSchritt({});
+      component.toggleConfigMap(step, 'values', 'status', true);
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+      component.toggleBedingung(step, 'values', 'status', true);
+      component.setConfigMapTeil(step, 'values', 'status', 'sonst', '');
+
+      component.toggleBedingung(step, 'values', 'status', false);
+
+      expect(step.config['values']).toEqual({ status: 'bezahlt' });
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(false);
+    });
+
+    /** Eine Definition, die schon die lange Form trägt, wird gelesen wie sie ist. */
+    it('liest eine vorhandene lange Form', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'speichern',
+          steps: {
+            speichern: {
+              type: 'automatic',
+              action: 'write_data',
+              config: {
+                entity: 'order',
+                id: '7',
+                values: { status: { wert: 'bezahlt', wenn: 'true', sonst: '' } },
+              },
+              transitions: [],
+            },
+          },
+        }),
+      );
+      const step = component.model().steps[0];
+
+      expect(component.configMapValue(step, 'values', 'status')).toBe('bezahlt');
+      expect(component.configMapTeil(step, 'values', 'status', 'wenn')).toBe('true');
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(true);
+    });
+
+    it('setzt beim Umschalten der Art die Aktion und nimmt sie wieder weg', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      component.setKind(step, 'timer');
+      expect(step.action).toBeNull();
+
+      component.setKind(step, 'datawrite');
+      expect(step.type).toBe('automatic');
+      expect(step.action).toBe('write_data');
+    });
   });
 });
