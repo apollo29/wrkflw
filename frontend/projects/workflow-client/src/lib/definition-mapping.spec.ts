@@ -738,6 +738,68 @@ describe('definition-mapping', () => {
       ).toEqual(["F:a[context['x'] == 1>b|context['x'] == 2>c+c2|sonst>e]=>z"]);
     });
 
+    /**
+     * GEMELDET an einem echten Ablauf: «nachweise gibt eine Verzweigung, diese
+     * wird aber wieder zusammengefuehrt bei notify_complete. Ein Zweig geht zu
+     * upload_uefa_certificate und anschliessend zu notify_complete, der andere
+     * direkt. Danach zu done und dort ist Schluss.»
+     *
+     * Die Vorschau zeigte stattdessen zwei Spuren ohne Zusammenfuehrung und
+     * schob `notify_complete` samt `done` in die «Sonst»-Spur. Der Grund:
+     * `upload_uefa_certificate` hat selbst mehrere Ausgaenge, und die Suche sah
+     * nur die einspurige Kette — was dahinter lag, war fuer sie nicht da.
+     */
+    it('findet die Zusammenfuehrung auch hinter einem Schritt, der selbst verzweigt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf(
+              {
+                nachweise: {
+                  type: 'interactive',
+                  transitions: [
+                    { to: 'upload_uefa_certificate', when: "context['uefa_webinar'] == true" },
+                    { to: 'notify_complete' },
+                  ],
+                },
+                upload_uefa_certificate: {
+                  type: 'automatic',
+                  transitions: [
+                    { to: 'notify_complete', when: "context['ok'] == true" },
+                    { to: 'notify_complete' },
+                  ],
+                },
+                notify_complete: { type: 'automatic', transitions: [{ to: 'done' }] },
+                done: { type: 'automatic', transitions: [] },
+              },
+              'nachweise',
+            ),
+          ),
+        ),
+      ).toEqual([
+        "F:nachweise[context['uefa_webinar'] == true>upload_uefa_certificate|sonst>]=>notify_complete",
+        'S:done',
+      ]);
+    });
+
+    /**
+     * Die naheliegende falsche Antwort waere `done`: auch dort kommen beide
+     * Wege an. Gesucht ist aber der Punkt, an dem sie sich TREFFEN.
+     */
+    it('nimmt den ersten gemeinsamen Punkt, nicht irgendeinen', () => {
+      const [fork] = previewFlow(
+        ablauf({
+          a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+          b: { type: 'automatic', transitions: [{ to: 'treffpunkt' }] },
+          c: { type: 'automatic', transitions: [{ to: 'treffpunkt' }] },
+          treffpunkt: { type: 'automatic', transitions: [{ to: 'danach' }] },
+          danach: { type: 'automatic', transitions: [] },
+        }),
+      );
+
+      expect(fork.kind === 'fork' ? fork.merge : null).toBe('treffpunkt');
+    });
+
     it('laesst die Spuren offen, wenn sie nirgends zusammenlaufen', () => {
       expect(
         kurz(

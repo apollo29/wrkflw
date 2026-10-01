@@ -138,23 +138,38 @@
         }
       </ng-template>
 
-      <div class="wfb__flow">
-        @for (sec of flow(); track $index) {
+      <div class="wfb__flow" #flowEl>
+        @for (sec of flow(); track $index; let si = $index) {
           @if (sec.kind === 'chain') {
-            <div class="wfb__flow-row">
-              @for (name of sec.steps; track name; let last = $last) {
-                <ng-container *ngTemplateOutlet="chip; context: { $implicit: name }"></ng-container>
-                @if (!last) {
-                  <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
-                }
+            <!-- Reicht die Breite nicht, laeuft die Reihe unten weiter. Das
+                 «…» am Zeilenende und am Anfang der naechsten Zeile sagt, dass
+                 es dieselbe Kette ist; wo der Umbruch faellt, misst
+                 messeUmbrueche() im Browser. -->
+            <div class="wfb__flow-row" [attr.data-row]="si">
+              @for (name of sec.steps; track name; let i = $index) {
+                <div class="wfb__flow-item">
+                  @if (i > 0) {
+                    <span class="wfb__flow-gap">
+                      @if (bricht(si, i)) {
+                        <span class="wfb__flow-ell" title="Fortsetzung der Zeile darüber">…</span>
+                      } @else {
+                        <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
+                      }
+                    </span>
+                  }
+                  <ng-container *ngTemplateOutlet="chip; context: { $implicit: name }"></ng-container>
+                  @if (bricht(si, i + 1)) {
+                    <span class="wfb__flow-ell wfb__flow-ell--trail" aria-hidden="true">…</span>
+                  }
+                </div>
               }
             </div>
           }
           @if (sec.kind === 'fork') {
             <div class="wfb__branch">
               <div class="wfb__branch-row">
-                @if (sec.continued) {
-                  <span class="wfb__branch-prev" title="die Schritte davor">…</span>
+                @if (sec.prev) {
+                  <ng-container *ngTemplateOutlet="chip; context: { $implicit: sec.prev }"></ng-container>
                   <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
                 }
                 <ng-container *ngTemplateOutlet="chip; context: { $implicit: sec.from }"></ng-container>

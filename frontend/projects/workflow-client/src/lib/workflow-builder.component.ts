@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { afterRender, Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BuilderModel,
@@ -79,8 +79,17 @@ interface FlowFork {
   height: number;
   forkPaths: string[];
   mergePaths: string[];
-  /** Kam vor der Verzweigung schon etwas? Dann steht ein «…» davor. */
-  continued: boolean;
+  /**
+   * Der Schritt unmittelbar VOR der Verzweigung — null, wenn sie am Anfang
+   * steht.
+   *
+   * GEMELDET: «daten_laden ist der Startschritt, dieser soll auch im Ablauf
+   * drin sein.» Er stand in einer eigenen Reihe ueber dem Bild, und davor ein
+   * «…», das fuer ihn stehen sollte — zwei Darstellungen desselben Schritts,
+   * von denen keine ihn mit der Verzweigung verband. Jetzt steht er IM Bild,
+   * und die Reihe darueber gibt ihn dafuer ab.
+   */
+  prev: string | null;
 }
 
 type FlowSection = FlowChain | FlowFork;
@@ -143,6 +152,22 @@ const KIND_LABELS: Record<StepKind, string> = {
 export class WorkflowBuilderComponent implements OnInit {
   private readonly service = inject(WorkflowService);
   private readonly typePicker = viewChild<ElementRef<HTMLElement>>('typePicker');
+  private readonly flowEl = viewChild<ElementRef<HTMLElement>>('flowEl');
+
+  /**
+   * Wo eine Reihe der Ablauf-Vorschau umbricht — `"<abschnitt>:<index>"` je
+   * Plaettchen, das in einer neuen Zeile anfaengt.
+   *
+   * Reicht die Breite nicht, laeuft die Reihe weiter unten weiter. Ohne
+   * Markierung ist dann nicht zu sehen, ob die naechste Zeile dieselbe Kette
+   * fortsetzt oder etwas Neues ist — deshalb steht am Zeilenende ein «…» und
+   * am Anfang der naechsten Zeile wieder eines, dort anstelle des Pfeils.
+   *
+   * GEMESSEN UND NICHT GERECHNET: wo der Umbruch faellt, haengt an der
+   * Schriftbreite, der Fenstergroesse und den Namen der Schritte. Das weiss
+   * nur der Browser, und er sagt es ueber `offsetTop`.
+   */
+  private readonly breaks = signal<ReadonlySet<string>>(new Set());
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
@@ -175,6 +200,45 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly operators = OPERATORS;
   readonly units = UNITS;
 
+  constructor() {
+    // Nach dem Rendern nachmessen: eine andere Fensterbreite, ein laengerer
+    // Schrittname oder ein Schritt mehr aendern die Umbrueche. Die Zuweisung
+    // passiert nur, wenn sich wirklich etwas geaendert hat — sonst stiesse
+    // jedes Messen das naechste Rendern an.
+    afterRender(() => this.messeUmbrueche());
+  }
+
+  /** Bricht das Plaettchen `index` in Abschnitt `abschnitt` eine neue Zeile an? */
+  bricht(abschnitt: number, index: number): boolean {
+    return this.breaks().has(`${abschnitt}:${index}`);
+  }
+
+  private messeUmbrueche(): void {
+    const wurzel = this.flowEl()?.nativeElement;
+    if (!wurzel) {
+      return;
+    }
+
+    const neu = new Set<string>();
+    for (const reihe of Array.from(wurzel.querySelectorAll<HTMLElement>('.wfb__flow-row'))) {
+      const abschnitt = reihe.dataset['row'] ?? '';
+      const teile = Array.from(reihe.querySelectorAll<HTMLElement>('.wfb__flow-item'));
+      teile.forEach((teil, i) => {
+        // 5px Spielraum: Plaettchen derselben Zeile koennen sich um eine
+        // Haaresbreite unterscheiden, eine neue Zeile liegt viel tiefer.
+        if (i > 0 && teil.offsetTop > teile[i - 1].offsetTop + 5) {
+          neu.add(`${abschnitt}:${i}`);
+        }
+      });
+    }
+
+    const alt = this.breaks();
+    if (alt.size === neu.size && Array.from(neu).every((k) => alt.has(k))) {
+      return;
+    }
+    this.breaks.set(neu);
+  }
+
   /**
    * Der Ablauf als Abschnitte fuer die Vorschau: Reihen von Schritten, und
    * Verzweigungen als eigenes Bild.
@@ -198,6 +262,19 @@ export class WorkflowBuilderComponent implements OnInit {
         continue;
       }
 
+      // Der letzte Schritt der Reihe davor wandert in das Bild der
+      // Verzweigung — dort sagt er etwas (hier kommt der Ablauf her), in der
+      // Reihe darueber stuende er nur herum. Bleibt die Reihe leer, faellt sie
+      // weg, statt als leerer Kasten stehenzubleiben.
+      const davor = out[out.length - 1];
+      let prev: string | null = null;
+      if (davor?.kind === 'chain') {
+        prev = davor.steps.pop() ?? null;
+        if (davor.steps.length === 0) {
+          out.pop();
+        }
+      }
+
       const n = node.lanes.length;
       out.push({
         kind: 'fork',
@@ -207,7 +284,7 @@ export class WorkflowBuilderComponent implements OnInit {
         height: n * LANE_H,
         forkPaths: forkPaths(n),
         mergePaths: mergePaths(n),
-        continued: out.length > 0,
+        prev,
       });
     }
 

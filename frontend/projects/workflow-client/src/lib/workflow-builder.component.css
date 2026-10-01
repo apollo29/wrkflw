@@ -235,7 +235,37 @@
  * nicht unvollstaendig, es war falsch.
  */
 .wfb__flow { display: flex; flex-direction: column; gap: 14px; }
-.wfb__flow-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* column-gap/row-gap getrennt: zwischen den Plaettchen sitzt der Pfeil und
+ * braucht wenig, zwischen zwei Zeilen muss die Marke Platz haben. */
+.wfb__flow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 16px;
+  padding-right: 30px; /* Raum fuer das «…» am Zeilenende */
+}
+.wfb__flow-item { display: flex; align-items: center; gap: 6px; position: relative; }
+/* Feste Breite: ob dort der Pfeil oder die Marke steht, darf die Plaettchen
+ * nicht verschieben — sonst wandert bei jedem Umbruch die ganze Reihe. */
+.wfb__flow-gap {
+  width: 26px;
+  flex: 0 0 26px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--_text);
+}
+.wfb__flow-ell { font-size: 15px; font-weight: 600; color: var(--_text); line-height: 1; }
+.wfb__flow-ell--trail {
+  position: absolute;
+  right: -28px;
+  top: 50%;
+  transform: translateY(-55%);
+  letter-spacing: 1px;
+}
 
 /* Der Pfeil als Linie: in der Spur setzt er die Linie fort. */
 .wfb__arrow { width: 26px; height: 12px; flex: 0 0 auto; color: var(--_text); }
@@ -250,7 +280,6 @@
   overflow-x: auto;
 }
 .wfb__branch-row { display: flex; align-items: center; gap: 6px; width: max-content; }
-.wfb__branch-prev { font-size: 13px; color: var(--_muted); padding-right: 2px; cursor: default; }
 
 .wfb__fork, .wfb__merge-lines {
   flex: 0 0 auto;

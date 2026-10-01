@@ -31,11 +31,30 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   (Spurhoehe genau 56px ohne Ueberlauf, alle Spur-Linien enden auf derselben
   x-Position, das Plaettchen der Zusammenfuehrung exakt auf der Mitte des
   Buendels — bei 2, 3 und 4 Zweigen).
+- **Die Zusammenfuehrung wurde nicht gefunden, wenn hinter einem Zweig noch ein
+  Schritt mit eigenen Ausgaengen lag.** Gemeldet an einem echten Ablauf: zwei
+  Zweige, die bei `notify_complete` wieder zusammenlaufen — die Vorschau zeigte
+  sie als getrennt und schob die gemeinsamen Schritte in die «Sonst»-Spur, als
+  liefen sie nur im einen Fall. Die Suche verglich nur die einspurigen Ketten;
+  wo eine davon an einem verzweigenden Schritt endete, war alles dahinter fuer
+  sie nicht vorhanden. Jetzt entscheidet die ganze Erreichbarkeit, und der
+  Treffer ist der Schritt mit dem kleinsten groessten Abstand — der erste, bei
+  dem wirklich alle angekommen sind, nicht irgendein gemeinsamer weiter hinten.
+- **Vor der Verzweigung steht der echte vorherige Schritt statt eines «…».**
+  Der Startschritt stand in einer eigenen Reihe darueber und das «…» sollte fuer
+  ihn stehen — zwei Darstellungen desselben Schritts, keine davon verband ihn
+  mit der Verzweigung. Die Reihe gibt ihr letztes Plaettchen jetzt ab.
 - **Ein Uebergang ohne Bedingung stand in der Vorschau als Bedingung `true`.**
   «Immer» wird als `when: "true"` gespeichert und kommt als roher Ausdruck
   zurueck, nicht als leerer Assistent. In der Spur gehoert dort «Sonst» hin.
 
 ### Added
+- **Zeilenumbruch in der Ablauf-Vorschau.** Reicht die Breite nicht, laeuft die
+  Reihe unten weiter; ein «…» am Zeilenende und am Anfang der naechsten Zeile
+  sagt, dass es dieselbe Kette ist. Der Platz dafuer ist fest reserviert — ob
+  dort der Pfeil oder die Marke steht, darf die Plaettchen nicht verschieben.
+  Wo der Umbruch faellt, haengt an Schrift, Breite und Schrittnamen; das weiss
+  nur der Browser, also wird es gemessen statt gerechnet.
 - **Die Plaettchen der Ablauf-Vorschau waehlen den Schritt aus**, wie der
   Eintrag in der Liste links. In einer Verzweigung steht ein Schritt, den man in
   der Liste sonst erst suchen muesste. Sie sind dafuer jetzt Knoepfe und damit

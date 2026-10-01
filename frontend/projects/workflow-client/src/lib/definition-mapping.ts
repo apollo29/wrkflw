@@ -540,12 +540,77 @@ export function previewFlow(model: BuilderModel): PreviewNode[] {
   const ausgaenge = (name: string): BuilderTransition[] =>
     (byName.get(name)?.transitions ?? []).filter((t) => known.has(t.to));
 
-  /** Die einspurige Kette ab `start` — endet, wo es nicht mehr eindeutig weitergeht. */
-  const kette = (start: string): string[] => {
+  /** Alle von `start` aus erreichbaren Schritte mit ihrem Abstand. */
+  const erreichbar = (start: string): Map<string, number> => {
+    const out = new Map<string, number>();
+    const queue: Array<[string, number]> = [[start, 0]];
+    while (queue.length > 0) {
+      const [name, abstand] = queue.shift() as [string, number];
+      if (out.has(name)) {
+        continue;
+      }
+      out.set(name, abstand);
+      for (const t of ausgaenge(name)) {
+        queue.push([t.to, abstand + 1]);
+      }
+    }
+    return out;
+  };
+
+  /**
+   * Der Schritt, in dem alle Spuren wieder zusammenlaufen — null, wenn es
+   * keinen gibt.
+   *
+   * GEMELDET: «nachweise gibt eine Verzweigung, diese wird aber wieder
+   * zusammengefuehrt bei notify_complete» — die Vorschau zeigte stattdessen
+   * zwei Spuren, die nirgends zusammenkamen, und schob `notify_complete` samt
+   * `done` in die «Sonst»-Spur.
+   *
+   * Der Grund war die Suche: sie verglich nur die EINSPURIGEN Ketten der
+   * Spuren. `upload_uefa_certificate` hat selbst zwei Ausgaenge, dort endete
+   * die Kette, und was dahinter lag, war fuer die Suche nicht vorhanden —
+   * obwohl beide Wege sehr wohl bei `notify_complete` ankommen.
+   *
+   * Also die ganze Erreichbarkeit statt der Kette, und als Treffer der Schritt
+   * mit dem kleinsten groessten Abstand: der erste, bei dem wirklich alle
+   * angekommen sind. Mit `done` weiter hinten waere das sonst auch ein
+   * gemeinsamer Punkt — aber eben nicht der, an dem sich die Wege treffen.
+   */
+  const zusammenfuehrung = (ziele: string[], quelle: string): string | null => {
+    if (ziele.length === 0) {
+      return null;
+    }
+    const karten = ziele.map(erreichbar);
+
+    let treffer: string | null = null;
+    let bestes = Number.POSITIVE_INFINITY;
+    for (const name of karten[0].keys()) {
+      // Der verzweigende Schritt selbst ist keine Zusammenfuehrung — bei einem
+      // Kreis waere er sonst der naechstliegende gemeinsame Punkt.
+      if (name === quelle || !karten.every((k) => k.has(name))) {
+        continue;
+      }
+      const mass = Math.max(...karten.map((k) => k.get(name) as number));
+      if (mass < bestes) {
+        bestes = mass;
+        treffer = name;
+      }
+    }
+    return treffer;
+  };
+
+  /**
+   * Die Schritte EINER Spur: ab `start` einspurig weiter, bis die
+   * Zusammenfuehrung erreicht ist oder es nicht mehr eindeutig weitergeht.
+   *
+   * Ein Schritt, der selbst verzweigt, steht noch auf der Spur — seine eigenen
+   * Ausgaenge nicht. Die Vorschau klappt nicht jede Ebene auf.
+   */
+  const spur = (start: string, merge: string | null): string[] => {
     const out: string[] = [];
     const gesehen = new Set<string>();
     let name: string | null = start;
-    while (name !== null && known.has(name) && !gesehen.has(name)) {
+    while (name !== null && known.has(name) && name !== merge && !gesehen.has(name)) {
       gesehen.add(name);
       out.push(name);
       const weiter = ausgaenge(name);
@@ -555,19 +620,6 @@ export function previewFlow(model: BuilderModel): PreviewNode[] {
       name = weiter[0].to;
     }
     return out;
-  };
-
-  /** Der erste Schritt, der auf JEDER Spur liegt — null, wenn es keinen gibt. */
-  const zusammenfuehrung = (ketten: string[][]): string | null => {
-    if (ketten.length === 0 || ketten.some((k) => k.length === 0)) {
-      return null;
-    }
-    for (const name of ketten[0]) {
-      if (ketten.every((k) => k.includes(name))) {
-        return name;
-      }
-    }
-    return null;
   };
 
   const out: PreviewNode[] = [];
@@ -585,16 +637,15 @@ export function previewFlow(model: BuilderModel): PreviewNode[] {
       continue;
     }
 
-    const ketten = weiter.map((t) => kette(t.to));
-    const merge = zusammenfuehrung(ketten);
-    const lanes: PreviewLane[] = weiter.map((t, i) => {
-      const bis = merge === null ? ketten[i].length : ketten[i].indexOf(merge);
-      return {
-        condition: laneCondition(t),
-        isElse: laneIsElse(t),
-        steps: ketten[i].slice(0, bis),
-      };
-    });
+    const merge = zusammenfuehrung(
+      weiter.map((t) => t.to),
+      cur,
+    );
+    const lanes: PreviewLane[] = weiter.map((t) => ({
+      condition: laneCondition(t),
+      isElse: laneIsElse(t),
+      steps: spur(t.to, merge),
+    }));
 
     // Was auf einer Spur steht, ist gezeichnet und damit erledigt. Ohne diese
     // Zeile landeten die Spur-Schritte am Ende als «nicht erreichbar» noch
