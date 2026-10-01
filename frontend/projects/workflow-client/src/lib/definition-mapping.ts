@@ -481,6 +481,244 @@ export function orderedStepNames(model: BuilderModel): string[] {
   return visited;
 }
 
+/**
+ * Eine Spur einer Verzweigung: die Bedingung, unter der sie genommen wird, und
+ * die Schritte, die auf ihr liegen.
+ */
+export interface PreviewLane {
+  /** Der kompilierte Ausdruck. Leer, wenn der Uebergang bedingungslos ist. */
+  condition: string;
+  /** Bedingungsloser Uebergang — im Bild die «Sonst»-Spur. */
+  isElse: boolean;
+  /** Schritte dieser Spur, OHNE den Schritt der Zusammenfuehrung. */
+  steps: string[];
+}
+
+/**
+ * Ein Abschnitt der Ablauf-Vorschau: entweder eine Reihe von Schritten
+ * hintereinander, oder eine Verzweigung.
+ */
+export type PreviewNode =
+  | { kind: 'step'; name: string }
+  | {
+      kind: 'fork';
+      /** Der Schritt, der verzweigt. */
+      from: string;
+      lanes: PreviewLane[];
+      /** Der Schritt, in dem alle Spuren wieder zusammenlaufen — null, wenn keiner. */
+      merge: string | null;
+    };
+
+/**
+ * Der Ablauf als Folge von Abschnitten, mit Verzweigungen als eigener Art.
+ *
+ * WARUM NICHT `orderedStepNames()`: das ist eine Breitensuche und liefert eine
+ * flache Liste. Bei einem Ablauf mit zwei Ausgaengen standen danach beide Ziele
+ * nebeneinander in der Reihe, mit einem Pfeil dazwischen — als liefe der eine
+ * nach dem anderen. Genau das Gegenteil von dem, was passiert: es laeuft
+ * entweder der eine oder der andere, und wovon das abhaengt, war nicht zu
+ * sehen. Die Reihe war also nicht unvollstaendig, sondern falsch.
+ *
+ * Deshalb hier eine eigene Form. Ein Schritt mit zwei oder mehr Uebergaengen
+ * wird zur Verzweigung; je Uebergang eine Spur mit ihrer Bedingung. Laufen die
+ * Spuren wieder in einem Schritt zusammen, ist das die Zusammenfuehrung, und
+ * danach geht es einspurig weiter.
+ *
+ * Was die Vorschau BEWUSST NICHT zeigt: eine Verzweigung INNERHALB einer Spur.
+ * Eine Spur endet am naechsten Schritt, der selbst verzweigt; der steht noch
+ * als Schritt da, seine eigenen Ausgaenge nicht. Ein Bild, das jede Ebene
+ * aufklappt, wird bei drei Ebenen unlesbar — und die Ausgaenge eines Schritts
+ * stehen vollstaendig in seinem Detail-Panel. Die Vorschau ist eine Vorschau.
+ *
+ * Zyklen enden an ihrem ersten Wiedersehen: ein Ablauf darf im Kreis laufen
+ * (eine Erinnerung, die erneut wartet), die Vorschau nicht.
+ */
+export function previewFlow(model: BuilderModel): PreviewNode[] {
+  const known = new Set(model.steps.map((s) => s.name));
+  const byName = new Map(model.steps.map((s) => [s.name, s]));
+
+  const ausgaenge = (name: string): BuilderTransition[] =>
+    (byName.get(name)?.transitions ?? []).filter((t) => known.has(t.to));
+
+  /** Alle von `start` aus erreichbaren Schritte mit ihrem Abstand. */
+  const erreichbar = (start: string): Map<string, number> => {
+    const out = new Map<string, number>();
+    const queue: Array<[string, number]> = [[start, 0]];
+    while (queue.length > 0) {
+      const [name, abstand] = queue.shift() as [string, number];
+      if (out.has(name)) {
+        continue;
+      }
+      out.set(name, abstand);
+      for (const t of ausgaenge(name)) {
+        queue.push([t.to, abstand + 1]);
+      }
+    }
+    return out;
+  };
+
+  /**
+   * Der Schritt, in dem alle Spuren wieder zusammenlaufen — null, wenn es
+   * keinen gibt.
+   *
+   * GEMELDET: «nachweise gibt eine Verzweigung, diese wird aber wieder
+   * zusammengefuehrt bei notify_complete» — die Vorschau zeigte stattdessen
+   * zwei Spuren, die nirgends zusammenkamen, und schob `notify_complete` samt
+   * `done` in die «Sonst»-Spur.
+   *
+   * Der Grund war die Suche: sie verglich nur die EINSPURIGEN Ketten der
+   * Spuren. `upload_uefa_certificate` hat selbst zwei Ausgaenge, dort endete
+   * die Kette, und was dahinter lag, war fuer die Suche nicht vorhanden —
+   * obwohl beide Wege sehr wohl bei `notify_complete` ankommen.
+   *
+   * Also die ganze Erreichbarkeit statt der Kette, und als Treffer der Schritt
+   * mit dem kleinsten groessten Abstand: der erste, bei dem wirklich alle
+   * angekommen sind. Mit `done` weiter hinten waere das sonst auch ein
+   * gemeinsamer Punkt — aber eben nicht der, an dem sich die Wege treffen.
+   */
+  const zusammenfuehrung = (ziele: string[], quelle: string): string | null => {
+    if (ziele.length === 0) {
+      return null;
+    }
+    const karten = ziele.map(erreichbar);
+
+    let treffer: string | null = null;
+    let bestes = Number.POSITIVE_INFINITY;
+    for (const name of karten[0].keys()) {
+      // Der verzweigende Schritt selbst ist keine Zusammenfuehrung — bei einem
+      // Kreis waere er sonst der naechstliegende gemeinsame Punkt.
+      if (name === quelle || !karten.every((k) => k.has(name))) {
+        continue;
+      }
+      const mass = Math.max(...karten.map((k) => k.get(name) as number));
+      if (mass < bestes) {
+        bestes = mass;
+        treffer = name;
+      }
+    }
+    return treffer;
+  };
+
+  /**
+   * Die Schritte EINER Spur: ab `start` einspurig weiter, bis die
+   * Zusammenfuehrung erreicht ist oder es nicht mehr eindeutig weitergeht.
+   *
+   * Ein Schritt, der selbst verzweigt, steht noch auf der Spur — seine eigenen
+   * Ausgaenge nicht. Die Vorschau klappt nicht jede Ebene auf.
+   */
+  const spur = (start: string, merge: string | null): string[] => {
+    const out: string[] = [];
+    const gesehen = new Set<string>();
+    let name: string | null = start;
+    while (name !== null && known.has(name) && name !== merge && !gesehen.has(name)) {
+      gesehen.add(name);
+      out.push(name);
+      const weiter = ausgaenge(name);
+      if (weiter.length !== 1) {
+        break;
+      }
+      name = weiter[0].to;
+    }
+    return out;
+  };
+
+  const out: PreviewNode[] = [];
+  const besucht = new Set<string>();
+  let cur: string | null =
+    model.startStep && known.has(model.startStep) ? model.startStep : null;
+
+  while (cur !== null && !besucht.has(cur)) {
+    besucht.add(cur);
+    const weiter = ausgaenge(cur);
+
+    if (weiter.length < 2) {
+      out.push({ kind: 'step', name: cur });
+      cur = weiter.length === 1 ? weiter[0].to : null;
+      continue;
+    }
+
+    const merge = zusammenfuehrung(
+      weiter.map((t) => t.to),
+      cur,
+    );
+    const lanes: PreviewLane[] = weiter.map((t) => ({
+      condition: laneCondition(t),
+      isElse: laneIsElse(t),
+      steps: spur(t.to, merge),
+    }));
+
+    // Was auf einer Spur steht, ist gezeichnet und damit erledigt. Ohne diese
+    // Zeile landeten die Spur-Schritte am Ende als «nicht erreichbar» noch
+    // einmal in der Reihe — erreichbar sind sie ja gerade.
+    for (const lane of lanes) {
+      for (const name of lane.steps) {
+        besucht.add(name);
+      }
+    }
+
+    out.push({ kind: 'fork', from: cur, lanes, merge });
+
+    if (merge === null) {
+      cur = null;
+      continue;
+    }
+
+    // Der Schritt der Zusammenfuehrung ist im Bild der Verzweigung schon
+    // gezeichnet. Verzweigt er selbst, bleibt er trotzdem `cur`: dann wird er
+    // die Quelle der naechsten Verzweigung und steht dort nochmal — so wie im
+    // Entwurf jede Verzweigung ihre Quelle als Zusammenhang wiederholt.
+    // Verzweigt er nicht, geht es direkt bei seinem Ziel weiter.
+    if (ausgaenge(merge).length >= 2) {
+      cur = merge;
+      continue;
+    }
+    besucht.add(merge);
+    cur = ausgaenge(merge)[0]?.to ?? null;
+  }
+
+  // Nicht erreichbare Schritte hinten anhaengen — dieselbe Zusage wie in
+  // orderedStepNames: ein Schritt, den niemand ansteuert, verschwindet nicht
+  // lautlos aus dem Bild.
+  for (const step of model.steps) {
+    if (!besucht.has(step.name)) {
+      out.push({ kind: 'step', name: step.name });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Bedingungslos?
+ *
+ * Drei Schreibweisen bedeuten «immer», und alle drei kommen vor:
+ *
+ *   - Assistent ohne Feld — so legt der Editor einen «Sonst»-Uebergang an.
+ *   - `raw` ohne Text — ein leer gelassenes Ausdrucksfeld.
+ *   - `raw` mit genau `true` — und DAS ist der Normalfall einer gespeicherten
+ *     Definition. `transitionToJson()` schreibt fuer «immer» den Ausdruck
+ *     `true`, und `parseCondition('true')` passt auf kein Muster, also kommt
+ *     der Uebergang als `mode: 'raw'`, `raw: 'true'` zurueck. Ohne diesen Fall
+ *     stuende in der Vorschau jedes zweiten geladenen Ablaufs die «Bedingung»
+ *     `true`, wo «Sonst» hingehoert.
+ */
+function laneIsElse(t: BuilderTransition): boolean {
+  if (t.mode === 'raw') {
+    const ausdruck = t.raw.trim();
+
+    return ausdruck === '' || ausdruck === 'true';
+  }
+
+  return t.condition.field.trim() === '';
+}
+
+function laneCondition(t: BuilderTransition): string {
+  if (laneIsElse(t)) {
+    return '';
+  }
+  return t.mode === 'raw' ? t.raw.trim() : compileCondition(t.condition);
+}
+
 export function emptyStep(name: string, type: StepType): BuilderStep {
   return {
     name,

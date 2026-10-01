@@ -1,5 +1,6 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { afterRender, Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BuilderModel,
@@ -11,9 +12,12 @@ import {
   emptyStep,
   fromDefinition,
   orderedStepNames,
+  PreviewLane,
+  previewFlow,
   removeStep as removeStepFromModel,
   toDefinition,
 } from './definition-mapping';
+import { forkPaths, LANE_H, mergePaths } from './flow-geometry';
 import { HtmlEditorComponent } from './html-editor.component';
 import {
   ActionCatalogEntry,
@@ -50,6 +54,47 @@ interface WriteValue {
 
 /** Builder-Schritt-Art inkl. der Pseudo-Arten „workflow"/„datacheck"/„datawrite". */
 type StepKind = StepType | 'workflow' | 'datacheck' | 'datawrite';
+
+/** Eine Reihe von Schritten, die nacheinander laufen. */
+interface FlowChain {
+  kind: 'chain';
+  steps: string[];
+}
+
+/**
+ * Eine Verzweigung, fertig zum Zeichnen: die Spuren und die beiden
+ * Linien-Buendel als SVG-Pfade.
+ *
+ * Die Geometrie steht hier und nicht in der Vorlage, weil sie von der Anzahl
+ * der Spuren abhaengt: zwei Zweige brauchen andere Kurven als vier. Eine
+ * Vorlage kann das nicht ausrechnen, und ein festes Bild je Anzahl waere eine
+ * Grenze, die der Editor nicht hat — Uebergaenge sind beliebig viele.
+ */
+interface FlowFork {
+  kind: 'fork';
+  from: string;
+  lanes: PreviewLane[];
+  merge: string | null;
+  /** Hoehe des Buendels in px — eine Spur je `LANE_H`. */
+  height: number;
+  forkPaths: string[];
+  mergePaths: string[];
+  /**
+   * Der Schritt unmittelbar VOR der Verzweigung — null, wenn sie am Anfang
+   * steht.
+   *
+   * GEMELDET: «daten_laden ist der Startschritt, dieser soll auch im Ablauf
+   * drin sein.» Er stand in einer eigenen Reihe ueber dem Bild, und davor ein
+   * «…», das fuer ihn stehen sollte — zwei Darstellungen desselben Schritts,
+   * von denen keine ihn mit der Verzweigung verband. Jetzt steht er IM Bild,
+   * und die Reihe darueber gibt ihn dafuer ab.
+   */
+  prev: string | null;
+}
+
+type FlowSection = FlowChain | FlowFork;
+
+
 
 const OPERATORS: { op: ConditionOp; label: string }[] = [
   { op: '==', label: 'ist' },
@@ -100,13 +145,29 @@ const KIND_LABELS: Record<StepKind, string> = {
 @Component({
   selector: 'wf-builder',
   standalone: true,
-  imports: [FormsModule, HtmlEditorComponent],
+  imports: [FormsModule, HtmlEditorComponent, NgTemplateOutlet],
   templateUrl: './workflow-builder.component.html',
   styleUrls: ['./workflow-theme.css', './workflow-builder.component.css'],
 })
 export class WorkflowBuilderComponent implements OnInit {
   private readonly service = inject(WorkflowService);
   private readonly typePicker = viewChild<ElementRef<HTMLElement>>('typePicker');
+  private readonly flowEl = viewChild<ElementRef<HTMLElement>>('flowEl');
+
+  /**
+   * Wo eine Reihe der Ablauf-Vorschau umbricht — `"<abschnitt>:<index>"` je
+   * Plaettchen, das in einer neuen Zeile anfaengt.
+   *
+   * Reicht die Breite nicht, laeuft die Reihe weiter unten weiter. Ohne
+   * Markierung ist dann nicht zu sehen, ob die naechste Zeile dieselbe Kette
+   * fortsetzt oder etwas Neues ist — deshalb steht am Zeilenende ein «…» und
+   * am Anfang der naechsten Zeile wieder eines, dort anstelle des Pfeils.
+   *
+   * GEMESSEN UND NICHT GERECHNET: wo der Umbruch faellt, haengt an der
+   * Schriftbreite, der Fenstergroesse und den Namen der Schritte. Das weiss
+   * nur der Browser, und er sagt es ueber `offsetTop`.
+   */
+  private readonly breaks = signal<ReadonlySet<string>>(new Set());
 
   readonly definitions = signal<DefinitionSummary[]>([]);
   readonly actions = signal<ActionCatalogEntry[]>([]);
@@ -139,8 +200,95 @@ export class WorkflowBuilderComponent implements OnInit {
   readonly operators = OPERATORS;
   readonly units = UNITS;
 
-  preview(): string[] {
-    return orderedStepNames(this.model());
+  constructor() {
+    // Nach dem Rendern nachmessen: eine andere Fensterbreite, ein laengerer
+    // Schrittname oder ein Schritt mehr aendern die Umbrueche. Die Zuweisung
+    // passiert nur, wenn sich wirklich etwas geaendert hat — sonst stiesse
+    // jedes Messen das naechste Rendern an.
+    afterRender(() => this.messeUmbrueche());
+  }
+
+  /** Bricht das Plaettchen `index` in Abschnitt `abschnitt` eine neue Zeile an? */
+  bricht(abschnitt: number, index: number): boolean {
+    return this.breaks().has(`${abschnitt}:${index}`);
+  }
+
+  private messeUmbrueche(): void {
+    const wurzel = this.flowEl()?.nativeElement;
+    if (!wurzel) {
+      return;
+    }
+
+    const neu = new Set<string>();
+    for (const reihe of Array.from(wurzel.querySelectorAll<HTMLElement>('.wfb__flow-row'))) {
+      const abschnitt = reihe.dataset['row'] ?? '';
+      const teile = Array.from(reihe.querySelectorAll<HTMLElement>('.wfb__flow-item'));
+      teile.forEach((teil, i) => {
+        // 5px Spielraum: Plaettchen derselben Zeile koennen sich um eine
+        // Haaresbreite unterscheiden, eine neue Zeile liegt viel tiefer.
+        if (i > 0 && teil.offsetTop > teile[i - 1].offsetTop + 5) {
+          neu.add(`${abschnitt}:${i}`);
+        }
+      });
+    }
+
+    const alt = this.breaks();
+    if (alt.size === neu.size && Array.from(neu).every((k) => alt.has(k))) {
+      return;
+    }
+    this.breaks.set(neu);
+  }
+
+  /**
+   * Der Ablauf als Abschnitte fuer die Vorschau: Reihen von Schritten, und
+   * Verzweigungen als eigenes Bild.
+   *
+   * Aufeinanderfolgende Einzelschritte werden hier zu einer Reihe gebuendelt.
+   * Das koennte auch die Vorlage, aber nur mit einem Blick auf den naechsten
+   * Eintrag — und `@for` hat keinen. Die Zusammenfassung gehoert dorthin, wo
+   * sich das in einem Satz sagen laesst.
+   */
+  flow(): FlowSection[] {
+    const out: FlowSection[] = [];
+
+    for (const node of previewFlow(this.model())) {
+      if (node.kind === 'step') {
+        const letzte = out[out.length - 1];
+        if (letzte?.kind === 'chain') {
+          letzte.steps.push(node.name);
+        } else {
+          out.push({ kind: 'chain', steps: [node.name] });
+        }
+        continue;
+      }
+
+      // Der letzte Schritt der Reihe davor wandert in das Bild der
+      // Verzweigung — dort sagt er etwas (hier kommt der Ablauf her), in der
+      // Reihe darueber stuende er nur herum. Bleibt die Reihe leer, faellt sie
+      // weg, statt als leerer Kasten stehenzubleiben.
+      const davor = out[out.length - 1];
+      let prev: string | null = null;
+      if (davor?.kind === 'chain') {
+        prev = davor.steps.pop() ?? null;
+        if (davor.steps.length === 0) {
+          out.pop();
+        }
+      }
+
+      const n = node.lanes.length;
+      out.push({
+        kind: 'fork',
+        from: node.from,
+        lanes: node.lanes,
+        merge: node.merge,
+        height: n * LANE_H,
+        forkPaths: forkPaths(n),
+        mergePaths: mergePaths(n),
+        prev,
+      });
+    }
+
+    return out;
   }
 
   /**
@@ -173,6 +321,21 @@ export class WorkflowBuilderComponent implements OnInit {
       }
     });
     return out;
+  }
+
+  /**
+   * Auswahl ueber den Namen — die Vorschau kennt Namen, die Auswahl einen
+   * Index in `model().steps`.
+   *
+   * Dass ein Plaettchen anklickbar ist wie der Eintrag in der Liste links, ist
+   * der Punkt der Vorschau: in einer Verzweigung steht ein Schritt, den man in
+   * der Liste erst suchen muesste.
+   */
+  selectByName(name: string): void {
+    const i = this.model().steps.findIndex((s) => s.name === name);
+    if (i >= 0) {
+      this.selected.set(i);
+    }
   }
 
   selectedStep(): BuilderStep | null {
