@@ -67,6 +67,12 @@
   --_dc-bg: var(--wfb-dc-bg, #fdf2f8);
   --_dc-bd: var(--wfb-dc-bd, #fbcfe8);
   --_dc-fg: var(--wfb-dc-fg, #be185d);
+  /* Schreib-Schritt. Eigener Farbton, nicht der des Datenchecks: in der
+     Schrittliste sind Lesen und Schreiben derselben Tabelle sonst nur am
+     Pfeil im Symbol zu unterscheiden. */
+  --_dw-bg: var(--wfb-dw-bg, #ecfeff);
+  --_dw-bd: var(--wfb-dw-bd, #a5f3fc);
+  --_dw-fg: var(--wfb-dw-fg, #0e7490);
 
   color: var(--_text);
   font-family: var(--_font);
@@ -111,4 +117,7 @@
   --_dc-bg: var(--wfb-dc-bg, #2b1322);
   --_dc-bd: var(--wfb-dc-bd, #9d174d);
   --_dc-fg: var(--wfb-dc-fg, #f9a8d4);
+  --_dw-bg: var(--wfb-dw-bg, #0b2a30);
+  --_dw-bd: var(--wfb-dw-bd, #155e75);
+  --_dw-fg: var(--wfb-dw-fg, #67e8f9);
 }

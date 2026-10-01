@@ -15,6 +15,7 @@ use Slim\Exception\HttpNotFoundException;
 use Slim\Factory\AppFactory;
 use WorkflowEngine\Action\ActionRegistry;
 use WorkflowEngine\Contracts\DataCatalogInterface;
+use WorkflowEngine\Contracts\DataWriteCatalogInterface;
 use WorkflowEngine\Contracts\TemplateRepositoryInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\DefinitionValidator;
@@ -59,6 +60,9 @@ final class ApiFactory
     /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, DataCatalogController-Aktion */
     private const DATACATALOG_ROUTES = [
         ['GET', '/data-catalog', 'list'],
+        // Getrennte Liste: was ein Ablauf AENDERN darf, ist viel weniger als
+        // das, was er lesen darf (siehe DataWriteCatalogInterface).
+        ['GET', '/data-catalog/writable', 'writable'],
     ];
 
     /** @var list<array{0:string,1:string,2:string}> Methode, Pfad, TemplateController-Aktion */
@@ -80,6 +84,7 @@ final class ApiFactory
         ?ActionRegistry $actions = null,
         ?TemplateRepositoryInterface $templates = null,
         ?DataCatalogInterface $catalog = null,
+        ?DataWriteCatalogInterface $writeCatalog = null,
     ): App {
         $app = AppFactory::create();
         self::addWorkflowRoutes($app, new WorkflowController($engine, $repo));
@@ -91,7 +96,7 @@ final class ApiFactory
             self::addTemplateRoutes($app, new TemplateController($templates, $repo));
         }
         if ($catalog !== null) {
-            self::addDataCatalogRoutes($app, new DataCatalogController($catalog));
+            self::addDataCatalogRoutes($app, new DataCatalogController($catalog, $writeCatalog));
         }
         self::finalize($app, $auth);
 

@@ -116,6 +116,69 @@ final class AppDataProvider implements DataProviderInterface, \WorkflowEngine\Co
     }
 }
 
+/* ---- 2b) Adapter der Host-App: Daten SCHREIBEN -------------------------
+   Eigener Port, eigene Whitelist. Sie ist kein Duplikat der Lese-Whitelist
+   oben, sondern bewusst viel kleiner: `orders.id` und `orders.total` liest ein
+   Ablauf gern, aendern darf er sie nicht. Welche Spalte hier fehlt, kann keine
+   Definition schreiben — auch keine, die ein Admin im Editor baut. */
+final class AppDataWriter implements
+    \WorkflowEngine\Contracts\DataWriterInterface,
+    \WorkflowEngine\Contracts\DataWriteCatalogInterface
+{
+    /** Entitaet => [Tabelle, erlaubte Spalten]. */
+    private const ERLAUBT = [
+        'order' => ['orders', ['status', 'note']],
+        'invoice' => ['invoices', ['paid']],
+    ];
+
+    public function __construct(private \PDO $pdo)
+    {
+    }
+
+    public function writableEntities(): array
+    {
+        $out = [];
+        foreach (self::ERLAUBT as $entity => [$_tabelle, $spalten]) {
+            $out[] = ['entity' => (string) $entity, 'label' => (string) $entity, 'fields' => $spalten];
+        }
+
+        return $out;
+    }
+
+    public function write(string $entity, string|int $id, array $values, string $herkunft): bool
+    {
+        if (!isset(self::ERLAUBT[$entity])) {
+            return false;
+        }
+        [$tabelle, $spalten] = self::ERLAUBT[$entity];
+
+        // Nur erlaubte Spalten. Die Namen stammen aus dieser Konstante, nicht
+        // aus den Daten — in das SQL unten kommt nichts von aussen.
+        $setzen = [];
+        $params = [':id' => $id];
+        foreach ($values as $spalte => $wert) {
+            if (!in_array($spalte, $spalten, true)) {
+                continue;
+            }
+            $setzen[] = "{$spalte} = :v_{$spalte}";
+            $params[":v_{$spalte}"] = $wert;
+        }
+        if ($setzen === []) {
+            return false;
+        }
+
+        // Herkunft gehoert ins Audit der Host-App — hier nur protokolliert.
+        error_log("[WRITE] {$herkunft} -> {$tabelle}#{$id}: " . implode(', ', array_keys($values)));
+
+        $stmt = $this->pdo->prepare(
+            "UPDATE {$tabelle} SET " . implode(', ', $setzen) . ' WHERE id = :id'
+        );
+        $stmt->execute($params);
+
+        return $stmt->rowCount() > 0;
+    }
+}
+
 /* ---- 3) PSR-11-Container aufbauen --------------------------------------- */
 function buildContainer(\PDO $pdo): ContainerInterface
 {
@@ -124,6 +187,7 @@ function buildContainer(\PDO $pdo): ContainerInterface
         \PDO::class => $pdo,
         MailerInterface::class => \DI\create(AppMailer::class),
         DataProviderInterface::class => \DI\autowire(AppDataProvider::class),
+        \WorkflowEngine\Contracts\DataWriterInterface::class => \DI\autowire(AppDataWriter::class),
         ExpressionEvaluatorInterface::class => \DI\create(SymfonyExpressionEvaluator::class),
         WorkflowRepositoryInterface::class => \DI\autowire(PdoWorkflowRepository::class),
         \WorkflowEngine\Contracts\TemplateRepositoryInterface::class =>
@@ -143,12 +207,24 @@ function buildContainer(\PDO $pdo): ContainerInterface
             $registry->register('check_data', new \WorkflowEngine\Action\CheckDataAction(
                 $c->get(DataProviderInterface::class),
             ));
+            // Schreib-Schritt: aendert Werte in einer Host-Tabelle. Nur
+            // registrieren, wenn die Host-App den Schreib-Port wirklich
+            // anbietet — ohne ihn soll die Aktion im Editor gar nicht
+            // auftauchen, statt dort zu stehen und beim Ausfuehren zu scheitern.
+            if ($c->has(\WorkflowEngine\Contracts\DataWriterInterface::class)) {
+                $registry->register('write_data', new \WorkflowEngine\Action\WriteDataAction(
+                    $c->get(\WorkflowEngine\Contracts\DataWriterInterface::class),
+                ));
+            }
             // Eigene Aktionen der Host-App hier zusaetzlich registrieren.
             return $registry;
         },
         \WorkflowEngine\Contracts\DataCatalogInterface::class =>
             static fn (ContainerInterface $c): \WorkflowEngine\Contracts\DataCatalogInterface
                 => $c->get(DataProviderInterface::class),
+        \WorkflowEngine\Contracts\DataWriteCatalogInterface::class =>
+            static fn (ContainerInterface $c): \WorkflowEngine\Contracts\DataWriteCatalogInterface
+                => $c->get(\WorkflowEngine\Contracts\DataWriterInterface::class),
         WorkflowEngine::class => \DI\autowire()->constructor(
             \DI\get(WorkflowRepositoryInterface::class),
             \DI\get(ActionRegistry::class),

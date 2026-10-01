@@ -22,6 +22,15 @@
       <path d="M3 4v8c0 1.1 2.24 2 5 2s5-.9 5-2V4" fill="none" stroke="currentColor" stroke-width="1.4"/>
       <path d="M3 8c0 1.1 2.24 2 5 2s5-.9 5-2" fill="none" stroke="currentColor" stroke-width="1.4"/>
     </symbol>
+    <!-- Dieselbe Trommel wie der Datencheck, mit einem Pfeil HINEIN: an der
+         Richtung ist der Schritt in der Liste zu unterscheiden, auch wenn
+         beide dieselbe Tabelle meinen. -->
+    <symbol id="wfb-i-dbwrite" viewBox="0 0 16 16">
+      <ellipse cx="8" cy="4" rx="5" ry="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M3 4v8c0 1.1 2.24 2 5 2s5-.9 5-2V4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M8 6.5v4.5m0 0 1.6-1.6M8 11l-1.6-1.6" fill="none" stroke="currentColor"
+            stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -105,6 +114,7 @@
                   [class.wfb__chip--timer]="stepKind(s) === 'timer'"
                   [class.wfb__chip--workflow]="stepKind(s) === 'workflow'"
                   [class.wfb__chip--datacheck]="stepKind(s) === 'datacheck'"
+                  [class.wfb__chip--datawrite]="stepKind(s) === 'datawrite'"
                   [class.wfb__chip--active]="selectedStep()?.name === name">
               <svg class="wfb__icon" aria-hidden="true">
                 <use [attr.href]="stepIcon(s)"/>
@@ -133,6 +143,7 @@
                    [class.wfb__step--timer]="stepKind(entry.step) === 'timer'"
                    [class.wfb__step--workflow]="stepKind(entry.step) === 'workflow'"
                    [class.wfb__step--datacheck]="stepKind(entry.step) === 'datacheck'"
+                   [class.wfb__step--datawrite]="stepKind(entry.step) === 'datawrite'"
                    (click)="selected.set(entry.index)">
                 <span class="wfb__step-dot" aria-hidden="true"></span>
                 <span class="wfb__step-text">
@@ -302,7 +313,8 @@
                   [class.wfb__badge--interactive]="stepKind(step) === 'interactive'"
                   [class.wfb__badge--timer]="stepKind(step) === 'timer'"
                   [class.wfb__badge--workflow]="stepKind(step) === 'workflow'"
-                  [class.wfb__badge--datacheck]="stepKind(step) === 'datacheck'">
+                  [class.wfb__badge--datacheck]="stepKind(step) === 'datacheck'"
+                  [class.wfb__badge--datawrite]="stepKind(step) === 'datawrite'">
               {{ kindLabel(step) }}
             </span>
           </div>
@@ -315,6 +327,7 @@
               <option value="timer">Timer</option>
               <option value="workflow">Workflow</option>
               <option value="datacheck">Datencheck</option>
+              <option value="datawrite">Daten schreiben</option>
             </select>
           </div>
 
@@ -381,6 +394,53 @@
                   <option value="">— Workflow wählen —</option>
                   @for (w of workflowOptions(); track w.id) { <option [value]="w.id">{{ w.name }}</option> }
                 </select>
+              } @else if (field.type === 'write-entity-ref') {
+                @if (writeEntities().length === 0) {
+                  <div class="wfb__hint">
+                    Keine beschreibbare Tabelle eingerichtet. Welche Spalten ein Ablauf ändern
+                    darf, gibt der Server frei — bis dahin kann dieser Schritt nichts schreiben.
+                  </div>
+                } @else {
+                  <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
+                          (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Tabelle">
+                    <option value="">— Tabelle wählen —</option>
+                    @for (e of writeEntities(); track e.entity) { <option [value]="e.entity">{{ e.label }}</option> }
+                  </select>
+                }
+              } @else if (field.type === 'field-value-map') {
+                @if (writeEntityFields(step).length === 0) {
+                  <div class="wfb__hint">Erst eine Tabelle wählen.</div>
+                } @else {
+                  <div class="wfb__valuemap">
+                    @for (f of writeEntityFields(step); track f) {
+                      <div class="wfb__valuerow">
+                        <label class="wfb__check">
+                          <input type="checkbox" [checked]="isInConfigMap(step, field.name, f)"
+                                 (change)="toggleConfigMap(step, field.name, f, $any($event.target).checked)" />
+                          {{ f }}
+                        </label>
+                        @if (isInConfigMap(step, field.name, f)) {
+                          <!-- Ohne die Vorschlagsliste `wf-field-names`: sie führt die
+                               Kontext-Namen OHNE Klammern, und hier ist `mail` ein
+                               fester Wert, `{{ '{{' }}mail{{ '}}' }}` dagegen der aus dem Kontext. Ein
+                               Vorschlag, der das Falsche einsetzt, ist schlechter als
+                               keiner. Die Namen mit Klammern stehen oben im Ablauf. -->
+                          <input class="wfb__wide" type="text"
+                                 [ngModel]="configMapValue(step, field.name, f)"
+                                 (ngModelChange)="setConfigMapValue(step, field.name, f, $event)"
+                                 [attr.aria-label]="'Wert für ' + f"
+                                 placeholder="Wert oder {{ '{{' }}platzhalter{{ '}}' }}" />
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="wfb__hint">
+                    Jede angehakte Spalte wird überschrieben — mit dem Wert daneben.
+                    <code>{{ '{{' }}platzhalter{{ '}}' }}</code> setzt einen Wert aus dem Kontext ein.
+                    Der Schritt ändert genau einen Datensatz, den aus der ID oben; er legt keinen
+                    an und löscht keinen.
+                  </div>
+                }
               } @else if (field.type === 'entity-ref') {
                 <select class="wfb__wide" [ngModel]="configValue(step, field.name)"
                         (ngModelChange)="setConfig(step, field.name, $event)" aria-label="Tabelle">
@@ -661,6 +721,11 @@
           <svg class="wfb__icon wfb__icon--lg"><use href="#wfb-i-db"/></svg>
           <span class="wfb__typecard-title">Datencheck</span>
           <span class="wfb__typecard-desc">Liest einen Wert aus einer Tabelle.</span>
+        </button>
+        <button type="button" class="wfb__typecard wfb__typecard--datawrite" (click)="addDataWriteStep()">
+          <svg class="wfb__icon wfb__icon--lg"><use href="#wfb-i-dbwrite"/></svg>
+          <span class="wfb__typecard-title">Daten schreiben</span>
+          <span class="wfb__typecard-desc">Ändert Werte in einer Tabelle.</span>
         </button>
       </div>
     </div>

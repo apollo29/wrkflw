@@ -70,6 +70,13 @@
 .wfb__fieldlist { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-bottom: 4px; }
 .wfb__fieldlist .wfb__check { margin: 0; }
 
+/* Schreib-Schritt: je Zeile eine Spalte und der Wert, der hineingeschrieben
+   wird. Untereinander statt nebeneinander — die Werte sind Texte mit
+   Platzhaltern und brauchen die ganze Breite. */
+.wfb__valuemap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.wfb__valuerow { display: flex; flex-direction: column; gap: 3px; }
+.wfb__valuerow .wfb__check { margin: 0; }
+
 /* ── Kopfleiste ── */
 .wfb__bar {
   display: flex;
@@ -211,6 +218,7 @@
 .wfb__chip--timer { background: var(--_tim-bg); border-color: var(--_tim-bd); color: var(--_tim-fg); }
 .wfb__chip--workflow { background: var(--_wf-bg); border-color: var(--_wf-bd); color: var(--_wf-fg); }
 .wfb__chip--datacheck { background: var(--_dc-bg); border-color: var(--_dc-bd); color: var(--_dc-fg); }
+.wfb__chip--datawrite { background: var(--_dw-bg); border-color: var(--_dw-bd); color: var(--_dw-fg); }
 .wfb__chip--active { box-shadow: 0 0 0 2px var(--_primary); }
 
 /* ── Spalten: Sidebar / Detail ── */
@@ -260,6 +268,7 @@
 .wfb__step--timer .wfb__step-dot { background: var(--_tim-bg); border-color: var(--_tim-fg); }
 .wfb__step--workflow .wfb__step-dot { background: var(--_wf-bg); border-color: var(--_wf-fg); }
 .wfb__step--datacheck .wfb__step-dot { background: var(--_dc-bg); border-color: var(--_dc-fg); }
+.wfb__step--datawrite .wfb__step-dot { background: var(--_dw-bg); border-color: var(--_dw-fg); }
 .wfb__step-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .wfb__step-name {
   font-size: 13px; font-weight: 500;
@@ -323,6 +332,7 @@
 .wfb__badge--timer { background: var(--_tim-bg); border: 1px solid var(--_tim-bd); color: var(--_tim-fg); }
 .wfb__badge--workflow { background: var(--_wf-bg); border: 1px solid var(--_wf-bd); color: var(--_wf-fg); }
 .wfb__badge--datacheck { background: var(--_dc-bg); border: 1px solid var(--_dc-bd); color: var(--_dc-fg); }
+.wfb__badge--datawrite { background: var(--_dw-bg); border: 1px solid var(--_dw-bd); color: var(--_dw-fg); }
 
 .wfb__detail-sub { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
 .wfb .wfb__typesel { width: 190px; }
@@ -418,6 +428,7 @@
 .wfb .wfb__typecard--timer { background: var(--_tim-bg); border-color: var(--_tim-bd); color: var(--_tim-fg); }
 .wfb .wfb__typecard--workflow { background: var(--_wf-bg); border-color: var(--_wf-bd); color: var(--_wf-fg); }
 .wfb .wfb__typecard--datacheck { background: var(--_dc-bg); border-color: var(--_dc-bd); color: var(--_dc-fg); }
+.wfb .wfb__typecard--datawrite { background: var(--_dw-bg); border-color: var(--_dw-bd); color: var(--_dw-fg); }
 
 /* ── JSON-Modus ── */
 .wfb__jsonwrap { display: flex; flex-direction: column; gap: 12px; }
