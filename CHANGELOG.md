@@ -5,6 +5,8 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-01
+
 ### Fixed
 - **Die Ablauf-Vorschau zeigte eine Verzweigung als Reihe.** Die Vorschau war
   eine Breitensuche und damit eine flache Liste. Bei einem Schritt mit zwei
