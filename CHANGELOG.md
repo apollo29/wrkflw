@@ -5,7 +5,20 @@ Format orientiert an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
-## [2.3.0] - 2026-10-01
+### Fixed
+- **Nach der Zusammenfuehrung ging es sichtbar nicht weiter.** Was danach
+  einspurig folgte, stand in einer eigenen Reihe darunter — ohne Pfeil, ohne
+  Verbindung, als gehoerte es nicht dazu. Es steht jetzt in derselben Zeile.
+  Verzweigt es gleich wieder, bleibt das ein eigenes Bild, und die Zeile endet
+  mit einem «…» statt auszusehen, als waere dort Schluss.
+- **Der Ausschluss `:not(.wfb__chip)` an der allgemeinen Knopf-Regel hat drei
+  andere Knoepfe veraendert.** `:not()` uebernimmt die Spezifitaet seines
+  Arguments; aus (0,1,1) wurde (0,2,1) und schlug damit `.wfb .wfb__step-x`,
+  `.wfb .wfb__load` und `.wfb .wfb__typecard` mit je (0,2,0). Das Loeschkreuz
+  bekam Rahmen und Hintergrund, die Karten unter «Schritt hinzufuegen»
+  verloren ihre Farbflaeche, und in «Vorhandene laden» presste eine feste
+  Hoehe Name und ID uebereinander. Mit `:where(:not(…))` traegt der Ausschluss
+  keine Spezifitaet mehr.
 
 ### Fixed
 - **Die Ablauf-Vorschau zeigte eine Verzweigung als Reihe.** Die Vorschau war

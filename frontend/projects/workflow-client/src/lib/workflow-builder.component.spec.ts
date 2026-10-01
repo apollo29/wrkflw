@@ -578,4 +578,108 @@ describe('WorkflowBuilderComponent', () => {
       expect(step.action).toBe('write_data');
     });
   });
+  /**
+   * Der gemeldete Ablauf, so wie er im Editor stand.
+   *
+   * GEMELDET, an zwei Stellen: «am Ende der ersten Zeile fehlt …» und «done
+   * kommt nach notify_complete als letzter Schritt». Die erste Verzweigung
+   * endete an ihrer Zusammenfuehrung, ohne Hinweis darauf, dass es weitergeht;
+   * `done` stand in einer eigenen Reihe darunter, ohne Pfeil, ohne Verbindung
+   * — als haette es mit dem Ablauf nichts zu tun.
+   */
+  describe('flow(): was nach der Zusammenfuehrung kommt', () => {
+    function gemeldeterAblauf(): void {
+      component.model.set(
+        fromDefinition({
+          id: 'onboarding',
+          startStep: 'daten_laden',
+          steps: {
+            daten_laden: { type: 'automatic', action: 'check_data', transitions: [{ to: 'daten_bestaetigen' }] },
+            daten_bestaetigen: {
+              type: 'interactive',
+              transitions: [
+                { to: 'leitbild_verhaltenskodex', when: "context['daten_korrekt'] == true" },
+                { to: 'daten_korrigieren' },
+              ],
+            },
+            daten_korrigieren: { type: 'interactive', transitions: [{ to: 'korrektur_melden' }] },
+            korrektur_melden: { type: 'automatic', transitions: [{ to: 'leitbild_verhaltenskodex' }] },
+            leitbild_verhaltenskodex: {
+              type: 'automatic',
+              action: 'start_workflow',
+              transitions: [{ to: 'nachweise' }],
+            },
+            nachweise: {
+              type: 'interactive',
+              transitions: [
+                { to: 'upload_uefa_certificate', when: "context['uefa_webinar'] == true" },
+                { to: 'notify_complete' },
+              ],
+            },
+            upload_uefa_certificate: {
+              type: 'automatic',
+              action: 'start_workflow',
+              transitions: [{ to: 'notify_complete' }],
+            },
+            notify_complete: { type: 'automatic', transitions: [{ to: 'done' }] },
+            done: { type: 'automatic', transitions: [] },
+          },
+        }),
+      );
+    }
+
+    it('haengt done an notify_complete statt in eine eigene Reihe', () => {
+      gemeldeterAblauf();
+      const abschnitte = component.flow();
+      const zweiter = abschnitte[1];
+
+      expect(zweiter.kind).toBe('fork');
+      if (zweiter.kind !== 'fork') {
+        return;
+      }
+      expect(zweiter.from).toBe('nachweise');
+      expect(zweiter.merge).toBe('notify_complete');
+      expect(zweiter.tail).toEqual(['done']);
+      // Und keine Reihe mehr dahinter, die dasselbe noch einmal zeigt.
+      expect(abschnitte.length).toBe(2);
+    });
+
+    it('markiert das Ende der ersten Zeile, weil es dort weitergeht', () => {
+      gemeldeterAblauf();
+      const erster = component.flow()[0];
+
+      expect(erster.kind).toBe('fork');
+      if (erster.kind !== 'fork') {
+        return;
+      }
+      expect(erster.from).toBe('daten_bestaetigen');
+      // Der Startschritt steht im Bild, nicht in einer Reihe darueber.
+      expect(erster.prev).toBe('daten_laden');
+      expect(erster.merge).toBe('leitbild_verhaltenskodex');
+      // Danach verzweigt es gleich wieder — eigenes Bild, also «…».
+      expect(erster.continues).toBeTrue();
+      expect(erster.tail).toEqual([]);
+    });
+
+    /** Endet der Ablauf an der Zusammenfuehrung, gibt es nichts anzudeuten. */
+    it('setzt keine Marke, wenn nach der Zusammenfuehrung Schluss ist', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'kurz',
+          startStep: 'a',
+          steps: {
+            a: { type: 'automatic', transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }] },
+            b: { type: 'automatic', transitions: [{ to: 'ende' }] },
+            c: { type: 'automatic', transitions: [{ to: 'ende' }] },
+            ende: { type: 'automatic', transitions: [] },
+          },
+        }),
+      );
+
+      const erster = component.flow()[0];
+      expect(erster.kind === 'fork' && erster.continues).toBeFalse();
+      expect(erster.kind === 'fork' ? erster.tail : null).toEqual([]);
+    });
+  });
+
 });
