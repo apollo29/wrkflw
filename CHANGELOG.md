@@ -81,8 +81,35 @@ Feldtypen `write-entity-ref` und `field-value-map`, und
   Jeder Schreibversuch nennt dem Host seine Herkunft (`workflow:<definition>#<instanz>`)
   — fuer dessen Audit. Steht in einer geaenderten Zeile nur «ein Workflow», ist
   im Nachhinein nicht mehr zuzuordnen, welcher.
+- **Bedingte Werte in `write_data`.** Ein Eintrag in `values` darf statt eines
+  Wertes `{"wert": ..., "wenn": ..., "sonst": ...}` sein. `wenn` ist dieselbe
+  Sprache und derselbe Geltungsbereich wie bei den Uebergangs-Bedingungen
+  (`context[...]`, `now`) — ein Ausdruck bedeutet an beiden Stellen dasselbe.
+
+  GEMELDET: ein Ja/Nein-Wert im Kontext soll zu einem Status werden —
+  «unterzeichnet», wenn der Kodex gelesen wurde, und sonst nichts. Bisher
+  liess sich das nur ueber zwei Schritte und eine Verzweigung bauen.
+
+  Fehlt `sonst`, wird die Spalte im anderen Fall GAR NICHT angefasst. «Auf leer
+  setzen» und «stehen lassen» sind verschiedene Dinge: ein Status, der
+  zurueckgesetzt werden soll, und ein Datum, das bleiben soll, wie es ist.
+
+  Die Aktion nimmt den `ExpressionEvaluatorInterface` dafuer optional entgegen.
+  Benutzt eine Definition `wenn` und ist keiner gebunden, wirft sie — eine
+  ignorierte Bedingung schriebe, wo gerade nicht geschrieben werden sollte.
+
+  Im Builder: ein Schalter «nur unter einer Bedingung» je angehakter Spalte,
+  darunter die beiden Felder. Ohne Bedingung bleibt die kurze Schreibweise
+  (`"spalte": "wert"`) — die lange nur dort, wo sie etwas bedeutet.
+- **`anlegen` in `write_data`.** Fehlt der Datensatz, entsteht er unter der
+  angegebenen ID — statt dass der Schritt `false` meldet. Im Builder eine
+  Checkbox am Schritt, Vorgabe AUS: eine Zeile, die aus einer ID und ein paar
+  Werten entsteht, ist in manchen Tabellen sinnvoll und in anderen eine
+  halbe. Der Host darf weiterhin ablehnen; verlangt die Tabelle eine Spalte,
+  die nicht freigegeben ist, scheitert das Anlegen hoerbar statt still.
 - **Eingebaute Platzhalter fuer die Uhr in `write_data`:** `{{now}}` (Datum,
-  ISO), `{{now.datetime}}` und `{{now.year}}`. «Setze das Datum auf heute» ist
+  ISO — `2026-10-25`), gleichbedeutend `{{now.ymd}}` und `{{now.date}}`, dazu
+  `{{now.datetime}}` und `{{now.year}}`. «Setze das Datum auf heute» ist
   der Normalfall eines Schreib-Schritts; ohne eingebaute Uhr muesste der Wert
   von aussen in den Kontext kommen, und bei einem Ablauf, der durch einen Timer
   weiterlaeuft, waere das der Zeitpunkt des STARTS — also nicht das, was

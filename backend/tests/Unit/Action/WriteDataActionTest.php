@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Action\WriteDataAction;
+use WorkflowEngine\Contracts\ExpressionEvaluatorInterface;
 use WorkflowEngine\Definition\Step;
 use WorkflowEngine\Instance\WorkflowInstance;
 use WorkflowEngine\Tests\Support\InMemoryDataWriter;
@@ -244,6 +245,282 @@ final class WriteDataActionTest extends TestCase
         self::assertSame('offen', $writer->wert('js_diplom', '7', 'status'));
     }
 
+    // ------------------------------------------------- anlegen (Vorgabe: nein)
+
+    /**
+     * Ohne `anlegen` bleibt es beim bisherigen Verhalten: ein fehlender
+     * Datensatz ist eine Antwort, kein Auftrag.
+     */
+    public function testOhneAnlegenBleibtEinFehlenderDatensatzEineAntwort(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('js_diplom', '7', ['status' => 'offen']);
+        $action = new WriteDataAction($writer);
+
+        $result = $action->execute(
+            $this->instance([]),
+            $this->step(['entity' => 'js_diplom', 'id' => '999', 'values' => ['status' => 'anerkannt']]),
+        );
+
+        self::assertFalse($result['written']);
+        self::assertFalse($writer->calls[0]['anlegen']);
+        self::assertNull($writer->row('js_diplom', '999'));
+    }
+
+    /** Mit `anlegen` entsteht der Datensatz unter der angegebenen ID. */
+    public function testMitAnlegenEntstehtDerDatensatz(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('js_diplom', '7', ['status' => 'offen']);
+        $action = new WriteDataAction($writer);
+
+        $result = $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'js_diplom',
+                'id' => '999',
+                'values' => ['status' => 'anerkannt'],
+                'anlegen' => true,
+            ]),
+        );
+
+        self::assertTrue($result['written']);
+        self::assertTrue($writer->calls[0]['anlegen']);
+        self::assertSame('anerkannt', $writer->wert('js_diplom', '999', 'status'));
+    }
+
+    /**
+     * Der Schalter kommt aus einer Definition, die auch von Hand bearbeitet
+     * wird. `"false"` ist dort NEIN — PHPs (bool) macht daraus sonst ein Ja.
+     *
+     * @param mixed $wert
+     */
+    #[DataProvider('neinWerte')]
+    public function testNeinBleibtNein(mixed $wert): void
+    {
+        $writer = new InMemoryDataWriter();
+        $action = new WriteDataAction($writer);
+
+        $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'js_diplom',
+                'id' => '999',
+                'values' => ['status' => 'x'],
+                'anlegen' => $wert,
+            ]),
+        );
+
+        self::assertFalse($writer->calls[0]['anlegen']);
+    }
+
+    /** @return array<string,array{0:mixed}> */
+    public static function neinWerte(): array
+    {
+        return ['false' => [false], '"false"' => ['false'], '"0"' => ['0'], 'leer' => [''], 'fehlt' => [null]];
+    }
+
+    // --------------------------------------------- bedingte Werte (wenn/sonst)
+
+    /**
+     * Der gemeldete Fall: `verhaltenskodex_gelesen` ist ein Ja/Nein-Wert, und
+     * daraus soll «unterzeichnet» werden — oder eben nichts.
+     */
+    public function testWennTrifftZuSchreibtDenWert(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => '', 'kodex_datum' => '']);
+        $action = new WriteDataAction($writer, $this->evaluator(true));
+
+        $action->execute(
+            $this->instance(['gelesen' => true]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => [
+                    'kodex_status' => [
+                        'wert' => 'unterzeichnet',
+                        'wenn' => "context['gelesen'] == true",
+                    ],
+                    'kodex_datum' => '{{now}}',
+                ],
+            ]),
+        );
+
+        self::assertSame('unterzeichnet', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
+        self::assertSame(date('Y-m-d'), $writer->wert('kinderschutz', 'TR-1', 'kodex_datum'));
+    }
+
+    /**
+     * Ohne `sonst` bleibt die Spalte UNBERUEHRT. «Setze auf leer» und «lass
+     * stehen» sind nicht dasselbe, und beides kommt vor.
+     */
+    public function testOhneSonstBleibtDieSpalteStehen(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => 'unterzeichnet']);
+        $action = new WriteDataAction($writer, $this->evaluator(false));
+
+        $ergebnis = $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => ['kodex_status' => ['wert' => 'unterzeichnet', 'wenn' => "context['gelesen'] == true"]],
+            ]),
+        );
+
+        self::assertSame('unterzeichnet', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
+        self::assertFalse($ergebnis['written'], 'Nichts zu schreiben heisst: nicht geschrieben.');
+        self::assertSame([], $writer->calls, 'Der Host darf gar nicht gefragt werden.');
+    }
+
+    /** Mit `sonst` wird der andere Wert geschrieben — auch der leere. */
+    public function testMitSonstWirdDerAndereWertGeschrieben(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => 'unterzeichnet']);
+        $action = new WriteDataAction($writer, $this->evaluator(false));
+
+        $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => [
+                    'kodex_status' => [
+                        'wert' => 'unterzeichnet',
+                        'wenn' => "context['gelesen'] == true",
+                        'sonst' => '',
+                    ],
+                ],
+            ]),
+        );
+
+        self::assertSame('', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
+    }
+
+    /**
+     * Der Ausdruck geht unveraendert an den Evaluator, mit demselben
+     * Geltungsbereich wie eine Uebergangs-Bedingung — sonst bedeutete derselbe
+     * Ausdruck an zwei Stellen Verschiedenes.
+     */
+    public function testDerAusdruckKommtMitKontextUndNowAn(): void
+    {
+        $gesehen = [];
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => '']);
+        $action = new WriteDataAction($writer, $this->evaluator(true, $gesehen));
+
+        $action->execute(
+            $this->instance(['gelesen' => true]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => ['kodex_status' => ['wert' => 'x', 'wenn' => "context['gelesen'] == true"]],
+            ]),
+        );
+
+        self::assertSame("context['gelesen'] == true", $gesehen['expression'] ?? null);
+        self::assertSame(['gelesen' => true], $gesehen['scope']['context'] ?? null);
+        self::assertArrayHasKey('now', $gesehen['scope'] ?? []);
+    }
+
+    /** Auch im bedingten Wert gelten die Platzhalter. */
+    public function testPlatzhalterGeltenAuchImBedingtenWert(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_datum' => '']);
+        $action = new WriteDataAction($writer, $this->evaluator(true));
+
+        $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => ['kodex_datum' => ['wert' => '{{now}}', 'wenn' => 'true']],
+            ]),
+        );
+
+        self::assertSame(date('Y-m-d'), $writer->wert('kinderschutz', 'TR-1', 'kodex_datum'));
+    }
+
+    /**
+     * Eine Bedingung OHNE Evaluator ist ein Fehler und kein stilles Ja. Ein
+     * ignoriertes `wenn` schriebe, wo gerade nicht geschrieben werden sollte.
+     */
+    public function testBedingungOhneEvaluatorWirft(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => 'alt']);
+        $action = new WriteDataAction($writer);
+
+        try {
+            $action->execute(
+                $this->instance([]),
+                $this->step([
+                    'entity' => 'kinderschutz',
+                    'id' => 'TR-1',
+                    'values' => ['kodex_status' => ['wert' => 'neu', 'wenn' => 'true']],
+                ]),
+            );
+            self::fail('Die fehlende Auswertung ging stillschweigend durch.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('ExpressionEvaluator', $e->getMessage());
+        }
+
+        self::assertSame('alt', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
+    }
+
+    /** Ohne `wenn` ist die lange Form nur eine Schreibweise fuer den Wert. */
+    public function testOhneWennIstEsNurEineSchreibweise(): void
+    {
+        $writer = new InMemoryDataWriter();
+        $writer->seed('kinderschutz', 'TR-1', ['kodex_status' => '']);
+        $action = new WriteDataAction($writer);
+
+        $action->execute(
+            $this->instance([]),
+            $this->step([
+                'entity' => 'kinderschutz',
+                'id' => 'TR-1',
+                'values' => ['kodex_status' => ['wert' => 'unterzeichnet']],
+            ]),
+        );
+
+        self::assertSame('unterzeichnet', $writer->wert('kinderschutz', 'TR-1', 'kodex_status'));
+    }
+
+    /**
+     * Ein Evaluator, der eine feste Antwort gibt und auf Wunsch festhaelt,
+     * womit er gerufen wurde.
+     *
+     * @param array<string,mixed> $gesehen
+     */
+    private function evaluator(bool $antwort, array &$gesehen = []): ExpressionEvaluatorInterface
+    {
+        return new class ($antwort, $gesehen) implements ExpressionEvaluatorInterface {
+            /** @param array<string,mixed> $gesehen */
+            public function __construct(
+                private readonly bool $antwort,
+                private array &$gesehen,
+            ) {
+            }
+
+            public function evaluate(string $expression, array $scope): bool
+            {
+                $this->gesehen = ['expression' => $expression, 'scope' => $scope];
+
+                return $this->antwort;
+            }
+
+            public function evaluateValue(string $expression, array $scope): mixed
+            {
+                return $this->antwort;
+            }
+        };
+    }
+
     // ------------------------------------------- eingebaute Platzhalter (Uhr)
 
     /**
@@ -271,11 +548,15 @@ final class WriteDataActionTest extends TestCase
         self::assertSame('erfasst am ' . $heute, $writer->wert('js_diplom', '7', 'bemerkung'));
     }
 
-    /** ISO, weil die Datumsspalten so gefüllt sind und die Trigger so vergleichen. */
-    public function testNowLiefertIsoUndKennDreiFormen(): void
+    /**
+     * ISO, weil die Datumsspalten so gefüllt sind und die Trigger so
+     * vergleichen. `now.ymd` ist dasselbe, nur nach dem Format benannt — wer
+     * das Format im Kopf hat, sucht danach und nicht nach «date».
+     */
+    public function testNowLiefertIsoUndKenntSeineFormen(): void
     {
         $writer = new InMemoryDataWriter();
-        $writer->seed('js_diplom', '7', ['a' => '', 'b' => '', 'c' => '']);
+        $writer->seed('js_diplom', '7', ['a' => '', 'b' => '', 'c' => '', 'd' => '']);
         $action = new WriteDataAction($writer);
 
         $action->execute(
@@ -283,13 +564,14 @@ final class WriteDataActionTest extends TestCase
             $this->step([
                 'entity' => 'js_diplom',
                 'id' => '7',
-                'values' => ['a' => '{{now}}', 'b' => '{{now.year}}', 'c' => '{{now.date}}'],
+                'values' => ['a' => '{{now}}', 'b' => '{{now.year}}', 'c' => '{{now.date}}', 'd' => '{{now.ymd}}'],
             ]),
         );
 
         self::assertSame(date('Y-m-d'), $writer->wert('js_diplom', '7', 'a'));
         self::assertSame(date('Y'), $writer->wert('js_diplom', '7', 'b'));
         self::assertSame(date('Y-m-d'), $writer->wert('js_diplom', '7', 'c'));
+        self::assertSame(date('Y-m-d'), $writer->wert('js_diplom', '7', 'd'));
     }
 
     /**

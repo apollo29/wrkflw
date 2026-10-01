@@ -70,6 +70,19 @@
 .wfb__fieldlist { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-bottom: 4px; }
 .wfb__fieldlist .wfb__check { margin: 0; }
 
+/* Der Schalter fuer eine Bedingung: klein und direkt unter dem Wert, damit
+   sichtbar ist, dass er zu diesem Feld gehoert und nicht zum naechsten. */
+.wfb__wenn-schalter { margin: 4px 0 0; font-size: 12px; color: var(--_muted); }
+/* Der eingerueckte Block macht die Zugehoerigkeit auch dann klar, wenn
+   mehrere Spalten eine Bedingung haben. */
+.wfb__wenn {
+  margin: 4px 0 2px 18px;
+  padding-left: 10px;
+  border-left: 2px solid var(--_border);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.wfb__wenn .wfb__hint { margin-top: 4px; }
+
 /* Schreib-Schritt: je Zeile eine Spalte und der Wert, der hineingeschrieben
    wird. Untereinander statt nebeneinander — die Werte sind Texte mit
    Platzhaltern und brauchen die ganze Breite. */

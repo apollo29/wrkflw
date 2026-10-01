@@ -214,6 +214,9 @@ function buildContainer(\PDO $pdo): ContainerInterface
             if ($c->has(\WorkflowEngine\Contracts\DataWriterInterface::class)) {
                 $registry->register('write_data', new \WorkflowEngine\Action\WriteDataAction(
                     $c->get(\WorkflowEngine\Contracts\DataWriterInterface::class),
+                    // Fuer `wenn` je Feld — derselbe Evaluator wie bei den
+                    // Uebergangs-Bedingungen.
+                    $c->get(ExpressionEvaluatorInterface::class),
                 ));
             }
             // Eigene Aktionen der Host-App hier zusaetzlich registrieren.

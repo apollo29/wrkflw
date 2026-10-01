@@ -439,14 +439,47 @@
                                  [ngModel]="configMapValue(step, field.name, f)"
                                  (ngModelChange)="setConfigMapValue(step, field.name, f, $event)"
                                  [attr.aria-label]="'Wert für ' + f"
-                                 placeholder="Wert oder {{ '{{' }}platzhalter{{ '}}' }}" />
+                                 placeholder="Wert, {{ '{{' }}platzhalter{{ '}}' }} oder {{ '{{' }}now{{ '}}' }}" />
+
+                          <label class="wfb__check wfb__wenn-schalter">
+                            <input type="checkbox" [checked]="hatBedingung(step, field.name, f)"
+                                   (change)="toggleBedingung(step, field.name, f, $any($event.target).checked)" />
+                            nur unter einer Bedingung
+                          </label>
+
+                          @if (hatBedingung(step, field.name, f)) {
+                            <div class="wfb__wenn">
+                              <div class="wfb__label">Nur wenn</div>
+                              <input class="wfb__wide wfb__mono" type="text"
+                                     [ngModel]="configMapTeil(step, field.name, f, 'wenn')"
+                                     (ngModelChange)="setConfigMapTeil(step, field.name, f, 'wenn', $event)"
+                                     [attr.aria-label]="'Bedingung für ' + f"
+                                     placeholder="context['gelesen'] == true" />
+                              <div class="wfb__label">Sonst</div>
+                              <input class="wfb__wide" type="text"
+                                     [ngModel]="configMapTeil(step, field.name, f, 'sonst')"
+                                     (ngModelChange)="setConfigMapTeil(step, field.name, f, 'sonst', $event)"
+                                     [attr.aria-label]="'Sonst-Wert für ' + f"
+                                     placeholder="leer lassen = Spalte unverändert" />
+                              <div class="wfb__hint">
+                                Dieselbe Sprache wie bei den Übergängen. Trifft die Bedingung nicht
+                                zu, gilt «Sonst» — und bleibt das Feld leer, wird die Spalte
+                                <strong>gar nicht angefasst</strong>. «Auf leer setzen» ist etwas
+                                anderes als «stehen lassen».
+                              </div>
+                            </div>
+                          }
                         }
                       </div>
                     }
                   </div>
                   <div class="wfb__hint">
                     Jede angehakte Spalte wird überschrieben — mit dem Wert daneben.
-                    <code>{{ '{{' }}platzhalter{{ '}}' }}</code> setzt einen Wert aus dem Kontext ein.
+                    <code>{{ '{{' }}platzhalter{{ '}}' }}</code> setzt einen Wert aus dem Kontext ein,
+                    <code>{{ '{{' }}now{{ '}}' }}</code> das heutige Datum als
+                    <code>2026-10-25</code> (gleichbedeutend: <code>{{ '{{' }}now.ymd{{ '}}' }}</code>,
+                    <code>{{ '{{' }}now.date{{ '}}' }}</code>; dazu <code>{{ '{{' }}now.datetime{{ '}}' }}</code>
+                    und <code>{{ '{{' }}now.year{{ '}}' }}</code>).
                     Der Schritt ändert genau einen Datensatz, den aus der ID oben; er legt keinen
                     an und löscht keinen.
                   </div>

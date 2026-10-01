@@ -497,6 +497,76 @@ describe('WorkflowBuilderComponent', () => {
       expect(step.config['values']).toBeUndefined();
     });
 
+    /**
+     * GEMELDET: `verhaltenskodex_gelesen` ist ein Ja/Nein-Wert, und daraus soll
+     * «unterzeichnet» werden — oder eben nichts.
+     */
+    it('schreibt eine Bedingung in der langen Form', () => {
+      const step = schreibSchritt({ status: 'bezahlt' });
+
+      component.toggleBedingung(step, 'values', 'status', true);
+      component.setConfigMapTeil(step, 'values', 'status', 'wenn', "context['gelesen'] == true");
+
+      expect(step.config['values']).toEqual({
+        status: { wert: 'bezahlt', wenn: "context['gelesen'] == true" },
+      });
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(true);
+    });
+
+    /**
+     * Ohne Bedingung bleibt die kurze Form. Die lange nur dort zu schreiben, wo
+     * sie etwas bedeutet, hält die Definition lesbar und den Diff klein.
+     */
+    it('bleibt ohne Bedingung bei der kurzen Form', () => {
+      const step = schreibSchritt({});
+
+      component.toggleConfigMap(step, 'values', 'status', true);
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+
+      expect(step.config['values']).toEqual({ status: 'bezahlt' });
+    });
+
+    /** Die Bedingung abschalten wirft `wenn` und `sonst` weg, der Wert bleibt. */
+    it('nimmt beim Abschalten die Bedingung weg und lässt den Wert stehen', () => {
+      const step = schreibSchritt({});
+      component.toggleConfigMap(step, 'values', 'status', true);
+      component.setConfigMapValue(step, 'values', 'status', 'bezahlt');
+      component.toggleBedingung(step, 'values', 'status', true);
+      component.setConfigMapTeil(step, 'values', 'status', 'sonst', '');
+
+      component.toggleBedingung(step, 'values', 'status', false);
+
+      expect(step.config['values']).toEqual({ status: 'bezahlt' });
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(false);
+    });
+
+    /** Eine Definition, die schon die lange Form trägt, wird gelesen wie sie ist. */
+    it('liest eine vorhandene lange Form', () => {
+      component.model.set(
+        fromDefinition({
+          id: 'flow',
+          startStep: 'speichern',
+          steps: {
+            speichern: {
+              type: 'automatic',
+              action: 'write_data',
+              config: {
+                entity: 'order',
+                id: '7',
+                values: { status: { wert: 'bezahlt', wenn: 'true', sonst: '' } },
+              },
+              transitions: [],
+            },
+          },
+        }),
+      );
+      const step = component.model().steps[0];
+
+      expect(component.configMapValue(step, 'values', 'status')).toBe('bezahlt');
+      expect(component.configMapTeil(step, 'values', 'status', 'wenn')).toBe('true');
+      expect(component.hatBedingung(step, 'values', 'status')).toBe(true);
+    });
+
     it('setzt beim Umschalten der Art die Aktion und nimmt sie wieder weg', () => {
       const step = schreibSchritt({ status: 'bezahlt' });
 

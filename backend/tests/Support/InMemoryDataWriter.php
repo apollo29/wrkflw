@@ -22,7 +22,7 @@ final class InMemoryDataWriter implements DataWriterInterface, DataWriteCatalogI
     /** @var array<string,list<string>> entity => erlaubte Spalten */
     private array $erlaubt = [];
 
-    /** @var list<array{entity:string,id:string,values:array<string,scalar|null>,herkunft:string}> */
+    /** @var list<array{entity:string,id:string,values:array<string,scalar|null>,herkunft:string,anlegen:bool}> */
     public array $calls = [];
 
     /**
@@ -47,17 +47,28 @@ final class InMemoryDataWriter implements DataWriterInterface, DataWriteCatalogI
         return $this->rows[$entity][$id][$spalte] ?? null;
     }
 
-    public function write(string $entity, string|int $id, array $values, string $herkunft): bool
-    {
+    public function write(
+        string $entity,
+        string|int $id,
+        array $values,
+        string $herkunft,
+        bool $anlegen = false,
+    ): bool {
         $this->calls[] = [
             'entity' => $entity,
             'id' => (string) $id,
             'values' => $values,
             'herkunft' => $herkunft,
+            'anlegen' => $anlegen,
         ];
 
         if (!isset($this->rows[$entity][(string) $id])) {
-            return false;
+            if (!$anlegen || !isset($this->erlaubt[$entity])) {
+                return false;
+            }
+            // Angelegt wird mit genau den erlaubten Spalten — wie ein Host, der
+            // nichts erfindet, was nicht in der Freigabe steht.
+            $this->rows[$entity][(string) $id] = [];
         }
 
         $erlaubt = $this->erlaubt[$entity] ?? [];

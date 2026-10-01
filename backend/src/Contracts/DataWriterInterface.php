@@ -24,7 +24,8 @@ namespace WorkflowEngine\Contracts;
 interface DataWriterInterface
 {
     /**
-     * Werte eines bestehenden Datensatzes aendern.
+     * Werte eines Datensatzes aendern — und, wenn $anlegen gesetzt ist und es
+     * ihn nicht gibt, ihn mit dieser ID anlegen.
      *
      * Rueckgabe `false` heisst: der Host hat NICHT geschrieben — unbekannte
      * Entitaet, kein Datensatz, keine erlaubte Spalte uebrig. Das ist kein
@@ -38,6 +39,17 @@ interface DataWriterInterface
      * @param string $herkunft Woher die Aenderung kommt, fuer das Audit der
      *                         Host-App (z. B. `workflow:kjs-mahnung#<instanz>`).
      *                         Nie leer, nie von aussen gesetzt.
+     * @param bool $anlegen Fehlt der Datensatz: anlegen statt `false` melden.
+     *                      Der Host darf trotzdem ablehnen — nicht jede
+     *                      Tabelle laesst sich aus ID und ein paar Werten
+     *                      sinnvoll fuellen, und eine Zeile, der die Haelfte
+     *                      fehlt, ist schlimmer als keine.
      */
-    public function write(string $entity, string|int $id, array $values, string $herkunft): bool;
+    public function write(
+        string $entity,
+        string|int $id,
+        array $values,
+        string $herkunft,
+        bool $anlegen = false,
+    ): bool;
 }

@@ -37,6 +37,17 @@ const CHECK_DATA_ACTION = 'check_data';
 /** Action-Key hinter dem Builder-Schritt-Typ „Daten schreiben". */
 const WRITE_DATA_ACTION = 'write_data';
 
+/**
+ * Ein Eintrag in `values` eines Schreib-Schritts. `wenn` und `sonst` sind
+ * optional: ohne sie wird immer geschrieben, mit `wenn` nur dann, und ohne
+ * `sonst` bleibt die Spalte im anderen Fall unberührt.
+ */
+interface WriteValue {
+  wert: string;
+  wenn?: string;
+  sonst?: string;
+}
+
 /** Builder-Schritt-Art inkl. der Pseudo-Arten „workflow"/„datacheck"/„datawrite". */
 type StepKind = StepType | 'workflow' | 'datacheck' | 'datawrite';
 
@@ -694,15 +705,30 @@ export class WorkflowBuilderComponent implements OnInit {
    * Editor bearbeitbar, und aus einer früheren Version kann an dieser Stelle
    * etwas anderes stehen.
    */
-  configMap(step: BuilderStep, name: string): Record<string, string> {
+  configMap(step: BuilderStep, name: string): Record<string, WriteValue> {
     const value = step.config[name];
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return {};
     }
-    const out: Record<string, string> = {};
+    const out: Record<string, WriteValue> = {};
     for (const [spalte, wert] of Object.entries(value as Record<string, unknown>)) {
       if (typeof wert === 'string' || typeof wert === 'number' || typeof wert === 'boolean') {
-        out[spalte] = String(wert);
+        out[spalte] = { wert: String(wert) };
+        continue;
+      }
+      // Die bedingte Form {wert, wenn, sonst}. Nur die drei Schlüssel, und nur
+      // als Text — was eine Definition sonst dort stehen hat, gehört nicht in
+      // die Eingabefelder.
+      if (typeof wert === 'object' && wert !== null && !Array.isArray(wert)) {
+        const o = wert as Record<string, unknown>;
+        const eintrag: WriteValue = { wert: typeof o['wert'] === 'string' ? o['wert'] : '' };
+        if (typeof o['wenn'] === 'string') {
+          eintrag.wenn = o['wenn'];
+        }
+        if (typeof o['sonst'] === 'string') {
+          eintrag.sonst = o['sonst'];
+        }
+        out[spalte] = eintrag;
       }
     }
     return out;
@@ -712,8 +738,35 @@ export class WorkflowBuilderComponent implements OnInit {
     return spalte in this.configMap(step, name);
   }
 
+  /** Ein Teil eines Eintrags — `wert`, `wenn` oder `sonst`. */
+  configMapTeil(step: BuilderStep, name: string, spalte: string, teil: keyof WriteValue): string {
+    return this.configMap(step, name)[spalte]?.[teil] ?? '';
+  }
+
+  /** Hat die Spalte eine Bedingung? Steuert, ob die zweite Zeile erscheint. */
+  hatBedingung(step: BuilderStep, name: string, spalte: string): boolean {
+    const e = this.configMap(step, name)[spalte];
+    return e !== undefined && (e.wenn !== undefined || e.sonst !== undefined);
+  }
+
+  /** Bedingung an- oder abschalten. Abschalten wirft `wenn` und `sonst` weg. */
+  toggleBedingung(step: BuilderStep, name: string, spalte: string, an: boolean): void {
+    const vorher = this.configMap(step, name);
+    const eintrag = vorher[spalte];
+    if (!eintrag) {
+      return;
+    }
+    if (an) {
+      eintrag.wenn = eintrag.wenn ?? '';
+    } else {
+      delete eintrag.wenn;
+      delete eintrag.sonst;
+    }
+    this.schreibeMap(step, name, vorher);
+  }
+
   configMapValue(step: BuilderStep, name: string, spalte: string): string {
-    return this.configMap(step, name)[spalte] ?? '';
+    return this.configMapTeil(step, name, spalte, 'wert');
   }
 
   /**
@@ -728,32 +781,49 @@ export class WorkflowBuilderComponent implements OnInit {
     if (an) {
       // Neu angehakt heisst: noch kein Wert. Ein vorhandener bleibt stehen,
       // damit ein versehentliches Abwählen nicht das Eingetippte wegwirft.
-      vorher[spalte] = vorher[spalte] ?? '';
+      vorher[spalte] = vorher[spalte] ?? { wert: '' };
     } else {
       delete vorher[spalte];
     }
     this.schreibeMap(step, name, vorher);
   }
 
-  setConfigMapValue(step: BuilderStep, name: string, spalte: string, wert: string): void {
+  setConfigMapTeil(
+    step: BuilderStep,
+    name: string,
+    spalte: string,
+    teil: keyof WriteValue,
+    wert: string,
+  ): void {
     const vorher = this.configMap(step, name);
-    if (!(spalte in vorher)) {
+    const eintrag = vorher[spalte];
+    if (!eintrag) {
       return;
     }
-    vorher[spalte] = wert;
+    eintrag[teil] = wert;
     this.schreibeMap(step, name, vorher);
   }
 
-  private schreibeMap(step: BuilderStep, name: string, werte: Record<string, string>): void {
+  setConfigMapValue(step: BuilderStep, name: string, spalte: string, wert: string): void {
+    this.setConfigMapTeil(step, name, spalte, 'wert', wert);
+  }
+
+  private schreibeMap(step: BuilderStep, name: string, werte: Record<string, WriteValue>): void {
     // Nur Spalten, die der Schreib-Katalog nennt. Eine Spalte, die in einer
     // älteren Definition steht und inzwischen nicht mehr freigegeben ist, fällt
     // damit beim nächsten Bearbeiten heraus — sie würde ohnehin nicht
     // geschrieben, und so sagt die Definition dasselbe wie der Server.
-    const geordnet: Record<string, string> = {};
+    const geordnet: Record<string, string | WriteValue> = {};
     for (const spalte of this.writeEntityFields(step)) {
-      if (spalte in werte) {
-        geordnet[spalte] = werte[spalte];
+      if (!(spalte in werte)) {
+        continue;
       }
+      const e = werte[spalte];
+      // Ohne Bedingung bleibt die kurze Form: `{"spalte": "wert"}`. Die lange
+      // nur dort zu schreiben, wo sie etwas bedeutet, hält die Definition
+      // lesbar — und einen Diff klein.
+      geordnet[spalte] =
+        e.wenn === undefined && e.sonst === undefined ? e.wert : { ...e };
     }
     if (Object.keys(geordnet).length > 0) {
       step.config[name] = geordnet;
