@@ -90,6 +90,23 @@ interface FlowFork {
    * und die Reihe darueber gibt ihn dafuer ab.
    */
   prev: string | null;
+  /**
+   * Die Schritte NACH der Zusammenfuehrung, in derselben Zeile.
+   *
+   * GEMELDET: «done kommt nach notify_complete als letzter Schritt.» Es stand
+   * in einer eigenen Reihe darunter, ohne Pfeil, ohne Verbindung — als haette
+   * es mit dem Ablauf darueber nichts zu tun. Laeuft es nach der
+   * Zusammenfuehrung einspurig weiter, gehoert das in dieselbe Zeile.
+   */
+  tail: string[];
+  /**
+   * Geht es weiter, aber in einem eigenen Bild? Dann ein «…» am Zeilenende.
+   *
+   * GEMELDET: «am Ende der ersten Zeile fehlt …». Die Zusammenfuehrung der
+   * ersten Verzweigung fuehrt direkt in die naechste; ohne Marke endet die
+   * Zeile, als waere dort Schluss.
+   */
+  continues: boolean;
 }
 
 type FlowSection = FlowChain | FlowFork;
@@ -285,10 +302,47 @@ export class WorkflowBuilderComponent implements OnInit {
         forkPaths: forkPaths(n),
         mergePaths: mergePaths(n),
         prev,
+        tail: [],
+        continues: false,
       });
     }
 
+    this.haengeFortsetzungAn(out);
+
     return out;
+  }
+
+  /**
+   * Was nach einer Zusammenfuehrung kommt, gehoert an sie.
+   *
+   * Laeuft es einspurig weiter, wandern die Schritte in dieselbe Zeile (`tail`)
+   * und die eigene Reihe faellt weg. Verzweigt es gleich wieder, bleibt das ein
+   * eigenes Bild — dann steht am Zeilenende ein «…», damit die Zeile nicht
+   * aussieht, als waere dort Schluss.
+   */
+  private haengeFortsetzungAn(sections: FlowSection[]): void {
+    for (let i = 0; i < sections.length; i++) {
+      const sec = sections[i];
+      if (sec.kind !== 'fork' || sec.merge === null) {
+        continue;
+      }
+
+      const naechste = sections[i + 1];
+      if (!naechste) {
+        continue;
+      }
+      if (naechste.kind === 'fork') {
+        sec.continues = true;
+        continue;
+      }
+
+      sec.tail = naechste.steps;
+      sections.splice(i + 1, 1);
+      // Nach dem Anhaengen kann DAHINTER wieder eine Verzweigung stehen.
+      if (sections[i + 1]?.kind === 'fork') {
+        sec.continues = true;
+      }
+    }
   }
 
   /**

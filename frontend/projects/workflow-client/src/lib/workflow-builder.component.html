@@ -205,6 +205,18 @@
                     <span class="wfb__merge-label">Zusammenführung</span>
                     <ng-container *ngTemplateOutlet="chip; context: { $implicit: sec.merge }"></ng-container>
                   </div>
+
+                  <!-- Was danach einspurig weiterlaeuft, bleibt in derselben
+                       Zeile — eine eigene Reihe darunter saehe aus, als
+                       gehoerte es nicht dazu. -->
+                  @for (name of sec.tail; track name) {
+                    <svg class="wfb__arrow" aria-hidden="true"><use href="#wfb-i-arrow"/></svg>
+                    <ng-container *ngTemplateOutlet="chip; context: { $implicit: name }"></ng-container>
+                  }
+
+                  @if (sec.continues) {
+                    <span class="wfb__flow-ell" title="weiter im nächsten Bild">…</span>
+                  }
                 }
               </div>
             </div>

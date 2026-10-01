@@ -36,15 +36,24 @@
 .wfb__mono { font-family: var(--_mono); font-size: 12.5px; }
 
 /*
- * `:not(.wfb__chip)`, weil das Plaettchen der Ablauf-Vorschau ein Knopf ist
- * (der Klick waehlt den Schritt aus) und seine eigenen Farben mitbringt.
+ * Der Ausschluss gilt dem Plaettchen der Ablauf-Vorschau: das ist ein Knopf
+ * (der Klick waehlt den Schritt aus) und bringt seine eigenen Farben mit.
  * `.wfb button` ist mit (0,1,1) spezifischer als `.wfb__chip--workflow` mit
- * (0,1,0) — ohne diesen Ausschluss gewinnt der allgemeine Knopf, und zwar
- * lautlos: das Plaettchen wird weiss, 34px hoch und mittig gesetzt, die
- * Typ-Farbe ist weg. Gemessen, nicht vermutet: derselbe Klassensatz ergab auf
- * einem <span> #ecfdf5 und auf einem <button> #ffffff.
+ * (0,1,0) — ohne ihn gewinnt der allgemeine Knopf, und zwar lautlos: das
+ * Plaettchen wird weiss, 34px hoch und mittig gesetzt.
+ *
+ * YOU MUST ihn in `:where()` einpacken. `:not()` UEBERNIMMT die Spezifitaet
+ * seines Arguments: `.wfb button:not(.wfb__chip)` waere (0,2,1) und damit
+ * spezifischer als die Regeln, die einzelne Knoepfe herrichten —
+ * `.wfb .wfb__step-x`, `.wfb .wfb__load`, `.wfb .wfb__typecard` haben alle
+ * (0,2,0). GENAU DAS IST PASSIERT: das Loeschkreuz bekam Rahmen und
+ * Hintergrund und sah aus wie ein Knopf, die Karten unter «Schritt
+ * hinzufuegen» verloren ihre Farbflaeche und wurden 34px hohe Zeilen, und in
+ * «Vorhandene laden» presste die feste Hoehe Name und ID uebereinander.
+ * `:where()` traegt die Spezifitaet 0, damit bleibt die Regel bei (0,1,1) —
+ * genau dort, wo sie vorher stand.
  */
-.wfb button:not(.wfb__chip) {
+.wfb button:where(:not(.wfb__chip)) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -61,7 +70,7 @@
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
-.wfb button:not(.wfb__chip):hover { border-color: var(--_primary); color: var(--_primary); }
+.wfb button:where(:not(.wfb__chip)):hover { border-color: var(--_primary); color: var(--_primary); }
 .wfb button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .wfb__icon { width: 15px; height: 15px; flex-shrink: 0; }
