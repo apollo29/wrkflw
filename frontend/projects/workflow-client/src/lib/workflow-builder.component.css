@@ -364,7 +364,14 @@
    und der Text sitzt buendig unter dem Label-Feld. */
 .wfb__field-row--sub { padding-top: 0; }
 .wfb__field-row + .wfb__field-row--sub { border-top: none; }
-.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); }
+.wfb__field-sub-label { width: 130px; font-size: 12px; color: var(--_muted); flex: 0 0 auto; }
+/* Ohne min-width:0 schrumpft ein <input> im Flex-Container nicht unter seine
+   Mindestbreite — die Zeile laeuft dann aus der Spalte heraus, statt sich zu
+   teilen. Das ist die Vorgabe des Browsers und selten die gewollte. */
+.wfb .wfb__field-row input[type="text"] { min-width: 0; }
+/* Startkontext in der 284px schmalen Seitenspalte: schmalere Beschriftung,
+   damit fuer das Eingabefeld daneben etwas uebrig bleibt. */
+.wfb__fields--eng .wfb__field-sub-label { width: 68px; }
 .wfb__fields .wfb__hint { padding: 0 10px 6px; margin: 0; }
 
 /* Übergänge */

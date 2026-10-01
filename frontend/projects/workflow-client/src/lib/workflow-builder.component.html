@@ -184,13 +184,18 @@
               ein Start ohne diese Angaben sichtbar statt still.
             </div>
           }
-          <div class="wfb__fields">
+          <!--
+            Je Angabe drei Zeilen statt einer. In der Seitenspalte sind 284px
+            nutzbar; Name, Label, «Pflicht» und das × nebeneinander brauchten
+            mehr, und weil ein <input> nicht unter seine Mindestbreite
+            schrumpft, lief die Zeile aus der Spalte heraus — der Name war
+            links abgeschnitten. Untereinander hat jedes Feld die volle Breite.
+          -->
+          <div class="wfb__fields wfb__fields--eng">
             @for (i of model().inputs; track $index) {
               <div class="wfb__field-row">
                 <input type="text" [ngModel]="i.name" (ngModelChange)="i.name = $event; bump()"
-                       placeholder="name" class="wfb__mono" style="width:130px;" aria-label="Name" />
-                <input type="text" [ngModel]="i.label" (ngModelChange)="i.label = $event; bump()"
-                       placeholder="Label" style="flex:1;" aria-label="Label" />
+                       placeholder="name" class="wfb__mono" style="flex:1; min-width:0;" aria-label="Name" />
                 <label class="wfb__input-pflicht" [title]="'Ohne diese Angabe kann der Ablauf nicht starten'">
                   <input type="checkbox" [ngModel]="i.required"
                          (ngModelChange)="i.required = $event; bump()" aria-label="Pflicht" />
@@ -200,9 +205,14 @@
                         aria-label="Angabe entfernen">×</button>
               </div>
               <div class="wfb__field-row wfb__field-row--sub">
+                <span class="wfb__field-sub-label">Label</span>
+                <input type="text" [ngModel]="i.label" (ngModelChange)="i.label = $event; bump()"
+                       placeholder="Trainer ID" style="flex:1; min-width:0;" aria-label="Label" />
+              </div>
+              <div class="wfb__field-row wfb__field-row--sub">
                 <span class="wfb__field-sub-label">Beispiel</span>
                 <input type="text" [ngModel]="i.beispiel" (ngModelChange)="i.beispiel = $event; bump()"
-                       placeholder="z. B. TR-0123" style="flex:1;" aria-label="Beispielwert" />
+                       placeholder="z. B. TR-0123" style="flex:1; min-width:0;" aria-label="Beispielwert" />
               </div>
             }
           </div>

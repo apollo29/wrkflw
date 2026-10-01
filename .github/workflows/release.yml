@@ -1,5 +1,9 @@
 name: Release
 
+# Fuer Tags, die jemand VON HAND setzt. Der Normalfall laeuft ueber
+# `auto-release.yml`: ein Merge nach main taggt und veroeffentlicht selbst.
+# Beide lesen den CHANGELOG-Abschnitt mit demselben Skript.
+
 on:
   push:
     tags: ['v*']
@@ -16,12 +20,8 @@ jobs:
 
       - name: Release-Notes aus CHANGELOG extrahieren
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
-            /^## \[/ { if (flag) exit }
-            flag { print }
-          ' CHANGELOG.md > release-notes.md
+          set -euo pipefail
+          scripts/version.sh notes "${GITHUB_REF_NAME#v}" > release-notes.md
           if [ ! -s release-notes.md ]; then
             echo "Release ${GITHUB_REF_NAME}" > release-notes.md
           fi

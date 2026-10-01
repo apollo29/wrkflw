@@ -25,6 +25,23 @@ Der npm-Client geht auf **1.17.0**: die Builder-Karte «Daten schreiben», die
 Feldtypen `write-entity-ref` und `field-value-map`, und
 `WorkflowService.writableDataCatalog()`. Ebenfalls nur Zuwachs.
 
+### Fixed
+- **Startkontext: die Eingabezeile lief aus der Seitenspalte heraus.** Name,
+  Label, «Pflicht» und das Entfernen-Kreuz standen nebeneinander und brauchten
+  486px — die Spalte hat 284px. Weil ein `<input>` im Flex-Container nicht
+  unter seine Mindestbreite schrumpft und `.wfb__fields` den Ueberlauf
+  abschneidet, war der Name links angeschnitten und nicht mehr erreichbar.
+  Je Angabe stehen Name, Label und Beispiel jetzt untereinander.
+
+### Changed
+- **Ein Merge nach `main` erzeugt das Release selbst** (`auto-release.yml`).
+  Den Sprung entscheidet ein Label am Pull Request (`release:major|minor|patch`,
+  Vorgabe `patch`) — die Groesse einer Aenderung liest kein Werkzeug aus einem
+  Diff ab, also steht sie da, wo sie ohnehin beurteilt wird. Steht im CHANGELOG
+  schon eine benannte Version ohne Tag, gilt diese; ist `[Unreleased]` leer,
+  passiert gar nichts. `release.yml` bleibt fuer Tags von Hand, und beide lesen
+  den CHANGELOG-Abschnitt jetzt mit demselben Skript (`scripts/version.sh`).
+
 ### Added
 - **Schreib-Schritt (`write_data`): ein automatischer Schritt, der Werte in eine
   Host-Tabelle schreibt.** Gleich aufgebaut wie der Datencheck — eine eingebaute
