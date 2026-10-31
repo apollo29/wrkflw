@@ -1,0 +1,23 @@
+{
+  "name": "@apollo29/workflow-client",
+  "version": "3.0.0-dev",
+  "peerDependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/router": "^22.2.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "description": "Angular-Client der Workflow-Engine: Editor, \u00dcbersicht, Runner, Vorlagen und Datenquellen.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apollo29/wrkflw.git",
+    "directory": "frontend/projects/workflow-client"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

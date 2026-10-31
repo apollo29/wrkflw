@@ -1,0 +1,27 @@
+# PHP / Composer
+/vendor/
+/backend/vendor/
+# Root-Lock wird nicht benötigt (Library; backend/composer.lock bleibt getrackt)
+/composer.lock
+/backend/.phpunit.cache/
+/backend/.phpstan.cache/
+/backend/.php-cs-fixer.cache
+
+# Lokale npm-Auth (GitHub Packages) — enthält ggf. einen Token, nie committen.
+# Vorlage: .npmrc.example
+.npmrc
+
+# Node / Angular / Playwright (weitere Regeln in frontend/.gitignore)
+node_modules/
+/frontend/test-results/
+/frontend/playwright-report/
+
+# Umgebung & lokale Konfiguration
+.env
+.env.local
+
+# IDE / OS
+/.idea/
+.DS_Store
+Thumbs.db
+*.log

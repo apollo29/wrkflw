@@ -1,0 +1,9 @@
+/* Demo-App. Die Gestaltung der Library folgt ab Phase 6 (Tokens, Raster). */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.demo {
+  padding: 24px;
+}

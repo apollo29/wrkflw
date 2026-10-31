@@ -1,0 +1,5 @@
+-- Workflow Engine v3 – Datenbankschema (MariaDB ≥ 10.6 oder MySQL 8)
+--
+-- Phase 0 legt nur die Datei an. Die Tabellen entstehen in Phase 3 (siehe PLAN.md):
+-- wf_definition, wf_instance, wf_history, wf_template, wf_rest_connection,
+-- wf_rest_model, wf_trigger, wf_trigger_lock, wf_audit.

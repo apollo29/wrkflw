@@ -48,10 +48,10 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 
 ## Phasen
 
-### 0 – Fundament
-- Gerüst wie oben, `composer.json` (php ≥8.4, slim 4, symfony/expression-language 7,
-  symfony/http-client, psr/log; dev: phpunit 11, phpstan + phpunit-ext, php-cs-fixer).
-- Angular 20 Workspace, `provideZonelessChangeDetection()`, Unit-Tests über
+### 0 – Fundament ✅ (2026-10-31)
+- Gerüst wie oben, `composer.json` (php ≥8.4, slim 4, symfony/expression-language 7.4,
+  symfony/http-client 7.4, psr/log; dev: phpunit 12, phpstan + phpunit-ext, php-cs-fixer).
+- Angular 22 Workspace (zoneless ist dort Standard), Unit-Tests über
   `@angular/build:unit-test` (Vitest), Playwright in `frontend/e2e`.
 - CI aus main übernehmen, Frontend-Job auf Vitest + Playwright (gegen Demo + MariaDB-Service).
 - `CLAUDE.md`/`PLAN.md` für v3 neu (Abschnitt «Wo dieser Code lebt»: v3 hier eigenständig),
