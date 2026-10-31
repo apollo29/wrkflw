@@ -7,6 +7,7 @@ namespace WorkflowEngine\Engine;
 use Psr\Clock\ClockInterface;
 use WorkflowEngine\Action\ActionRegistry;
 use WorkflowEngine\Contracts\ExpressionEvaluatorInterface;
+use WorkflowEngine\Contracts\PermanentFailureInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Contracts\WorkflowStarterInterface;
 use WorkflowEngine\Definition\Step;
@@ -314,6 +315,12 @@ final class WorkflowEngine implements WorkflowStarterInterface
     {
         $instance->attempts++;
         $instance->lastError = $e->getMessage();
+
+        if ($e instanceof PermanentFailureInterface) {
+            $this->fail($instance, "Aktion '{$step->action}' fehlgeschlagen: {$e->getMessage()}");
+
+            return;
+        }
 
         $delay = $this->retry->delayAfterAttempt($instance->attempts);
         if ($delay === null) {

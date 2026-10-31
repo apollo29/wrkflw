@@ -3,13 +3,19 @@
   "name": "Antrag prüfen",
   "startStep": "daten_laden",
   "inputs": [
-    { "name": "antrag_id", "label": "Antrag", "required": true, "beispiel": "A-1024" },
-    { "name": "antrag_betrag", "label": "Betrag", "required": true, "beispiel": "1250" },
-    { "name": "antrag_mail", "label": "E-Mail", "required": false }
+    { "name": "antrag_id", "label": "Antrag", "required": true, "beispiel": "A-1024" }
   ],
   "steps": {
     "daten_laden": {
       "type": "automatic",
+      "action": "check_data",
+      "config": {
+        "entity": "antrag",
+        "id": "{{antrag_id}}",
+        "field": "status",
+        "fields": ["betrag", "mail"],
+        "as": "antrag"
+      },
       "transitions": [
         { "to": "pruefen", "when": "context['antrag_betrag'] > 1000" },
         { "to": "warten" }
@@ -36,6 +42,12 @@
     },
     "speichern": {
       "type": "automatic",
+      "action": "write_data",
+      "config": {
+        "entity": "antrag",
+        "id": "{{antrag_id}}",
+        "values": { "status": "freigegeben", "geprueft_am": "{{now}}" }
+      },
       "transitions": [{ "to": "bestaetigung" }]
     },
     "bestaetigung": {

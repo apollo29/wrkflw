@@ -5,16 +5,25 @@ declare(strict_types=1);
 namespace WorkflowEngine\Tests\Support;
 
 use WorkflowEngine\Action\ActionRegistry;
+use WorkflowEngine\Action\CheckDataAction;
 use WorkflowEngine\Action\SendEmailAction;
 use WorkflowEngine\Action\SubWorkflowAction;
+use WorkflowEngine\Action\WriteDataAction;
 use WorkflowEngine\Definition\DefinitionParser;
 use WorkflowEngine\Definition\DefinitionValidator;
+use WorkflowEngine\Definition\KnownActionRule;
 use WorkflowEngine\Definition\WorkflowDefinition;
 use WorkflowEngine\Engine\EngineOptions;
 use WorkflowEngine\Engine\PlaceholderRenderer;
 use WorkflowEngine\Engine\SymfonyExpressionEvaluator;
 use WorkflowEngine\Engine\WorkflowEngine;
 use WorkflowEngine\Instance\WorkflowInstance;
+use WorkflowEngine\Model\DataGateway;
+use WorkflowEngine\Model\DataModel;
+use WorkflowEngine\Model\DataModelRegistry;
+use WorkflowEngine\Model\DataModelStepRule;
+use WorkflowEngine\Persistence\InMemoryPersistence;
+use WorkflowEngine\Persistence\PersistenceRegistry;
 
 /**
  * Baut eine Engine mit In-Memory-Fakes und eingefrorener Uhr zusammen.
@@ -35,6 +44,14 @@ final class EngineHarness
 
     public readonly WorkflowEngine $engine;
 
+    public readonly ArrayDataModelSource $models;
+
+    public readonly InMemoryPersistence $storage;
+
+    public readonly DataGateway $data;
+
+    private readonly DefinitionValidator $validator;
+
     public function __construct(EngineOptions $options = new EngineOptions())
     {
         $this->clock = new FrozenClock();
@@ -49,6 +66,23 @@ final class EngineHarness
 
         $this->actions->register('send_email', new SendEmailAction($this->mailer, $this->templates, $renderer));
         $this->actions->register('start_workflow', new SubWorkflowAction(fn (): WorkflowEngine => $this->engine));
+
+        $this->models = new ArrayDataModelSource();
+        $this->storage = new InMemoryPersistence();
+        $registry = new DataModelRegistry([$this->models]);
+        $this->data = new DataGateway($registry, new PersistenceRegistry(['db' => $this->storage]));
+        $this->actions->register('check_data', new CheckDataAction($this->data, $renderer));
+        $this->actions->register('write_data', new WriteDataAction($this->data, $renderer, $this->expressions));
+
+        $this->validator = new DefinitionValidator($this->expressions, [
+            new KnownActionRule($this->actions),
+            new DataModelStepRule($registry),
+        ]);
+    }
+
+    public function addModel(DataModel $model): void
+    {
+        $this->models->add($model);
     }
 
     /**
@@ -61,7 +95,7 @@ final class EngineHarness
     {
         $def = DefinitionParser::fromArray($definition, $version);
         if ($validate) {
-            (new DefinitionValidator($this->expressions))->validate($def);
+            $this->validator->validate($def);
         }
         $this->repo->addDefinition($def);
 
@@ -71,7 +105,7 @@ final class EngineHarness
     public function defineJson(string $json, int $version = 1): WorkflowDefinition
     {
         $def = DefinitionParser::fromJson($json, $version);
-        (new DefinitionValidator($this->expressions))->validate($def);
+        $this->validator->validate($def);
         $this->repo->addDefinition($def);
 
         return $def;

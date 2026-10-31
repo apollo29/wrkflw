@@ -65,7 +65,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 - `EventPayloadPolicy` Standard **Enforce** (offener Punkt 1 auflösen, ADR 6 nachführen).
 - Zähler «laufend» ohne abgebrochene; `updated_at` je Version.
 
-### 2 – Datenmodelle (3.11, 5.6)
+### 2 – Datenmodelle (3.11, 5.6) ✅ (2026-10-31)
 - `Model/`: readonly `DataModel` (Name, Label, ID-Feld, Felder, Teilmenge, Regeln,
   Persistenz-Referenz), `Field` (Typ text/number/bool/date/datetime, `actual`, `writable`),
   `Record` als eigener Wert, Dirty-Tracking, `ChangeOrigin` (Ablauf/Durchlauf, F-128).

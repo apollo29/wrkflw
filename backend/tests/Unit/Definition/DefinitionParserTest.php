@@ -25,11 +25,17 @@ final class DefinitionParserTest extends TestCase
         self::assertSame(86400, $def->step('warten')->delaySeconds);
         self::assertSame('submit', $def->step('pruefen')->transitions[0]->event);
         self::assertSame('true', $def->step('warten')->transitions[0]->when);
-        self::assertSame(['antrag_id', 'antrag_betrag', 'antrag_mail'], array_map(
+        self::assertSame(['antrag_id'], array_map(
             static fn ($input): string => $input->name,
             $def->inputs,
         ));
         self::assertSame('A-1024', $def->inputs[0]->example);
+        self::assertSame('check_data', $def->step('daten_laden')->action);
+        self::assertSame(['betrag', 'mail'], $def->step('daten_laden')->config['fields']);
+        self::assertSame(
+            ['status' => 'freigegeben', 'geprueft_am' => '{{now}}'],
+            $def->step('speichern')->config['values'],
+        );
     }
 
     public function testDuplicateStepNamesAreReportedInsteadOfSilentlyMerged(): void

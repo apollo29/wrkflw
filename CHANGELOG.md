@@ -9,6 +9,35 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 2: Datenmodelle
+
+- **Datenmodelle** (`WorkflowEngine\Model`, ADR 9) ersetzen die Ports `DataProviderInterface`,
+  `DataCatalogInterface`, `DataWriterInterface` und `DataWriteCatalogInterface`. Ein Modell
+  beschreibt Felder mit Typ (Text, Zahl, Ja/Nein, Datum, Zeitpunkt) und Zuordnung zur
+  Ablage, Freigaben je Feld und Vorgang, eine feste Teilmenge und Regeln (F-110 bis F-128).
+  Die Host-App legt Modelle im Code fest: `DataModel::define('antrag', 'Anträge')->…->build()`.
+- **DataGateway** mit genau vier Vorgängen (laden, suchen, ändern, anlegen): prüft Freigaben
+  und Typen, wendet Regeln an, schreibt nur Geändertes und gibt die Herkunft (Ablauf,
+  Version, Durchlauf, Schritt) an die Persistenz weiter. «Nicht gefunden» und «nichts
+  geändert» sind Antworten, keine Fehler.
+- **Persistenzen** über `PersistenceInterface`: `PdoTablePersistence` für Tabellen der
+  Host-App (quotierte Bezeichner, gebundene Werte, Teilmenge bei jedem Vorgang, Typumwandlung
+  für MariaDB) und `InMemoryPersistence`. Eigene Persistenzen registriert die Host-App.
+- **check_data / write_data** neu auf Datenmodellen, Definitionsformat unverändert (F-114).
+  `write_data` schreibt nur Geändertes; `<as>Count` zählt die tatsächlich geänderten Felder.
+  Ein Wert, der nur aus einem Platzhalter besteht, behält seinen Typ.
+- **Dauerhafte Fehler** (`PermanentFailureInterface`): ungültige Werte, Regelfehler, fehlende
+  Freigaben und unbekannte Modelle lassen den Durchlauf sofort fehlschlagen, ohne die
+  Wiederholungen nach Q-01.
+- **Prüfung beim Speichern:** `DataModelStepRule` (Modelle, Felder, Freigaben, kein «alle
+  Felder») und `KnownActionRule` (nur registrierte Aktionen) melden Fehler am Schritt (F-118).
+- **Katalog** für Editor und API, abgeleitet aus den Modellen (`DataCatalog`).
+- **Trigger:** Port `TriggerInterface` mit `TriggerStart`; `ModelSearchTrigger` startet je
+  Treffer einer Suche einen Durchlauf mit zugeordnetem Startkontext.
+- Der Beispielablauf `antrag-pruefung` aus 9.13 läuft jetzt vollständig, mit Datencheck und
+  Daten schreiben gegen das Modell `antrag` aus 5.6. 157 Unit-Tests, dazu
+  Integrationstests der Tabellen-Persistenz gegen MariaDB.
+
 ### Neubau 3.0 – Phase 1: Engine-Kern
 
 - **Definitionen:** `DefinitionParser` liest das 2.x-Format unverändert (F-114) und erkennt

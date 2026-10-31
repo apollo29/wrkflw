@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Engine\RetryPolicy;
 use WorkflowEngine\Instance\InstanceStatus;
 use WorkflowEngine\Tests\Support\EngineHarness;
+use WorkflowEngine\Tests\Support\Models;
 
 final class RetryTest extends TestCase
 {
@@ -86,12 +87,35 @@ final class RetryTest extends TestCase
         );
     }
 
+    public function testPermanentFailuresAreNotRetried(): void
+    {
+        $this->h->addModel(Models::antrag());
+        $this->h->storage->seed('antrag', [Models::antragRow('A-1')]);
+        $this->h->define([
+            'id' => 'falsch', 'startStep' => 'schreiben',
+            'steps' => ['schreiben' => [
+                'action' => 'write_data',
+                'config' => ['entity' => 'antrag', 'id' => 'A-1', 'values' => ['geprueft_am' => 'irgendwann']],
+            ]],
+        ]);
+
+        $instance = $this->h->engine->start('falsch');
+
+        self::assertSame(InstanceStatus::Failed, $instance->status);
+        self::assertSame(1, $instance->attempts);
+        self::assertSame(
+            "Aktion 'write_data' fehlgeschlagen: Der Wert für «Geprüft am» (geprueft_am) ist kein gültiges Datum.",
+            $instance->lastError,
+        );
+        self::assertNotContains('retry', $this->h->repo->historyKinds($instance->id));
+    }
+
     public function testAnUnknownActionFailsLikeATechnicalError(): void
     {
         $this->h->define([
             'id' => 'unbekannt', 'startStep' => 'a',
             'steps' => ['a' => ['action' => 'gibt_es_nicht']],
-        ]);
+        ], validate: false);
 
         $instance = $this->h->engine->start('unbekannt');
 
