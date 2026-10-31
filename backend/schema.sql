@@ -1,5 +1,86 @@
--- Workflow Engine v3 – Datenbankschema (MariaDB ≥ 10.6 oder MySQL 8)
+-- Workflow Engine v3 – Datenbankschema (MariaDB ≥ 10.6)
 --
--- Phase 0 legt nur die Datei an. Die Tabellen entstehen in Phase 3 (siehe PLAN.md):
--- wf_definition, wf_instance, wf_history, wf_template, wf_rest_connection,
--- wf_rest_model, wf_trigger, wf_trigger_lock, wf_audit.
+-- Frische Installation: `php bin/migrate.php` spielt diese Datei ein und vermerkt alle
+-- Migrationen als angewendet. Bestehende 2.x-Datenbanken werden über `migrations/`
+-- nachgezogen (siehe docs/migration-v3.md).
+--
+-- Zeitpunkte stehen in der Zeitzone der Anwendung (wie in 2.x).
+
+CREATE TABLE IF NOT EXISTS wf_definition (
+    id            VARCHAR(64)  NOT NULL,
+    version       INT          NOT NULL DEFAULT 1,
+    name          VARCHAR(255) NOT NULL,
+    -- Vollständige Definition als JSON (Format wie 2.x, F-114).
+    definition    JSON         NOT NULL,
+    -- 1 = aktuelle (neueste) Version dieser id, genau eine je id. Für 2.x mitgeführt.
+    active        TINYINT(1)   NOT NULL DEFAULT 1,
+    -- active | inactive | draft (F-10)
+    status        VARCHAR(16)  NOT NULL DEFAULT 'active',
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wf_instance (
+    id              CHAR(36)     NOT NULL,
+    definition_id   VARCHAR(64)  NOT NULL,
+    definition_ver  INT          NOT NULL,
+    current_step    VARCHAR(128) NOT NULL,
+    -- running | waiting_event | waiting_timer | completed | failed | cancelled
+    status          VARCHAR(32)  NOT NULL,
+    context         JSON         NOT NULL,
+    wake_at         DATETIME     NULL,
+    attempts        INT          NOT NULL DEFAULT 0,
+    subject_type    VARCHAR(64)  NULL,
+    subject_id      VARCHAR(64)  NULL,
+    last_error      TEXT         NULL,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_wake       (status, wake_at),
+    KEY idx_subject    (subject_type, subject_id),
+    KEY idx_definition (definition_id, definition_ver, status),
+    KEY idx_list       (status, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wf_history (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    instance_id   CHAR(36)     NOT NULL,
+    kind          VARCHAR(32)  NOT NULL,
+    step          VARCHAR(128) NULL,
+    -- Nur Namen und technische Angaben, keine eingegebenen Werte (F-91).
+    detail        JSON         NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_instance (instance_id, id),
+    CONSTRAINT fk_hist_instance FOREIGN KEY (instance_id)
+        REFERENCES wf_instance(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wf_template (
+    id            VARCHAR(64)   NOT NULL,
+    name          VARCHAR(255)  NOT NULL,
+    -- email (Betreff + Inhalt) | page (Inhalt)
+    type          VARCHAR(16)   NOT NULL DEFAULT 'email',
+    subject       VARCHAR(1024) NOT NULL DEFAULT '',
+    body          MEDIUMTEXT    NOT NULL,
+    updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sperrfrist für Trigger: je Trigger und Datensatz höchstens ein Start bis `locked_until` (F-143).
+CREATE TABLE IF NOT EXISTS wf_trigger_lock (
+    trigger_key   VARCHAR(128) NOT NULL,
+    subject_key   VARCHAR(191) NOT NULL,
+    locked_until  DATETIME     NOT NULL,
+    PRIMARY KEY (trigger_key, subject_key),
+    KEY idx_until (locked_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Angewendete Migrationen (bin/migrate.php).
+CREATE TABLE IF NOT EXISTS wf_schema_version (
+    name          VARCHAR(128) NOT NULL,
+    applied_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

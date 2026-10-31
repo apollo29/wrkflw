@@ -81,5 +81,5 @@ backend/   src/{Contracts,Definition,Instance,Engine,Action,Model,Persistence,Re
            bin/  migrations/  schema.sql  tests/{Unit,Integration,Support}
 frontend/  projects/workflow-client/  projects/demo/  e2e/
 docker/    docker-compose.yml
-docs/      adr/  (ab Phase 5: openapi.yaml, migration-v3.md)
+docs/      adr/  migration-v3.md  crontab.example  (ab Phase 5: openapi.yaml)
 ```

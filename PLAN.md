@@ -77,10 +77,11 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 - Aktionen `check_data`/`write_data` auf Datenmodelle umbauen; Katalog-Endpunkte daraus
   ableiten; Trigger-Suche über Modelle. ADR 9 «Datenmodelle statt Lese-/Schreib-Ports».
 
-### 3 – Ablage, Worker, Migration
+### 3 – Ablage, Worker, Migration ✅ (2026-10-31)
 - `schema.sql` v3: `wf_definition` (+`updated_at`), `wf_instance` (+`cancelled`),
-  `wf_history`, `wf_template`, neu `wf_rest_connection`, `wf_rest_model`, `wf_trigger`,
-  `wf_trigger_lock` (Sperrfrist F-143), `wf_audit` (F-145).
+  `wf_history`, `wf_template`, `wf_trigger_lock` (Sperrfrist F-143), `wf_schema_version`.
+  Die REST-Tabellen (`wf_rest_connection`, `wf_rest_model`, `wf_trigger`, `wf_audit`)
+  kommen mit Phase 4 als eigene Migration.
 - PDO-Repositories portieren/erweitern (Instanzenliste mit Filter, Versionen, Verwendung).
 - `bin/run-workflows.php` (Claim, Lease, Trigger-Poll), `bin/migrate.php`.
 - `migrations/3.0.0-*.sql` + `docs/migration-v3.md`: 2.x-Daten unverändert lauffähig

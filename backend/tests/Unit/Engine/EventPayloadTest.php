@@ -109,6 +109,22 @@ final class EventPayloadTest extends TestCase
         self::assertSame('c', $h->engine->handleEvent($id, 'submit', [], 'klick-2')->currentStep);
     }
 
+    public function testALateDuplicateAfterCompletionIsANoOp(): void
+    {
+        $h = new EngineHarness();
+        $h->define([
+            'id' => 'einmal', 'startStep' => 'a',
+            'steps' => ['a' => ['type' => 'interactive', 'transitions' => [['to' => 'b', 'event' => 'submit']]], 'b' => []],
+        ]);
+        $id = $h->engine->start('einmal')->id;
+        $h->engine->handleEvent($id, 'submit', [], 'klick-1');
+
+        $instance = $h->engine->handleEvent($id, 'submit', [], 'klick-1');
+
+        self::assertTrue($instance->isFinished());
+        self::assertSame('event_duplicate', $h->repo->lastHistory($id)->kind->value);
+    }
+
     public function testOnlyTheNewestFiftyEventIdsAreKept(): void
     {
         $h = new EngineHarness();

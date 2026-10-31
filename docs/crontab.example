@@ -1,0 +1,11 @@
+# Beispiel-Crontab für die Workflow-Engine v3
+#
+# Ruft den Runner jede Minute auf: fällige Durchläufe werden geweckt, hängende nach der
+# Lease wieder aufgenommen und Trigger geprüft. Parallele Läufe sind sicher
+# (FOR UPDATE SKIP LOCKED, docs/adr/0004-concurrency-skip-locked.md).
+#
+# WF_BOOTSTRAP zeigt auf eine PHP-Datei der Host-App, die einen
+# WorkflowEngine\Engine\WorkflowRunner zurückgibt (siehe backend/bin/run-workflows.php).
+
+* * * * * WF_BOOTSTRAP=/pfad/zur/app/config/wrkflw-runner.php \
+  php /pfad/zur/app/vendor/apollo29/workflow-engine/backend/bin/run-workflows.php >> /var/log/workflow-runner.log 2>&1

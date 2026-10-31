@@ -167,10 +167,9 @@ final class WorkflowEngine implements WorkflowStarterInterface
     public function handleEvent(string $instanceId, string $event, array $payload = [], ?string $eventId = null): WorkflowInstance
     {
         $instance = $this->load($instanceId);
-        if ($instance->isFinished()) {
-            throw new InvalidStateException('Der Durchlauf ist bereits beendet.');
-        }
 
+        // Zuerst: ein bereits angewendetes Ereignis ist ein No-op, auch wenn der Durchlauf
+        // inzwischen beendet ist (der zweite Klick eines Doppelklicks kommt oft später an).
         if ($eventId !== null && $this->idempotency->isApplied($instance, $eventId)) {
             $this->repo->logHistory($instance->id, HistoryKind::EventDuplicate, $instance->currentStep, [
                 'event' => $event,
@@ -178,6 +177,10 @@ final class WorkflowEngine implements WorkflowStarterInterface
             ]);
 
             return $instance;
+        }
+
+        if ($instance->isFinished()) {
+            throw new InvalidStateException('Der Durchlauf ist bereits beendet.');
         }
 
         $def = $this->definitionOf($instance);

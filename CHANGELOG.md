@@ -9,6 +9,32 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 3: Ablage, Hintergrundlauf, Migration
+
+- **Ablage in MariaDB:** `PdoWorkflowRepository` für Engine, Definitionsverwaltung,
+  Instanzliste und Warteschlange des Hintergrundlaufs; `PdoTemplateRepository`.
+  Zeitpunkte kommen aus der Uhr, auch `updated_at` und der Verlauf.
+- **Neue Ports nach Nutzer:** `DefinitionRepositoryInterface` (speichern, Übersicht mit
+  Zählern und Struktur fürs Vorschaubild, Versionen, Entfernen mit Grund,
+  Vorlagenverwendung inkl. Seitenvorlagen), `InstanceQueryInterface` (Liste mit Filter,
+  Anzahl je Status), `InstanceQueueInterface` (fällige Durchläufe belegen) und
+  `TriggerLockInterface` (Sperrfrist).
+- **Speichern:** «Entwurf»/«Inaktiv» überschreibt nur, solange kein Durchlauf auf die
+  aktuelle Version verweist; sonst entsteht eine neue Version (ADR 3, Nachtrag).
+  Abgebrochene Durchläufe zählen nicht als laufend.
+- **Hintergrundlauf:** `WorkflowRunner::tick()` weckt fällige Durchläufe, nimmt hängende nach
+  der Lease wieder auf und startet Trigger mit Sperrfrist je Datensatz (`PdoTriggerLock`,
+  F-143, offener Punkt 2). Fehler betreffen nur ihren Durchlauf. `bin/run-workflows.php`
+  lädt den Runner der Host-App über `WF_BOOTSTRAP`.
+- **Migration:** `SchemaMigrator` und `bin/migrate.php` legen eine leere Datenbank an oder
+  ziehen eine 2.x-Datenbank nach (`migrations/3.0.0-001-v3.sql`). Laufende 2.x-Durchläufe
+  und 2.x-Definitionen funktionieren danach unverändert. Leitfaden: `docs/migration-v3.md`.
+- **Doppelklick:** Ein bereits angewendetes Ereignis ist auch dann ein No-op, wenn der
+  Durchlauf inzwischen beendet ist.
+- Integrationstests gegen MariaDB: Repository, `SKIP LOCKED` mit zweiter Verbindung, Lease,
+  Vorlagen, Sperrfrist, Migration aus 2.x und der Beispielablauf 9.13 Ende-zu-Ende mit
+  Runner.
+
 ### Neubau 3.0 – Phase 2: Datenmodelle
 
 - **Datenmodelle** (`WorkflowEngine\Model`, ADR 9) ersetzen die Ports `DataProviderInterface`,
