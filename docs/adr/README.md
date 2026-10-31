@@ -14,3 +14,4 @@ ADR 1–7 stammen aus 2.x und gelten weiter, soweit ein späterer ADR sie nicht 
 | 7 | [Eigene Engine statt einer fremden](0007-eigene-engine-statt-fremder.md) |
 | 8 | [Neubau v3 auf eigenem Branch](0008-neubau-v3.md) |
 | 9 | [Datenmodelle statt Lese- und Schreib-Ports](0009-datenmodelle.md) |
+| 10 | [REST-Datenquellen und Geheimnisse](0010-rest-datenquellen.md) |

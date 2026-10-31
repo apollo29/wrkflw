@@ -9,6 +9,30 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 4: REST-Datenquellen und Sicherheit
+
+- **REST-Datenmodelle** (`WorkflowEngine\Rest`, ADR 10): `RestConnection` und
+  `RestModelSpec` (Vorgänge Laden/Suchen/Ändern/Anlegen mit Pfad, Trefferliste, Teilmenge,
+  Feldpfade) werden zu einem `DataModel` mit Persistenz `rest`. `RestPersistence` liest und
+  schreibt verschachteltes JSON; Abläufe sehen keinen Unterschied zur Datenbank.
+- **Zugangsdaten:** `SodiumSecretStore` (secretbox, `WF_SECRET_KEY`, alte Schlüssel in
+  `WF_SECRET_KEYS_OLD`), `Secret` erscheint nie im Klartext in Logs, Dumps oder JSON;
+  `bin/rotate-secret-key.php` für Schlüssel erzeugen und wechseln (F-135).
+- **SSRF-Schutz:** `UrlGuard` (nur HTTPS, interne Adressbereiche gesperrt, Allowlist) und
+  `SafeHttpClient` (angeheftete IP, geprüfte Weiterleitungen, Zeit- und Grössenlimit,
+  F-136, F-144).
+- **Fehlerarten:** 404 = nicht gefunden, 429/5xx/Netz = technisch mit Wiederholung, andere
+  4xx = dauerhaft; Meldungen ohne Antworttext.
+- **Verwaltung:** `DataSourceAdmin` mit allen Prüfungen und Sperren, Verbindungstest,
+  Beispielabruf, Trigger-Prüfung und Protokoll (`AuditLogInterface`, F-145). Neue Ports
+  `RestConnectionRepositoryInterface`, `RestModelRepositoryInterface`,
+  `AdminTriggerRepositoryInterface`, `ModelUsageQueryInterface`, `TriggerSourceInterface`.
+- **Admin-Trigger:** `AdminTriggerSource` liefert dem Runner fällige Trigger mit Takt und
+  Sperrfrist (`WorkflowRunner::addTriggerSource()`).
+- **Ablage:** Migration `3.0.0-002-rest.sql` (`wf_rest_connection`, `wf_rest_model`,
+  `wf_trigger`, `wf_audit`), `PdoDataSourceStore`; Integrationstests prüfen, dass keine
+  Zugangsdaten im Klartext in der Datenbank stehen.
+
 ### Neubau 3.0 – Phase 3: Ablage, Hintergrundlauf, Migration
 
 - **Ablage in MariaDB:** `PdoWorkflowRepository` für Engine, Definitionsverwaltung,

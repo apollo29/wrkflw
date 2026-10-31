@@ -6,6 +6,7 @@ namespace WorkflowEngine\Tests\Support;
 
 use Psr\Clock\ClockInterface;
 use WorkflowEngine\Contracts\InstanceQueueInterface;
+use WorkflowEngine\Contracts\ModelUsageQueryInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\WorkflowDefinition;
 use WorkflowEngine\Exception\NotFoundException;
@@ -13,6 +14,7 @@ use WorkflowEngine\Instance\HistoryEntry;
 use WorkflowEngine\Instance\HistoryKind;
 use WorkflowEngine\Instance\InstanceStatus;
 use WorkflowEngine\Instance\WorkflowInstance;
+use WorkflowEngine\Model\ModelUsage;
 
 /**
  * Ablage im Arbeitsspeicher für Engine-Unit-Tests.
@@ -20,7 +22,7 @@ use WorkflowEngine\Instance\WorkflowInstance;
  * Durchläufe werden beim Speichern und Laden kopiert, wie bei einer echten Datenbank:
  * eine Änderung, die nicht gespeichert wurde, fällt im Test auf.
  */
-final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface, InstanceQueueInterface
+final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface, InstanceQueueInterface, ModelUsageQueryInterface
 {
     /** @var array<string, array<int, WorkflowDefinition>> */
     private array $definitions = [];
@@ -54,6 +56,19 @@ final class InMemoryWorkflowRepository implements WorkflowRepositoryInterface, I
         }
 
         return $versions[$version] ?? throw NotFoundException::definition($id, $version);
+    }
+
+    public function modelUsage(string $model): array
+    {
+        $usage = [];
+        foreach ($this->definitions as $id => $versions) {
+            foreach ($versions as $version => $definition) {
+                $steps = $definition->toArray()['steps'];
+                array_push($usage, ...ModelUsage::scan($model, (string) $id, $version, is_array($steps) ? $steps : []));
+            }
+        }
+
+        return $usage;
     }
 
     public function saveInstance(WorkflowInstance $instance): void

@@ -21,7 +21,7 @@ final class SchemaMigratorTest extends IntegrationTestCase
     private function dropAll(): void
     {
         $this->pdo()->exec('SET FOREIGN_KEY_CHECKS = 0');
-        foreach (['wf_history', 'wf_instance', 'wf_definition', 'wf_template', 'wf_trigger_lock', 'wf_schema_version'] as $table) {
+        foreach (['wf_history', 'wf_instance', 'wf_definition', 'wf_template', 'wf_trigger_lock', 'wf_schema_version', 'wf_rest_connection', 'wf_rest_model', 'wf_trigger', 'wf_audit'] as $table) {
             $this->pdo()->exec("DROP TABLE IF EXISTS {$table}");
         }
         $this->pdo()->exec('SET FOREIGN_KEY_CHECKS = 1');
@@ -55,7 +55,7 @@ final class SchemaMigratorTest extends IntegrationTestCase
         self::assertContains('wf_trigger_lock', $this->tables());
         self::assertSame([], $this->migrator()->migrate(), 'zweiter Lauf ohne Wirkung');
         self::assertSame(
-            ['001_wf_template_type.sql', '002_wf_definition_status.sql', '3.0.0-001-v3.sql'],
+            ['001_wf_template_type.sql', '002_wf_definition_status.sql', '3.0.0-001-v3.sql', '3.0.0-002-rest.sql'],
             $this->migrator()->appliedMigrations(),
         );
     }
@@ -67,7 +67,7 @@ final class SchemaMigratorTest extends IntegrationTestCase
 
         $applied = $this->migrator()->migrate();
 
-        self::assertSame(['001_wf_template_type.sql', '002_wf_definition_status.sql', '3.0.0-001-v3.sql'], $applied);
+        self::assertSame(['001_wf_template_type.sql', '002_wf_definition_status.sql', '3.0.0-001-v3.sql', '3.0.0-002-rest.sql'], $applied);
         self::assertSame([], $this->migrator()->migrate());
 
         $clock = new FrozenClock('2026-10-31 09:00:00');

@@ -79,4 +79,23 @@ DataModel::define('js_diplom', 'J+S-Diplome')        // Name = bisheriger Tabell
 
 Definitionen bleiben unverändert: `entity` ist der Modellname.
 
+## 4. Schlüssel einrichten
+
+REST-Verbindungen speichern Zugangsdaten verschlüsselt (ADR 10). Den Schlüssel einmal
+erzeugen und in der Umgebung der Host-App setzen, nicht in der Datenbank:
+
+```bash
+php bin/rotate-secret-key.php --generate
+```
+
+Den ausgegebenen Wert als `WF_SECRET_KEY` setzen und sichern. Schlüssel wechseln: neuen
+Schlüssel als `WF_SECRET_KEY`, den alten als `WF_SECRET_KEYS_OLD`, dann
+
+```bash
+php bin/rotate-secret-key.php
+```
+
+Danach `WF_SECRET_KEYS_OLD` wieder leeren. `bin/migrate.php` legt die Tabellen
+`wf_rest_connection`, `wf_rest_model`, `wf_trigger` und `wf_audit` an.
+
 _Weitere Abschnitte (HTTP-API, Client) folgen mit den Phasen 5 bis 12._

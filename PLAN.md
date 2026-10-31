@@ -87,7 +87,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 - `migrations/3.0.0-*.sql` + `docs/migration-v3.md`: 2.x-Daten unverändert lauffähig
   (Tabellenname = Modellname, F-114); Integrationstest «2.x-Dump migrieren und weiterlaufen».
 
-### 4 – REST-Persistenz und Sicherheit (F-129–F-145)
+### 4 – REST-Persistenz und Sicherheit (F-129–F-145) ✅ (2026-10-31)
 - `Security/SecretStoreInterface` + `SodiumSecretStore` (secretbox, `WF_SECRET_KEY`),
   CLI `bin/rotate-secret-key.php`; Geheimnisse nie in Logs/Verlauf/API.
 - `Rest/HttpClient` mit SSRF-Schutz: nur HTTPS, DNS auflösen und private/interne Bereiche

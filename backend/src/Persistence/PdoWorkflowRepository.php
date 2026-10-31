@@ -8,6 +8,7 @@ use Psr\Clock\ClockInterface;
 use WorkflowEngine\Contracts\DefinitionRepositoryInterface;
 use WorkflowEngine\Contracts\InstanceQueryInterface;
 use WorkflowEngine\Contracts\InstanceQueueInterface;
+use WorkflowEngine\Contracts\ModelUsageQueryInterface;
 use WorkflowEngine\Contracts\TemplateUsage;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Definition\DefinitionParser;
@@ -28,6 +29,7 @@ use WorkflowEngine\Instance\InstanceFilter;
 use WorkflowEngine\Instance\InstanceStatus;
 use WorkflowEngine\Instance\InstanceSummary;
 use WorkflowEngine\Instance\WorkflowInstance;
+use WorkflowEngine\Model\ModelUsage;
 
 /**
  * Ablage von Definitionen, Durchläufen und Verlauf in MariaDB (Schema `schema.sql`).
@@ -40,7 +42,8 @@ final readonly class PdoWorkflowRepository implements
     WorkflowRepositoryInterface,
     DefinitionRepositoryInterface,
     InstanceQueryInterface,
-    InstanceQueueInterface
+    InstanceQueueInterface,
+    ModelUsageQueryInterface
 {
     private const string FORMAT = 'Y-m-d H:i:s';
 
@@ -229,6 +232,20 @@ final readonly class PdoWorkflowRepository implements
                 if (($config['templateId'] ?? null) === $templateId || ($ui['template'] ?? null) === $templateId) {
                     $usage[] = new TemplateUsage(self::str($row, 'id'), self::int($row, 'version'), (string) $name);
                 }
+            }
+        }
+
+        return $usage;
+    }
+
+    public function modelUsage(string $model): array
+    {
+        $usage = [];
+        foreach ($this->fetchAll('SELECT id, version, definition FROM wf_definition ORDER BY id, version') as $row) {
+            $data = json_decode(self::str($row, 'definition'), true);
+            $steps = is_array($data) ? ($data['steps'] ?? null) : null;
+            if (is_array($steps)) {
+                array_push($usage, ...ModelUsage::scan($model, self::str($row, 'id'), self::int($row, 'version'), $steps));
             }
         }
 

@@ -18,6 +18,9 @@ final readonly class DataModel
 
     private const string FIELD_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*$/';
 
+    /** Ablage-Namen dürfen Pfade sein (`kontakt.mail` bei REST); Tabellen prüfen strenger. */
+    private const string STORAGE_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*$/';
+
     /** @var array<string, Field> */
     public array $fields;
 
@@ -44,7 +47,7 @@ final readonly class DataModel
 
         $byName = [];
         foreach ($fields as $field) {
-            if (preg_match(self::FIELD_PATTERN, $field->name) !== 1 || preg_match(self::FIELD_PATTERN, $field->storageName()) !== 1) {
+            if (preg_match(self::FIELD_PATTERN, $field->name) !== 1 || preg_match(self::STORAGE_PATTERN, $field->storageName()) !== 1) {
                 throw DataModelException::invalid($name, "Feldname '{$field->name}' ist kein einfacher Name.");
             }
             if (isset($byName[$field->name])) {

@@ -10,8 +10,10 @@ use Psr\Log\NullLogger;
 use WorkflowEngine\Contracts\InstanceQueueInterface;
 use WorkflowEngine\Contracts\TriggerInterface;
 use WorkflowEngine\Contracts\TriggerLockInterface;
+use WorkflowEngine\Contracts\TriggerSourceInterface;
 use WorkflowEngine\Contracts\WorkflowRepositoryInterface;
 use WorkflowEngine\Instance\HistoryKind;
+use WorkflowEngine\Trigger\RegisteredTrigger;
 use WorkflowEngine\Trigger\TriggerStart;
 
 /**
@@ -25,8 +27,11 @@ use WorkflowEngine\Trigger\TriggerStart;
  */
 final class WorkflowRunner
 {
-    /** @var list<array{trigger: TriggerInterface, key: string, lockSeconds: ?int}> */
+    /** @var list<RegisteredTrigger> */
     private array $triggers = [];
+
+    /** @var list<TriggerSourceInterface> */
+    private array $sources = [];
 
     public function __construct(
         private readonly WorkflowEngine $engine,
@@ -45,7 +50,13 @@ final class WorkflowRunner
      */
     public function addTrigger(TriggerInterface $trigger, string $key, ?int $lockSeconds = null): void
     {
-        $this->triggers[] = ['trigger' => $trigger, 'key' => $key, 'lockSeconds' => $lockSeconds];
+        $this->triggers[] = new RegisteredTrigger($trigger, $key, $lockSeconds);
+    }
+
+    /** Eine Quelle, die vor jedem Durchgang die fälligen Trigger liefert (Admin-Trigger). */
+    public function addTriggerSource(TriggerSourceInterface $source): void
+    {
+        $this->sources[] = $source;
     }
 
     public function tick(): RunnerStats
@@ -66,9 +77,21 @@ final class WorkflowRunner
             }
         }
 
-        foreach ($this->triggers as ['trigger' => $trigger, 'key' => $key, 'lockSeconds' => $lockSeconds]) {
+        $triggers = $this->triggers;
+        foreach ($this->sources as $source) {
             try {
-                $starts = $trigger->poll();
+                array_push($triggers, ...$source->triggers($this->clock->now()));
+            } catch (\Throwable $e) {
+                $errors++;
+                $this->logger->error('workflow.trigger_source_failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        foreach ($triggers as $registered) {
+            $key = $registered->key;
+            $lockSeconds = $registered->lockSeconds;
+            try {
+                $starts = $registered->trigger->poll();
             } catch (\Throwable $e) {
                 $errors++;
                 $this->logger->error('workflow.trigger_poll_failed', ['trigger' => $key, 'error' => $e->getMessage()]);
