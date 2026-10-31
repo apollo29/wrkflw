@@ -1,6 +1,6 @@
 # 6. Event-Payload-Grenze: reservierte Kontext-Schlüssel und Feld-Whitelist
 
-Status: akzeptiert
+Status: akzeptiert; Standard in 3.0 auf `Enforce` umgestellt (siehe Nachtrag)
 
 ## Kontext
 
@@ -36,7 +36,7 @@ steht in `ContextKeys`.
 
 | | |
 |---|---|
-| `Allow` (Default) | nur Ebene A |
+| `Allow` | nur Ebene A (bis 2.x der Default) |
 | `Report` | wie `Allow`, protokolliert aber, was `Enforce` verwerfen würde |
 | `Enforce` | nur die in `ui.fields` deklarierten Feldnamen; deklariert ein Schritt keine, kommt nichts durch |
 
@@ -80,3 +80,12 @@ Personendaten trägt.
 - Der Weg für eine bestehende Anwendung ist `Allow` → `Report` → `Enforce`.
 - Der Default wechselt in 2.0 auf `Enforce`.
 - Ergänzt ADR 0005: dessen Idempotenz-Zusicherung war ohne Ebene A nicht haltbar.
+
+## Nachtrag 3.0 (2026-10-31)
+
+Die Ankündigung «Der Default wechselt in 2.0 auf `Enforce`» wurde in 2.x nie umgesetzt
+(offener Punkt 1 der Anforderungen). Mit dem Neubau gilt sie jetzt: `EngineOptions` setzt
+`payloadPolicy` standardmässig auf `EventPayloadPolicy::Enforce`. Eine Host-App, die noch
+Felder ausserhalb von `ui.fields` sendet, stellt bewusst auf `Report` und sieht im Verlauf
+(`event_payload_rejected`), welche Namen betroffen wären. Anzeigefelder (`type: display`)
+zählen nie als Eingabe.

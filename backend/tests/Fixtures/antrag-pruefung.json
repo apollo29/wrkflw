@@ -1,0 +1,54 @@
+{
+  "id": "antrag-pruefung",
+  "name": "Antrag prüfen",
+  "startStep": "daten_laden",
+  "inputs": [
+    { "name": "antrag_id", "label": "Antrag", "required": true, "beispiel": "A-1024" },
+    { "name": "antrag_betrag", "label": "Betrag", "required": true, "beispiel": "1250" },
+    { "name": "antrag_mail", "label": "E-Mail", "required": false }
+  ],
+  "steps": {
+    "daten_laden": {
+      "type": "automatic",
+      "transitions": [
+        { "to": "pruefen", "when": "context['antrag_betrag'] > 1000" },
+        { "to": "warten" }
+      ]
+    },
+    "pruefen": {
+      "type": "interactive",
+      "ui": {
+        "title": "Antrag prüfen",
+        "description": "Bitte den Betrag kontrollieren.",
+        "fields": [
+          { "name": "antrag_betrag", "label": "Betrag", "type": "display" },
+          { "name": "bemerkung", "label": "Bemerkung", "type": "text" }
+        ],
+        "events": ["submit"],
+        "eventLabels": { "submit": "Freigeben" }
+      },
+      "transitions": [{ "to": "speichern", "event": "submit" }]
+    },
+    "warten": {
+      "type": "timer",
+      "delaySeconds": 86400,
+      "transitions": [{ "to": "speichern" }]
+    },
+    "speichern": {
+      "type": "automatic",
+      "transitions": [{ "to": "bestaetigung" }]
+    },
+    "bestaetigung": {
+      "type": "automatic",
+      "action": "send_email",
+      "config": { "to": "{{antrag_mail}}", "templateId": "antrag-ok" },
+      "transitions": [{ "to": "abschluss" }]
+    },
+    "abschluss": {
+      "type": "automatic",
+      "action": "start_workflow",
+      "config": { "workflowId": "archivierung", "waitForCompletion": false },
+      "transitions": []
+    }
+  }
+}

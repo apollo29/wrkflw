@@ -3,12 +3,19 @@
     "description": "Eingebettete Workflow-Engine als PHP-Library (Slim/MariaDB), mit Angular-Client.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["workflow", "engine", "state-machine", "slim", "mariadb"],
+    "keywords": [
+        "workflow",
+        "engine",
+        "state-machine",
+        "slim",
+        "mariadb"
+    ],
     "require": {
-        "php": ">=8.4",
         "ext-json": "*",
         "ext-pdo": "*",
         "ext-sodium": "*",
+        "php": ">=8.4",
+        "psr/clock": "^1.0",
         "psr/container": "^2.0",
         "psr/log": "^3.0",
         "slim/psr7": "^1.7",

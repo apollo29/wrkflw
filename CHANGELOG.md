@@ -9,6 +9,34 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 1: Engine-Kern
+
+- **Definitionen:** `DefinitionParser` liest das 2.x-Format unverändert (F-114) und erkennt
+  doppelte Schrittnamen schon im JSON, statt sie stillschweigend zu überschreiben.
+  Schritt-Arten, Instanz-Status und Verlaufsarten sind Enums mit den Werten aus 2.x.
+- **Prüfung:** `DefinitionValidator` liefert einen `ValidationReport` mit Fehlern je
+  Schritt und Übergang (Code, Text), alle auf einmal (F-05, F-06). Neu: negative
+  Wartezeit. Erweiterungspunkt `StepRuleInterface` für Prüfungen der Host-App (F-118).
+- **Engine:** aufgeteilt in `TransitionSelector`, `EventPayloadFilter`, `RetryPolicy`,
+  `IdempotencyGuard`, `WakeTimeCalculator` und `BackTargetFinder`. Zeit kommt über
+  PSR-20 (`psr/clock`); Einstellungen über `EngineOptions`.
+- **Abbrechen:** `WorkflowEngine::cancel()` (offener Punkt 4). Ein abgebrochenes Kind weckt
+  den wartenden Eltern-Ablauf mit `subWorkflow.status = cancelled`; ein abgebrochener
+  Eltern-Ablauf bricht sein erwartetes Kind mit ab. Der Rücksprung (F-56) bleibt wie in 2.x.
+- **Eingabefilter:** Standard ist jetzt `Enforce` (ADR 6, offener Punkt 1).
+- **Robuster:** Ereignisse werden nur an wartenden interaktiven Schritten angenommen, nicht
+  an Durchläufen, die auf ein Kind warten; ein zu früh geweckter Durchlauf bleibt
+  unverändert; eine Mail ohne Empfänger oder mit fehlender Vorlage ist ein technischer
+  Fehler mit Wiederholung statt eines stillen Versands.
+- **Bedingungen:** nur `context`, `now` (aus der Uhr), `days()`, `hours()`, `minutes()` und
+  Funktionen, die die Host-App über `ExpressionFunctionProviderInterface` freigibt (F-100).
+- **Platzhalter:** `PlaceholderRenderer` für alle Aktionen, mit Pfaden (`{{subWorkflow.status}}`)
+  und `{{now}}`, `{{now.datetime}}`, `{{now.year}}`.
+- **Aktionen:** `send_email` und `start_workflow` mit lesbarer Bezeichnung für den Editor;
+  `ActionResult` statt magischer Rückgabeschlüssel.
+- 93 Unit-Tests mit In-Memory-Fakes und eingefrorener Uhr, darunter der Beispielablauf
+  `antrag-pruefung` aus 9.13 auf beiden Pfaden.
+
 ### Neubau 3.0 – Phase 0: Fundament
 
 - Neues Gerüst für Engine und Client auf dem Branch `v3` (ADR 8).

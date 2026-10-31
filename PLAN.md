@@ -57,7 +57,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 - `CLAUDE.md`/`PLAN.md` für v3 neu (Abschnitt «Wo dieser Code lebt»: v3 hier eigenständig),
   ADR 8 «Neubau v3».
 
-### 1 – Engine-Kern (TDD, In-Memory-Repo)
+### 1 – Engine-Kern (TDD, In-Memory-Repo) ✅ (2026-10-31)
 - Definition/Validator portieren; neu: eindeutige Schrittnamen, alle Fehler je Schritt
   adressierbar (für Live-Prüfung 9.14), Prüfung von Datenmodell/Feld/Freigabe (F-118).
 - Instanz-Status inkl. `cancelled`; Engine: `cancel()` (offener Punkt 4), Rücksprung F-56
