@@ -76,4 +76,60 @@ final readonly class AdminTrigger
 
         return $conditions;
     }
+
+    /**
+     * @return array{id: string, name: string, model: string, conditions: list<array{field: string, operator: string, value: string|int|float|bool|null}>, definitionId: string, inputs: array<string, string>, intervalMinutes: int, lockDays: int, active: bool, lastPolledAt: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'model' => $this->model,
+            'conditions' => $this->conditionsToArray(),
+            'definitionId' => $this->definitionId,
+            'inputs' => $this->inputs,
+            'intervalMinutes' => $this->intervalMinutes,
+            'lockDays' => $this->lockDays,
+            'active' => $this->active,
+            'lastPolledAt' => $this->lastPolledAt?->format(\DateTimeInterface::ATOM),
+        ];
+    }
+
+    /**
+     * Aus einer Eingabe der Oberfläche; `lastPolledAt` setzt nur die Ablage.
+     *
+     * @param array<mixed> $d
+     */
+    public static function fromArray(array $d): self
+    {
+        $text = static fn (string $key): string => is_string($d[$key] ?? null) ? trim($d[$key]) : '';
+        $int = static function (string $key, int $default) use ($d): int {
+            $value = $d[$key] ?? null;
+            if ($value === null) {
+                return $default;
+            }
+
+            return is_int($value) ? $value : throw new RestSpecException("'{$key}' muss eine ganze Zahl sein.");
+        };
+        $inputs = [];
+        foreach (is_array($d['inputs'] ?? null) ? $d['inputs'] : [] as $input => $field) {
+            if (!is_string($field) || $field === '') {
+                throw new RestSpecException("Die Angabe '{$input}' braucht ein Feld.");
+            }
+            $inputs[(string) $input] = $field;
+        }
+
+        return new self(
+            id: $text('id'),
+            name: $text('name'),
+            model: $text('model'),
+            conditions: self::conditionsFromArray(is_array($d['conditions'] ?? null) ? $d['conditions'] : []),
+            definitionId: $text('definitionId'),
+            inputs: $inputs,
+            intervalMinutes: $int('intervalMinutes', 15),
+            lockDays: $int('lockDays', 7),
+            active: ($d['active'] ?? false) === true,
+        );
+    }
 }

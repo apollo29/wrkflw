@@ -98,4 +98,26 @@ php bin/rotate-secret-key.php
 Danach `WF_SECRET_KEYS_OLD` wieder leeren. `bin/migrate.php` legt die Tabellen
 `wf_rest_connection`, `wf_rest_model`, `wf_trigger` und `wf_audit` an.
 
-_Weitere Abschnitte (HTTP-API, Client) folgen mit den Phasen 5 bis 12._
+## 5. HTTP-API
+
+Die Routen aus 2.x bleiben, mit diesen Änderungen (ADR 11):
+
+- **Zugriff:** `ApiFactory::create(ApiServices, AccessResolverInterface)`. Wer bisher
+  `WF_API_KEY` nutzte, bekommt mit `ApiKeyAccessResolver` dasselbe Verhalten. Die
+  Datenquellen verlangen Admin-Recht; für echte Personen im Protokoll einen eigenen
+  Resolver auf die Anmeldung der Host-App schreiben.
+- **Fehlerformat:** überall `{error: {code, message, details?}}`. Geändert hat sich nur
+  `DELETE /workflows/{id}/versions/{v}`: statt `{error: "not_deletable", message}` kommt
+  `{error: {code: "not_deletable", message}}`; eine fehlende Version gibt 404.
+- **Statuscodes:** fehlende Pflichtangaben beim Start 422 (`missing_input`) statt 404;
+  ungültige Definition 422 (`invalid_definition`) statt 400; bei Ereignis und «zurück» im
+  falschen Zustand bleibt es 409, der Code heisst aber `invalid_state` statt `conflict`.
+- **Umbenannt:** `/data-catalog` und `/data-catalog/writable` → `/data-models` und
+  `/data-models?writable=1` (mit Feldtypen und Vorgängen).
+- **Vorlagen:** `DELETE /templates/{id}` antwortet 204 und ist gesperrt (409 `in_use`),
+  solange eine Definition die Vorlage verwendet.
+- **Einstieg:** `api/index.php` lädt die Verdrahtung über `WF_API_BOOTSTRAP` (eine
+  PHP-Datei, die `ApiServices` zurückgibt), wie `bin/run-workflows.php` über
+  `WF_BOOTSTRAP`.
+
+_Weitere Abschnitte (Client) folgen mit den Phasen 6 bis 12._

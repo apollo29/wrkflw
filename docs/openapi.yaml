@@ -1,0 +1,832 @@
+openapi: 3.1.0
+info:
+  title: wrkflw – Workflow-Engine API
+  version: 3.0.0
+  description: |
+    HTTP-API der eingebetteten Workflow-Engine (ADR 11). Pfade ohne Präfix; die Host-App
+    kann einen Basis-Pfad setzen. Zugriff über den Port `AccessResolverInterface`; die
+    mitgelieferte Variante erwartet `Authorization: Bearer <WF_API_KEY>`.
+
+    Fehler haben immer die Form `{error: {code, message, details?}}`. Bei 500 enthält die
+    Meldung nie Einzelheiten. Zugangsdaten von REST-Verbindungen erscheinen in keiner
+    Antwort (`secretStored` sagt nur, ob welche hinterlegt sind).
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+tags:
+  - name: Instanzen
+  - name: Definitionen
+  - name: Kataloge
+  - name: Vorlagen
+  - name: Datenquellen
+    description: Nur mit Admin-Recht (sonst 403). Fehlt in der Host-App der Datenquellen-Teil, gibt es diese Pfade nicht.
+
+paths:
+  /workflows/{def}/instances:
+    post:
+      tags: [Instanzen]
+      summary: Durchlauf starten
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context: { type: object, additionalProperties: true }
+                subjectType: { type: string }
+                subjectId: { type: string }
+      responses:
+        '201': { description: Gestartet, content: { application/json: { schema: { $ref: '#/components/schemas/InstanceBrief' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { description: 'Pflichtangaben fehlen (`missing_input`, `details.missing`)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /instances:
+    get:
+      tags: [Instanzen]
+      summary: Durchläufe auflisten (neueste zuerst) mit Anzahl je Status
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/InstanceStatus' } }
+        - { name: definition, in: query, schema: { type: string } }
+        - { name: subjectType, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instances: { type: array, items: { $ref: '#/components/schemas/InstanceSummary' } }
+                  counts: { type: object, additionalProperties: { type: integer } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}:
+    get:
+      tags: [Instanzen]
+      summary: Durchlauf mit Kontext (ohne interne Schlüssel)
+      parameters: [{ $ref: '#/components/parameters/InstanceId' }]
+      responses:
+        '200': { description: Durchlauf, content: { application/json: { schema: { $ref: '#/components/schemas/Instance' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}/current-step:
+    get:
+      tags: [Instanzen]
+      summary: Aktueller Schritt für den Runner
+      parameters: [{ $ref: '#/components/parameters/InstanceId' }]
+      responses:
+        '200': { description: Schritt, content: { application/json: { schema: { $ref: '#/components/schemas/CurrentStep' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}/events:
+    post:
+      tags: [Instanzen]
+      summary: Ereignis senden (idempotent mit `Idempotency-Key`)
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - { name: Idempotency-Key, in: header, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event: { type: string }
+                payload: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Neuer Stand, content: { application/json: { schema: { $ref: '#/components/schemas/InstanceBrief' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}/back:
+    post:
+      tags: [Instanzen]
+      summary: Ein Schritt zurück
+      parameters: [{ $ref: '#/components/parameters/InstanceId' }]
+      responses:
+        '200': { description: Neuer Stand, content: { application/json: { schema: { $ref: '#/components/schemas/InstanceBrief' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}/cancel:
+    post:
+      tags: [Instanzen]
+      summary: Durchlauf abbrechen (Kinder werden mit abgebrochen)
+      parameters: [{ $ref: '#/components/parameters/InstanceId' }]
+      responses:
+        '200': { description: Abgebrochen, content: { application/json: { schema: { $ref: '#/components/schemas/InstanceBrief' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /instances/{id}/history:
+    get:
+      tags: [Instanzen]
+      summary: Verlauf (nur Feldnamen, keine Werte)
+      parameters: [{ $ref: '#/components/parameters/InstanceId' }]
+      responses:
+        '200':
+          description: Verlauf
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instanceId: { type: string }
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string }
+                        step: { type: [string, 'null'] }
+                        detail: { type: object }
+                        at: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /workflows:
+    get:
+      tags: [Definitionen]
+      summary: Übersicht – eine Zeile je Ablauf mit Struktur und Zählern
+      responses:
+        '200':
+          description: Übersicht
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  definitions: { type: array, items: { $ref: '#/components/schemas/DefinitionSummary' } }
+
+  /workflows/validate:
+    post:
+      tags: [Definitionen]
+      summary: Definition nur prüfen, nichts speichern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [definition], properties: { definition: { type: object } } }
+      responses:
+        '200':
+          description: Prüfbericht
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: { type: boolean }
+                  errors: { type: array, items: { $ref: '#/components/schemas/ValidationError' } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /workflows/{def}:
+    get:
+      tags: [Definitionen]
+      summary: Neueste Version
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }]
+      responses:
+        '200': { description: Definition, content: { application/json: { schema: { $ref: '#/components/schemas/DefinitionVersion' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Definitionen]
+      summary: Speichern
+      description: |
+        «active» erzeugt eine neue Version und verlangt eine fehlerfreie Definition.
+        «draft»/«inactive» überschreibt, solange kein Durchlauf auf die aktuelle Version
+        verweist, und darf Prüffehler enthalten (`validation`).
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [definition]
+              properties:
+                definition: { type: object }
+                name: { type: string }
+                status: { $ref: '#/components/schemas/DefinitionStatus' }
+      responses:
+        '201':
+          description: Gespeichert
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  version: { type: integer }
+                  status: { $ref: '#/components/schemas/DefinitionStatus' }
+                  newVersion: { type: boolean }
+                  validation: { type: array, items: { $ref: '#/components/schemas/ValidationError' } }
+        '422': { description: '`invalid_definition` mit `details.errors` oder `validation_error`', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /workflows/{def}/versions:
+    get:
+      tags: [Definitionen]
+      summary: Alle Versionen, neueste zuerst
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }]
+      responses:
+        '200':
+          description: Versionen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  versions: { type: array, items: { $ref: '#/components/schemas/VersionSummary' } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /workflows/{def}/versions/{version}:
+    get:
+      tags: [Definitionen]
+      summary: Eine Version (ältere sind schreibgeschützt)
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }, { $ref: '#/components/parameters/Version' }]
+      responses:
+        '200': { description: Definition, content: { application/json: { schema: { $ref: '#/components/schemas/DefinitionVersion' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Definitionen]
+      summary: Ältere Version ohne Durchläufe entfernen
+      parameters: [{ $ref: '#/components/parameters/DefinitionId' }, { $ref: '#/components/parameters/Version' }]
+      responses:
+        '204': { description: Entfernt }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: '`not_deletable` (neueste Version oder Durchläufe vorhanden)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /actions:
+    get:
+      tags: [Kataloge]
+      summary: Aktionen mit ihren Feldern
+      responses:
+        '200':
+          description: Aktionen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: { type: string }
+                        label: { type: string }
+                        fields: { type: array, items: { type: object, properties: { name: { type: string }, label: { type: string }, type: { type: string } } } }
+
+  /data-models:
+    get:
+      tags: [Kataloge]
+      summary: Datenmodelle (Host und REST); `writable=1` nur änderbare Felder
+      parameters: [{ name: writable, in: query, schema: { type: string, enum: ['1', 'true'] } }]
+      responses:
+        '200':
+          description: Datenmodelle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models: { type: array, items: { $ref: '#/components/schemas/ModelInfo' } }
+
+  /upload-handlers:
+    get:
+      tags: [Kataloge]
+      summary: Datei-Prüfungen der Host-App
+      responses:
+        '200':
+          description: Prüfungen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handlers: { type: array, items: { type: object, properties: { key: { type: string }, label: { type: string }, description: { type: string } } } }
+
+  /templates:
+    get:
+      tags: [Vorlagen]
+      summary: Vorlagen auflisten
+      parameters: [{ name: type, in: query, schema: { $ref: '#/components/schemas/TemplateType' } }]
+      responses:
+        '200':
+          description: Vorlagen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string }, type: { $ref: '#/components/schemas/TemplateType' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /templates/{id}:
+    get:
+      tags: [Vorlagen]
+      summary: Vorlage
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200': { description: Vorlage, content: { application/json: { schema: { $ref: '#/components/schemas/Template' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Vorlagen]
+      summary: Vorlage speichern
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                type: { $ref: '#/components/schemas/TemplateType' }
+                subject: { type: string }
+                body: { type: string }
+      responses:
+        '201': { description: Gespeichert, content: { application/json: { schema: { $ref: '#/components/schemas/Template' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Vorlagen]
+      summary: Vorlage löschen (gesperrt, solange verwendet)
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: '`in_use`', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /templates/{id}/usage:
+    get:
+      tags: [Vorlagen]
+      summary: Wo die Vorlage verwendet wird
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Verwendung
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templateId: { type: string }
+                  usage: { type: array, items: { $ref: '#/components/schemas/Usage' } }
+
+  /data-sources/connections:
+    get:
+      tags: [Datenquellen]
+      summary: Verbindungen
+      responses:
+        '200': { description: Verbindungen, content: { application/json: { schema: { type: object, properties: { connections: { type: array, items: { $ref: '#/components/schemas/Connection' } } } } } } }
+        '403': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Datenquellen]
+      summary: Verbindung anlegen
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConnectionInput' } } } }
+      responses:
+        '201': { description: Angelegt, content: { application/json: { schema: { $ref: '#/components/schemas/Connection' } } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/connections/{id}:
+    get:
+      tags: [Datenquellen]
+      summary: Verbindung
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200': { description: Verbindung, content: { application/json: { schema: { $ref: '#/components/schemas/Connection' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Datenquellen]
+      summary: Verbindung ändern (ohne `secret` bleiben die Zugangsdaten)
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConnectionInput' } } } }
+      responses:
+        '200': { description: Geändert, content: { application/json: { schema: { $ref: '#/components/schemas/Connection' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Datenquellen]
+      summary: Verbindung löschen (gesperrt, solange Modelle sie nutzen)
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/connections/{id}/secret:
+    put:
+      tags: [Datenquellen]
+      summary: Zugangsdaten ersetzen (anzeigen geht nie)
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [secret], properties: { secret: { type: string, writeOnly: true } } } } } }
+      responses:
+        '200': { description: Ersetzt, content: { application/json: { schema: { $ref: '#/components/schemas/Connection' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/connections/{id}/test:
+    post:
+      tags: [Datenquellen]
+      summary: Verbindung testen – nur Status und Dauer
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  status: { type: [integer, 'null'] }
+                  durationMs: { type: integer }
+                  message: { type: [string, 'null'] }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /data-sources/connections/{id}/usage:
+    get:
+      tags: [Datenquellen]
+      summary: Datenmodelle, die die Verbindung nutzen
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200': { description: Verwendung, content: { application/json: { schema: { type: object, properties: { id: { type: string }, models: { type: array, items: { type: string } } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /data-sources/models:
+    get:
+      tags: [Datenquellen]
+      summary: REST-Datenmodelle
+      responses:
+        '200': { description: Modelle, content: { application/json: { schema: { type: object, properties: { models: { type: array, items: { $ref: '#/components/schemas/RestModel' } } } } } } }
+    post:
+      tags: [Datenquellen]
+      summary: REST-Datenmodell anlegen
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RestModel' } } } }
+      responses:
+        '201': { description: Angelegt, content: { application/json: { schema: { $ref: '#/components/schemas/RestModel' } } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/models/sample:
+    post:
+      tags: [Datenquellen]
+      summary: Beispiel abrufen mit einer ungespeicherten Beschreibung (nichts wird gespeichert)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, id]
+              properties:
+                model: { $ref: '#/components/schemas/RestModel' }
+                id: { type: string }
+      responses:
+        '200':
+          description: JSON-Baum mit Pfaden für die Feldübernahme
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: integer }
+                  tree: {}
+                  paths: { type: array, items: { type: object, properties: { path: { type: string }, type: { type: string }, sample: {} } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/models/{name}:
+    get:
+      tags: [Datenquellen]
+      summary: REST-Datenmodell
+      parameters: [{ $ref: '#/components/parameters/ModelName' }]
+      responses:
+        '200': { description: Modell, content: { application/json: { schema: { $ref: '#/components/schemas/RestModel' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Datenquellen]
+      summary: REST-Datenmodell ändern (Name bleibt)
+      parameters: [{ $ref: '#/components/parameters/ModelName' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RestModel' } } } }
+      responses:
+        '200': { description: Geändert, content: { application/json: { schema: { $ref: '#/components/schemas/RestModel' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Datenquellen]
+      summary: REST-Datenmodell löschen (gesperrt, solange Definitionen oder Trigger es nutzen)
+      parameters: [{ $ref: '#/components/parameters/ModelName' }]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/models/{name}/usage:
+    get:
+      tags: [Datenquellen]
+      summary: Verwendung in Definitionen und Triggern
+      parameters: [{ $ref: '#/components/parameters/ModelName' }]
+      responses:
+        '200':
+          description: Verwendung
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  definitions: { type: array, items: { allOf: [{ $ref: '#/components/schemas/Usage' }, { type: object, properties: { fields: { type: array, items: { type: string } } } }] } }
+                  triggers: { type: array, items: { type: string } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /data-sources/triggers:
+    get:
+      tags: [Datenquellen]
+      summary: Trigger
+      responses:
+        '200': { description: Trigger, content: { application/json: { schema: { type: object, properties: { triggers: { type: array, items: { $ref: '#/components/schemas/Trigger' } } } } } } }
+    post:
+      tags: [Datenquellen]
+      summary: Trigger anlegen (neu = aus)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Trigger' } } } }
+      responses:
+        '201': { description: Angelegt, content: { application/json: { schema: { $ref: '#/components/schemas/Trigger' } } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /data-sources/triggers/{id}:
+    get:
+      tags: [Datenquellen]
+      summary: Trigger
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200': { description: Trigger, content: { application/json: { schema: { $ref: '#/components/schemas/Trigger' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Datenquellen]
+      summary: Trigger ändern
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Trigger' } } } }
+      responses:
+        '200': { description: Geändert, content: { application/json: { schema: { $ref: '#/components/schemas/Trigger' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Datenquellen]
+      summary: Trigger löschen
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /data-sources/triggers/{id}/check-now:
+    post:
+      tags: [Datenquellen]
+      summary: Jetzt prüfen – Anzahl Treffer, startet nichts
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200': { description: Treffer, content: { application/json: { schema: { type: object, properties: { id: { type: string }, matches: { type: integer } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /data-sources/audit:
+    get:
+      tags: [Datenquellen]
+      summary: Protokoll der Änderungen (neueste zuerst, ohne Zugangsdaten)
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [connection, model, trigger] } }
+        - { name: id, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        '200':
+          description: Einträge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        at: { type: string, format: date-time }
+                        actor: { type: object, properties: { id: { type: string }, name: { type: string } } }
+                        action: { type: string }
+                        objectType: { type: string }
+                        objectId: { type: string }
+                        detail: { type: object }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    InstanceId: { name: id, in: path, required: true, schema: { type: string } }
+    DefinitionId: { name: def, in: path, required: true, schema: { type: string } }
+    Version: { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    ResourceId: { name: id, in: path, required: true, schema: { type: string } }
+    ModelName: { name: name, in: path, required: true, schema: { type: string } }
+  responses:
+    Error:
+      description: Fehler
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples: [unauthorized, forbidden, not_found, method_not_allowed, validation_error, missing_input, invalid_definition, invalid_state, not_deletable, in_use, exists, internal_error]
+            message: { type: string }
+            details:
+              type: object
+              description: 'z. B. `fields` (Feld → Meldungen), `missing` (Pflichtangaben), `errors` (Prüfbericht)'
+    InstanceStatus: { type: string, enum: [running, waiting_event, waiting_timer, completed, failed, cancelled] }
+    DefinitionStatus: { type: string, enum: [active, inactive, draft] }
+    TemplateType: { type: string, enum: [email, page] }
+    InstanceBrief:
+      type: object
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/InstanceStatus' }
+        currentStep: { type: string }
+    Instance:
+      allOf:
+        - $ref: '#/components/schemas/InstanceBrief'
+        - type: object
+          properties:
+            definitionId: { type: string }
+            definitionVersion: { type: integer }
+            subjectType: { type: [string, 'null'] }
+            subjectId: { type: [string, 'null'] }
+            wakeAt: { type: [string, 'null'], format: date-time }
+            context: { type: object }
+            lastError: { type: [string, 'null'] }
+    InstanceSummary:
+      type: object
+      properties:
+        id: { type: string }
+        definitionId: { type: string }
+        definitionVersion: { type: integer }
+        definitionName: { type: string }
+        currentStep: { type: string }
+        status: { $ref: '#/components/schemas/InstanceStatus' }
+        subjectType: { type: [string, 'null'] }
+        subjectId: { type: [string, 'null'] }
+        wakeAt: { type: [string, 'null'], format: date-time }
+        lastError: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CurrentStep:
+      type: object
+      properties:
+        instanceId: { type: string }
+        status: { $ref: '#/components/schemas/InstanceStatus' }
+        step: { type: string }
+        type: { type: string, enum: [automatic, interactive, timer] }
+        interactive: { type: boolean }
+        finished: { type: boolean }
+        ui: { type: object }
+        events: { type: array, items: { type: object, properties: { event: { type: string }, label: { type: string } } } }
+        canGoBack: { type: boolean }
+        context: { type: object }
+    DefinitionSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: integer }
+        status: { $ref: '#/components/schemas/DefinitionStatus' }
+        updatedAt: { type: string, format: date-time }
+        runningInstances: { type: integer }
+        totalInstances: { type: integer }
+        olderVersions: { type: integer }
+        structure:
+          type: [object, 'null']
+          description: Für das Vorschaubild; null, wenn die gespeicherte Definition nicht lesbar ist
+          properties:
+            startStep: { type: string }
+            steps: { type: array, items: { type: object, properties: { name: { type: string }, kind: { type: string }, transitions: { type: array, items: { type: object, properties: { to: { type: string }, conditional: { type: boolean }, event: { type: [string, 'null'] } } } } } } }
+    DefinitionVersion:
+      type: object
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        status: { $ref: '#/components/schemas/DefinitionStatus' }
+        readOnly: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        definition: { type: object }
+    VersionSummary:
+      type: object
+      properties:
+        version: { type: integer }
+        name: { type: string }
+        status: { $ref: '#/components/schemas/DefinitionStatus' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        runningInstances: { type: integer }
+        totalInstances: { type: integer }
+        deletable: { type: boolean }
+        deleteBlockedBy: { type: [string, 'null'], enum: [latest, referenced, null] }
+    ValidationError:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        step: { type: [string, 'null'] }
+        transition: { type: [integer, 'null'] }
+    ModelInfo:
+      type: object
+      properties:
+        name: { type: string }
+        label: { type: string }
+        idField: { type: string }
+        fields: { type: array, items: { type: object, properties: { name: { type: string }, label: { type: string }, type: { type: string }, writable: { type: boolean } } } }
+        operations: { type: object, properties: { load: { type: boolean }, find: { type: boolean }, update: { type: boolean }, create: { type: boolean } } }
+    Template:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/TemplateType' }
+        subject: { type: string }
+        body: { type: string }
+    Usage:
+      type: object
+      properties:
+        definitionId: { type: string }
+        version: { type: integer }
+        step: { type: string }
+    Connection:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        baseUrl: { type: string, format: uri }
+        authType: { type: string, enum: [none, bearer, api_key, basic] }
+        authHeader: { type: [string, 'null'] }
+        secretStored: { type: boolean }
+    ConnectionInput:
+      type: object
+      properties:
+        id: { type: string, description: Nur beim Anlegen; danach fest }
+        name: { type: string }
+        baseUrl: { type: string, format: uri, description: Nur HTTPS; interne Adressen sind gesperrt }
+        authType: { type: string, enum: [none, bearer, api_key, basic] }
+        authHeader: { type: string, description: Nur bei api_key }
+        secret: { type: string, writeOnly: true }
+    RestModel:
+      type: object
+      properties:
+        name: { type: string }
+        label: { type: string }
+        connection: { type: string }
+        idField: { type: string, default: id }
+        listPath: { type: string, examples: [data.items] }
+        subset: { type: object, additionalProperties: { type: string } }
+        operations:
+          type: object
+          properties:
+            load: { $ref: '#/components/schemas/RestOperation' }
+            find: { $ref: '#/components/schemas/RestOperation' }
+            update: { $ref: '#/components/schemas/RestOperation' }
+            create: { $ref: '#/components/schemas/RestOperation' }
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              label: { type: string }
+              type: { type: string, enum: [text, number, bool, date, datetime] }
+              path: { type: string }
+              writable: { type: boolean }
+    RestOperation:
+      type: object
+      properties:
+        method: { type: string }
+        path: { type: string, examples: ['/antraege/{id}'] }
+    Trigger:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        model: { type: string }
+        conditions: { type: array, items: { type: object, properties: { field: { type: string }, operator: { type: string }, value: {} } } }
+        definitionId: { type: string }
+        inputs: { type: object, additionalProperties: { type: string }, description: Angabe des Ablaufs → Feld des Modells }
+        intervalMinutes: { type: integer, minimum: 5, default: 15 }
+        lockDays: { type: integer, minimum: 1, default: 7 }
+        active: { type: boolean, default: false }
+        lastPolledAt: { type: [string, 'null'], format: date-time, readOnly: true }

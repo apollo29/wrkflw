@@ -96,7 +96,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   (nur Status+Dauer), Beispielabruf ohne Speichern, Admin-Trigger mit Sperrfrist, Audit.
 - ADR 10 «REST-Datenquellen und Geheimnisse».
 
-### 5 – HTTP-API
+### 5 – HTTP-API ✅ (2026-11-01)
 - Bestehende Routen portieren; neu/erweitert: `GET /workflows` mit Struktur, Zählern,
   `updated_at`; `GET /workflows/{id}/versions/{v}`; `GET /instances` (Filter),
   `POST /instances/{id}/cancel`; `GET /data-models`; CRUD `/data-sources/{connections,models,triggers}`
@@ -148,7 +148,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 ### 12 – Demo, Abnahme, Release
 - Demo-App mit Beispieldaten 9.13 (Seed-Skripte), Playwright-Suite = Abnahme 9.15 (1–14)
   + 9.16, inkl. 375 px ohne waagrechtes Scrollen und Dunkelmodus.
-- README, CHANGELOG `3.0.0`, ADR 11 «Client-Architektur v3», Migrationsleitfaden für die
+- README, CHANGELOG `3.0.0`, ADR 12 «Client-Architektur v3», Migrationsleitfaden für die
   Coach-Admin; Tags `v3.0.0` / `client-v3.0.0`.
 
 ## Verifikation

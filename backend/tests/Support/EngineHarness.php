@@ -50,7 +50,7 @@ final class EngineHarness
 
     public readonly DataGateway $data;
 
-    private readonly DefinitionValidator $validator;
+    public readonly DefinitionValidator $validator;
 
     public function __construct(EngineOptions $options = new EngineOptions())
     {

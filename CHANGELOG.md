@@ -9,6 +9,32 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 5: HTTP-API
+
+- **Routen** (`WorkflowEngine\Http`, ADR 11):
+  - aus 2.x übernommen: starten, anzeigen, aktueller Schritt, Ereignis, zurück, Verlauf,
+    Definitionen, Aktionen, Vorlagen
+  - neu: `GET /instances` mit Filtern und Anzahl je Status, `POST /instances/{id}/cancel`,
+    `GET /workflows` mit Struktur und Zählern, `GET /workflows/{id}/versions[/{v}]`,
+    `POST /workflows/validate`, `GET /data-models` (ersetzt `/data-catalog`),
+    `GET /upload-handlers` (endlich registriert, neuer Port `UploadHandlerCatalogInterface`)
+  - `/data-sources/{connections,models,triggers,audit}` mit Test, Beispielabruf,
+    «Jetzt prüfen» und Verwendung; nur mit Admin-Recht
+- **Zugriff über einen Port:** `AccessResolverInterface` liefert Person und Admin-Recht
+  (F-104); mitgeliefert `ApiKeyAccessResolver` (`WF_API_KEY`) und `OpenAccessResolver`
+  (nur Entwicklung). Ohne Zugriff 401, Datenquellen ohne Admin-Recht 403.
+- **Ein Fehlerformat** `{error: {code, message, details?}}` überall, auch beim Löschen
+  einer Version; Übersetzung der Ausnahmen an einer Stelle (`ErrorMapper`), 500 ohne
+  Einzelheiten.
+- **Speichern:** «Aktiv» nur fehlerfrei; Entwurf und Inaktiv mit Prüffehlern möglich
+  (`validation` in der Antwort).
+- **Zugangsdaten** erscheinen in keiner Antwort; Tests prüfen alle Datenquellen-Antworten
+  und das Protokoll.
+- `api/index.php` lädt die Verdrahtung der Host-App über `WF_API_BOOTSTRAP`.
+- `docs/openapi.yaml` v3 (OpenAPI 3.1); ein Test gleicht sie mit den Routen ab.
+- `InMemoryWorkflowRepository` setzt jetzt auch Definitionsverwaltung und Instanzliste um
+  (gleiche Regeln wie die PDO-Ablage).
+
 ### Neubau 3.0 – Phase 4: REST-Datenquellen und Sicherheit
 
 - **REST-Datenmodelle** (`WorkflowEngine\Rest`, ADR 10): `RestConnection` und
