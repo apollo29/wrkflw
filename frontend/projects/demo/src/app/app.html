@@ -1,5 +1,11 @@
-<main class="demo">
-  <h1>wrkflw Demo</h1>
-  <p>Client <code data-testid="client-version">{{ clientVersion }}</code></p>
-  <router-outlet />
-</main>
+<header class="demo-bar">
+  <strong class="demo-bar__brand">wrkflw Demo</strong>
+  <nav class="demo-bar__nav" aria-label="Demo">
+    <a routerLink="/admin" routerLinkActive="on">Admin</a>
+    <a routerLink="/bausteine" routerLinkActive="on">Bausteine</a>
+  </nav>
+  <span class="demo-bar__version"
+    >Client <code data-testid="client-version">{{ clientVersion }}</code></span
+  >
+</header>
+<router-outlet />

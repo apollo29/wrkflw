@@ -1,0 +1,105 @@
+<div class="gallery">
+  <header class="gallery__head">
+    <h1>Bausteine</h1>
+    <wf-segment
+      label="Darstellung"
+      [options]="themeOptions"
+      [value]="themeValue()"
+      (valueChange)="setTheme($event)"
+      data-testid="theme"
+    />
+  </header>
+
+  <section class="wf-zone">
+    <h2>Schritt-Arten</h2>
+    <div class="gallery__row">
+      @for (kind of kinds; track kind.kind) {
+        <span class="gallery__tile" [class]="kind.colorClass"
+          ><wf-icon [name]="kind.icon" /> {{ kind.label | wfT }}</span
+        >
+      }
+    </div>
+  </section>
+
+  <section class="wf-zone">
+    <h2>Knöpfe</h2>
+    <div class="gallery__row">
+      <button type="button" wfButton variant="primary">Speichern</button>
+      <button type="button" wfButton>Abbrechen</button>
+      <button type="button" wfButton variant="text">+ Schritt</button>
+      <button type="button" wfButton variant="danger">Löschen</button>
+      <button type="button" wfButton variant="icon" aria-label="Suchen">
+        <wf-icon name="search" />
+      </button>
+      <button type="button" wfButton disabled>Gesperrt</button>
+      <button type="button" wfButton size="sm">Klein</button>
+    </div>
+  </section>
+
+  <section class="wf-zone">
+    <h2>Segment</h2>
+    <wf-segment
+      label="Status beim nächsten Speichern"
+      [options]="statusOptions"
+      [(value)]="status"
+      data-testid="status-segment"
+    />
+  </section>
+
+  <section class="wf-zone">
+    <h2>Pills</h2>
+    <div class="gallery__row">
+      @for (state of instanceStates; track state) {
+        @let pill = instancePill(state);
+        <wf-pill [kind]="pill.kind" [dot]="true">{{ pill.label | wfT }}</wf-pill>
+      }
+    </div>
+    <div class="gallery__row">
+      @for (pill of definitionPills; track pill.label) {
+        <wf-pill [kind]="pill.kind" [dashed]="pill.dashed ?? false">{{ pill.label | wfT }}</wf-pill>
+      }
+      <wf-pill [mono]="true">v3</wf-pill>
+      <wf-pill kind="timer" [dot]="true">{{ 'state.unsaved' | wfT }}</wf-pill>
+    </div>
+  </section>
+
+  <section class="wf-zone wf-g12">
+    <h2 class="wf-c-12">Felder (12er-Raster)</h2>
+    <wf-field
+      class="wf-c-6 wf-c-sm-12"
+      label="Anzeigename"
+      hint="So erscheint der Workflow in der Übersicht."
+      [error]="nameError()"
+    >
+      <input class="wf-inp" [value]="name()" (input)="name.set($any($event.target).value)" />
+    </wf-field>
+    <wf-field class="wf-c-6 wf-c-sm-12" label="Workflow-ID">
+      <input class="wf-inp wf-mono" value="antrag-pruefung" readonly />
+    </wf-field>
+    <label class="wf-c-12 gallery__switch"
+      ><input type="checkbox" class="wf-switch" checked /> Ein Schritt zurück erlaubt</label
+    >
+  </section>
+
+  <section class="wf-zone gallery__stack">
+    <h2>Banner</h2>
+    <wf-banner tone="ok">Gespeichert: antrag-pruefung v3 (aktiv).</wf-banner>
+    <wf-banner tone="error" heading="1 Schritt braucht Aufmerksamkeit"
+      >Gespeichert werden kann erst, wenn alle Hinweise behoben sind.</wf-banner
+    >
+    <wf-banner tone="info">Ältere Versionen öffnen schreibgeschützt.</wf-banner>
+  </section>
+
+  <section class="wf-zone gallery__row">
+    <button type="button" wfButton (click)="openDialog()" data-testid="open-dialog">
+      Dialog öffnen
+    </button>
+    <button type="button" wfButton (click)="showToast()" data-testid="show-toast">
+      Meldung mit Undo
+    </button>
+    @if (dialogResult(); as result) {
+      <span class="wf-muted" data-testid="dialog-result">Ergebnis: {{ result }}</span>
+    }
+  </section>
+</div>
+<wf-toast-host />

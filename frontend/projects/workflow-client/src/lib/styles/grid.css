@@ -1,0 +1,147 @@
+/*
+ * 12er-Raster mit Container Queries. Breiten richten sich nach dem Platz der Oberfläche
+ * (`.wf`), nicht nach dem Fenster: eingebettet in eine schmale Spalte der Host-App
+ * verhält sie sich wie auf einem kleinen Bildschirm.
+ *
+ *   breit   ≥ 1200 px   .wf-c-{1..12}
+ *   mittel  < 1200 px   .wf-c-md-{1..12}
+ *   schmal  <  768 px   .wf-c-sm-{1..12}
+ */
+.wf {
+  container-type: inline-size;
+  container-name: wf;
+}
+
+.wf-g12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wfb-space-4);
+}
+
+.wf-c-1 {
+  grid-column: span 1;
+}
+.wf-c-2 {
+  grid-column: span 2;
+}
+.wf-c-3 {
+  grid-column: span 3;
+}
+.wf-c-4 {
+  grid-column: span 4;
+}
+.wf-c-5 {
+  grid-column: span 5;
+}
+.wf-c-6 {
+  grid-column: span 6;
+}
+.wf-c-7 {
+  grid-column: span 7;
+}
+.wf-c-8 {
+  grid-column: span 8;
+}
+.wf-c-9 {
+  grid-column: span 9;
+}
+.wf-c-10 {
+  grid-column: span 10;
+}
+.wf-c-11 {
+  grid-column: span 11;
+}
+.wf-c-12 {
+  grid-column: span 12;
+}
+
+@container wf (max-width: 1199px) {
+  .wf-c-md-1 {
+    grid-column: span 1;
+  }
+  .wf-c-md-2 {
+    grid-column: span 2;
+  }
+  .wf-c-md-3 {
+    grid-column: span 3;
+  }
+  .wf-c-md-4 {
+    grid-column: span 4;
+  }
+  .wf-c-md-5 {
+    grid-column: span 5;
+  }
+  .wf-c-md-6 {
+    grid-column: span 6;
+  }
+  .wf-c-md-7 {
+    grid-column: span 7;
+  }
+  .wf-c-md-8 {
+    grid-column: span 8;
+  }
+  .wf-c-md-9 {
+    grid-column: span 9;
+  }
+  .wf-c-md-10 {
+    grid-column: span 10;
+  }
+  .wf-c-md-11 {
+    grid-column: span 11;
+  }
+  .wf-c-md-12 {
+    grid-column: span 12;
+  }
+  .wf-hide-md {
+    display: none !important;
+  }
+}
+
+@container wf (max-width: 767px) {
+  .wf-c-sm-1 {
+    grid-column: span 1;
+  }
+  .wf-c-sm-2 {
+    grid-column: span 2;
+  }
+  .wf-c-sm-3 {
+    grid-column: span 3;
+  }
+  .wf-c-sm-4 {
+    grid-column: span 4;
+  }
+  .wf-c-sm-5 {
+    grid-column: span 5;
+  }
+  .wf-c-sm-6 {
+    grid-column: span 6;
+  }
+  .wf-c-sm-7 {
+    grid-column: span 7;
+  }
+  .wf-c-sm-8 {
+    grid-column: span 8;
+  }
+  .wf-c-sm-9 {
+    grid-column: span 9;
+  }
+  .wf-c-sm-10 {
+    grid-column: span 10;
+  }
+  .wf-c-sm-11 {
+    grid-column: span 11;
+  }
+  .wf-c-sm-12 {
+    grid-column: span 12;
+  }
+  .wf-hide-sm {
+    display: none !important;
+  }
+
+  /* Touch-Ziele auf schmalen Flächen. Container Queries wirken nur auf Nachfahren von
+     `.wf`, deshalb hier die direkten Kinder. */
+  .wf > * {
+    --wfb-control-h: var(--wfb-touch-h);
+    --wfb-control-h-sm: 36px;
+  }
+}

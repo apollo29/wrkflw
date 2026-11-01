@@ -1,9 +1,36 @@
-/* Demo-App. Die Gestaltung der Library folgt ab Phase 6 (Tokens, Raster). */
+/* Demo-App: nur die Leiste oben. Alles in `.wf` gestaltet die Library (wf.css). */
+html,
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  min-height: 100%;
+  background: #f4f4f5;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
 }
 
-.demo {
-  padding: 24px;
+.demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  background: #18181b;
+  color: #fff;
+  font-size: 13px;
+}
+
+.demo-bar__nav {
+  display: flex;
+  gap: 12px;
+}
+.demo-bar a {
+  color: #c7d2fe;
+  text-decoration: none;
+}
+.demo-bar a.on {
+  color: #fff;
+  text-decoration: underline;
+}
+.demo-bar__version {
+  margin-left: auto;
+  color: #a1a1aa;
 }

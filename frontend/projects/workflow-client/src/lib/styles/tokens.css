@@ -1,0 +1,178 @@
+/*
+ * Design-Tokens von wrkflw (Design-Canvas «wrkflw Editor»).
+ * Öffentlich sind nur die `--wfb-*`-Namen; die Host-App kann jeden davon überschreiben,
+ * z. B. `.wf { --wfb-primary: #0a7; }`.
+ */
+.wf {
+  /* Schrift */
+  --wfb-font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --wfb-font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --wfb-text-xs: 11px;
+  --wfb-text-sm: 12.5px;
+  --wfb-text-md: 13.5px;
+  --wfb-text-base: 14px;
+  --wfb-text-lg: 17px;
+  --wfb-text-xl: 22px;
+
+  /* Abstände */
+  --wfb-space-1: 4px;
+  --wfb-space-2: 8px;
+  --wfb-space-3: 12px;
+  --wfb-space-4: 16px;
+  --wfb-space-5: 20px;
+  --wfb-space-6: 24px;
+  --wfb-space-7: 28px;
+  --wfb-space-8: 32px;
+
+  /* Radien */
+  --wfb-radius-xs: 6px;
+  --wfb-radius-sm: 8px;
+  --wfb-radius: 10px;
+  --wfb-radius-lg: 12px;
+  --wfb-radius-full: 999px;
+
+  /* Höhen */
+  --wfb-control-h: 34px;
+  --wfb-control-h-sm: 28px;
+  --wfb-touch-h: 44px;
+
+  /* Grundfarben */
+  --wfb-primary: #4338ca;
+  --wfb-primary-fg: #4338ca;
+  --wfb-on-primary: #ffffff;
+  --wfb-primary-soft: #eef0fb;
+  --wfb-bg: #ffffff;
+  --wfb-bg-soft: #fafafa;
+  --wfb-page: #f4f4f5;
+  --wfb-border: #e5e5ea;
+  --wfb-border-strong: #d4d4d9;
+  --wfb-text: #18181b;
+  --wfb-text-muted: #71717a;
+
+  /* Schritt-Arten: Fläche, Rand, Schrift */
+  --wfb-auto-bg: #eff6ff;
+  --wfb-auto-bd: #bfdbfe;
+  --wfb-auto-fg: #1d4ed8;
+  --wfb-int-bg: #f5f3ff;
+  --wfb-int-bd: #ddd6fe;
+  --wfb-int-fg: #6d28d9;
+  --wfb-tim-bg: #fffbeb;
+  --wfb-tim-bd: #fde68a;
+  --wfb-tim-fg: #b45309;
+  --wfb-wf-bg: #ecfdf5;
+  --wfb-wf-bd: #a7f3d0;
+  --wfb-wf-fg: #047857;
+  --wfb-dc-bg: #fdf2f8;
+  --wfb-dc-bd: #fbcfe8;
+  --wfb-dc-fg: #be185d;
+  --wfb-dw-bg: #ecfeff;
+  --wfb-dw-bd: #a5f3fc;
+  --wfb-dw-fg: #0e7490;
+
+  /* Rückmeldungen */
+  --wfb-ok-bg: #ecfdf5;
+  --wfb-ok-bd: #a7f3d0;
+  --wfb-ok-fg: #047857;
+  --wfb-err-bg: #fef2f2;
+  --wfb-err-bd: #fecaca;
+  --wfb-err-fg: #b91c1c;
+
+  /* Effekte */
+  --wfb-focus-ring: 0 0 0 2px var(--wfb-primary);
+  --wfb-shadow-dialog: 0 18px 48px rgba(0, 0, 0, 0.18);
+  --wfb-scrim: rgba(24, 24, 27, 0.42);
+  --wfb-duration: 160ms;
+
+  color-scheme: light;
+}
+
+.wf[data-theme='dunkel'] {
+  --wfb-primary: #6d63f0;
+  --wfb-primary-fg: #c4b5fd;
+  --wfb-primary-soft: #1f1d3a;
+  --wfb-bg: #151518;
+  --wfb-bg-soft: #1b1b20;
+  --wfb-page: #0b0b0d;
+  --wfb-border: #2a2a31;
+  --wfb-border-strong: #3a3a44;
+  --wfb-text: #ececf0;
+  --wfb-text-muted: #9a9aa6;
+
+  --wfb-auto-bg: #111f36;
+  --wfb-auto-bd: #1e3a8a;
+  --wfb-auto-fg: #93c5fd;
+  --wfb-int-bg: #1e1936;
+  --wfb-int-bd: #4c1d95;
+  --wfb-int-fg: #c4b5fd;
+  --wfb-tim-bg: #2a2010;
+  --wfb-tim-bd: #78350f;
+  --wfb-tim-fg: #fcd34d;
+  --wfb-wf-bg: #0e2a20;
+  --wfb-wf-bd: #065f46;
+  --wfb-wf-fg: #6ee7b7;
+  --wfb-dc-bg: #2b1322;
+  --wfb-dc-bd: #9d174d;
+  --wfb-dc-fg: #f9a8d4;
+  --wfb-dw-bg: #0b2a30;
+  --wfb-dw-bd: #155e75;
+  --wfb-dw-fg: #67e8f9;
+
+  --wfb-ok-bg: #0e2a20;
+  --wfb-ok-bd: #065f46;
+  --wfb-ok-fg: #6ee7b7;
+  --wfb-err-bg: #2c1416;
+  --wfb-err-bd: #7f1d1d;
+  --wfb-err-fg: #fca5a5;
+
+  --wfb-shadow-dialog: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --wfb-scrim: rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* Farbsätze je Art: setzen --wfb-k-bg/bd/fg für Pills, Kacheln und Icons. */
+.wf-k-automatic {
+  --wfb-k-bg: var(--wfb-auto-bg);
+  --wfb-k-bd: var(--wfb-auto-bd);
+  --wfb-k-fg: var(--wfb-auto-fg);
+}
+.wf-k-interactive {
+  --wfb-k-bg: var(--wfb-int-bg);
+  --wfb-k-bd: var(--wfb-int-bd);
+  --wfb-k-fg: var(--wfb-int-fg);
+}
+.wf-k-timer {
+  --wfb-k-bg: var(--wfb-tim-bg);
+  --wfb-k-bd: var(--wfb-tim-bd);
+  --wfb-k-fg: var(--wfb-tim-fg);
+}
+.wf-k-workflow {
+  --wfb-k-bg: var(--wfb-wf-bg);
+  --wfb-k-bd: var(--wfb-wf-bd);
+  --wfb-k-fg: var(--wfb-wf-fg);
+}
+.wf-k-data-check {
+  --wfb-k-bg: var(--wfb-dc-bg);
+  --wfb-k-bd: var(--wfb-dc-bd);
+  --wfb-k-fg: var(--wfb-dc-fg);
+}
+.wf-k-data-write {
+  --wfb-k-bg: var(--wfb-dw-bg);
+  --wfb-k-bd: var(--wfb-dw-bd);
+  --wfb-k-fg: var(--wfb-dw-fg);
+}
+.wf-k-ok {
+  --wfb-k-bg: var(--wfb-ok-bg);
+  --wfb-k-bd: var(--wfb-ok-bd);
+  --wfb-k-fg: var(--wfb-ok-fg);
+}
+.wf-k-error {
+  --wfb-k-bg: var(--wfb-err-bg);
+  --wfb-k-bd: var(--wfb-err-bd);
+  --wfb-k-fg: var(--wfb-err-fg);
+}
+.wf-k-neutral {
+  --wfb-k-bg: var(--wfb-bg-soft);
+  --wfb-k-bd: var(--wfb-border-strong);
+  --wfb-k-fg: var(--wfb-text-muted);
+}

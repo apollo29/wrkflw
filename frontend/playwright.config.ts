@@ -26,7 +26,11 @@ export default defineConfig({
     },
     {
       name: 'schmal',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, launchOptions: { executablePath } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 375, height: 812 },
+        launchOptions: { executablePath },
+      },
     },
   ],
   webServer: {

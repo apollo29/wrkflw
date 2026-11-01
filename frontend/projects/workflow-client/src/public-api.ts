@@ -1,6 +1,34 @@
 /*
  * Öffentliche API von @apollo29/workflow-client (v3).
- * Komponenten, Provider und Routen folgen ab Phase 6 (siehe PLAN.md).
  */
 
 export * from './lib/version';
+
+// Konfiguration und Texte
+export * from './lib/config/config';
+export * from './lib/i18n/i18n';
+export * from './lib/i18n/messages.de';
+
+// API
+export * from './lib/api/models';
+export * from './lib/api/api-error';
+export * from './lib/api/workflow-api';
+export * from './lib/api/resources';
+
+// Bausteine
+export * from './lib/ui/icon';
+export * from './lib/ui/step-kinds';
+export * from './lib/ui/button';
+export * from './lib/ui/segment';
+export * from './lib/ui/pill';
+export * from './lib/ui/field';
+export * from './lib/ui/banner';
+export * from './lib/ui/dialog';
+export * from './lib/ui/toast';
+export * from './lib/ui/theme';
+
+// Shell und Routen
+export * from './lib/shell/admin-shell';
+export * from './lib/shell/placeholder-page';
+export * from './lib/shell/routes';
+export * from './lib/shell/unsaved-changes';

@@ -50,7 +50,10 @@
                 "input": "projects/demo/public"
               }
             ],
-            "styles": ["projects/demo/src/styles.css"]
+            "styles": [
+              "projects/workflow-client/src/lib/styles/wf.css",
+              "projects/demo/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {

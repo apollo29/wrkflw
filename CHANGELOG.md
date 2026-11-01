@@ -9,6 +9,28 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 6: Client-Fundament
+
+- **Gestaltung:** `styles/wf.css` mit Tokens `--wfb-*` nach dem Design-Canvas (hell und
+  `data-theme="dunkel"`), 12er-Raster mit Container Queries (breit, mittel, schmal mit
+  44-px-Touch-Zielen) und Grundstilen. Wird als Asset der Library ausgeliefert.
+- **Bausteine:** `wf-icon` (sechs Schritt-Arten und Werkzeug-Icons), `button[wfButton]`,
+  `wf-segment` (Radiogruppe mit Pfeiltasten), `wf-pill` mit Statusfarben, `wf-field`
+  (verknüpft Label, Hinweis und Fehler per ARIA), `wf-banner`, Rückfrage-Dialog auf
+  `<dialog>`, Meldungen mit «Rückgängig» (`WfToastService`), Darstellung hell/dunkel/System.
+- **Texte:** Katalog `MESSAGES_DE` mit `WfI18n`/`wfT`; die Host-App ersetzt Texte über
+  `provideWorkflowAdmin({ messages })`. Ein Test sucht feste Texte in Templates.
+- **Konfiguration und API:** `provideWorkflowAdmin({ apiBaseUrl, apiKey | authToken,
+  messages, theme })`; `WorkflowApi` für alle Routen der API v3 mit Fehlern als
+  `WfApiError`; Listen als `httpResource` (`WorkflowResources`). Der Anmelde-Header geht
+  nur noch an `apiBaseUrl` (der Interceptor aus 2.x schickte ihn an jede Adresse).
+- **Shell und Routen:** `workflowAdminRoutes` mit den Reitern Workflows, Instanzen, Vorlagen
+  und Datenquellen (vorerst Platzhalter). Schutz vor Verlust ungespeicherter Änderungen
+  (E-08): `wfUnsavedChangesGuard` mit «Verwerfen / Im Editor bleiben / Speichern und
+  verlassen» und `wfBeforeUnload()`.
+- **Demo:** Admin-Oberfläche unter `/admin`, alle Bausteine unter `/bausteine`; E2E für
+  Reiter, Tastatur, Dialog, Dunkelmodus und 375 px.
+
 ### Neubau 3.0 – Phase 5: HTTP-API
 
 - **Routen** (`WorkflowEngine\Http`, ADR 11):

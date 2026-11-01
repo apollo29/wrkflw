@@ -15,7 +15,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('h1')?.textContent).toContain('wrkflw Demo');
+    expect(el.querySelector('.demo-bar__brand')?.textContent).toContain('wrkflw Demo');
     expect(el.querySelector('[data-testid="client-version"]')?.textContent).toBe(CLIENT_VERSION);
   });
 });

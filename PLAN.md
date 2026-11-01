@@ -104,7 +104,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
 - Auth weiter als austauschbare Middleware (F-104), Admin-Recht für Datenquellen.
 - `docs/openapi.yaml` v3, Controller-Tests.
 
-### 6 – Client-Fundament
+### 6 – Client-Fundament ✅ (2026-11-01)
 - Styles: `styles/tokens.css` (Tokens 9.12 hell + `[data-theme="dunkel"]`, `--wfb-*`),
   `grid.css` (12er-Raster mit Container Queries: breit ≥1200, mittel ≥768, schmal),
   Icon-Set (6 Schritt-Arten, 16 px, 1.4 px Strich), IBM Plex als Default.

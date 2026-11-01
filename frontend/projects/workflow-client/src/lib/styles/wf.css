@@ -1,0 +1,8 @@
+/*
+ * Gesamte Gestaltung von wrkflw. Einbinden in der Host-App, z. B. in angular.json:
+ *   "styles": ["node_modules/@apollo29/workflow-client/styles/wf.css", …]
+ * Schriften (IBM Plex Sans/Mono) lädt die Host-App selbst.
+ */
+@import './tokens.css';
+@import './grid.css';
+@import './base.css';
