@@ -52,7 +52,9 @@ test.describe('Shell der Admin-Oberfläche', () => {
     await expect(page).toHaveURL(/\/admin\/workflows\/antrag$/);
 
     await page.getByRole('link', { name: 'Instanzen' }).click();
+    await expect(dialog).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/admin\/workflows\/antrag$/);
 
     await page.getByRole('link', { name: 'Instanzen' }).click();
