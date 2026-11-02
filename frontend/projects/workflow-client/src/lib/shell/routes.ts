@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { WfAdminShell } from './admin-shell';
-import { WfEditorPlaceholder, WfPlaceholderPage } from './placeholder-page';
+import { WfWorkflowEditor } from '../editor/components/workflow-editor';
+import { WfPlaceholderPage } from './placeholder-page';
 import { wfUnsavedChangesGuard } from './unsaved-changes';
 
 /**
@@ -24,13 +25,18 @@ export const workflowAdminRoutes: Routes = [
         data: { title: 'nav.workflows', phase: 8 },
       },
       {
+        path: 'workflows/neu',
+        component: WfWorkflowEditor,
+        canDeactivate: [wfUnsavedChangesGuard],
+      },
+      {
         path: 'workflows/:id',
-        component: WfEditorPlaceholder,
+        component: WfWorkflowEditor,
         canDeactivate: [wfUnsavedChangesGuard],
       },
       {
         path: 'workflows/:id/v/:version',
-        component: WfEditorPlaceholder,
+        component: WfWorkflowEditor,
         canDeactivate: [wfUnsavedChangesGuard],
       },
       {

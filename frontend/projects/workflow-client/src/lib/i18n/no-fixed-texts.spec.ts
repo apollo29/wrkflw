@@ -30,6 +30,7 @@ function visibleText(template: string): string[] {
   return template
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\{\{[\s\S]*?\}\}/g, ' ')
+    .replace(/@let [^;]*;/g, ' ')
     .replace(/@\w+[^{]*\{|\}/g, ' ')
     .split(/<[^>]+>/)
     .map((s) => s.trim())

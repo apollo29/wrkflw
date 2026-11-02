@@ -7,7 +7,7 @@ test('Demo startet und zeigt die Client-Version', async ({ page }) => {
 });
 
 test('keine waagrechte Scrollleiste', async ({ page }) => {
-  for (const path of ['/admin', '/admin/workflows/antrag', '/bausteine']) {
+  for (const path of ['/admin', '/admin/workflows/antrag-pruefung', '/bausteine']) {
     await page.goto(path);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,

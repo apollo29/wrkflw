@@ -114,7 +114,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   `/workflows/:id[/v/:version]`, Instanzen, Vorlagen, Datenquellen); `canDeactivate` +
   `beforeunload` für E-08. Service-Schicht mit Signals/`httpResource`.
 
-### 7 – Editor (9.3–9.10, 9.14)
+### 7 – Editor (9.3–9.10, 9.14) ✅ (2026-11-02)
 - Store (Signals) auf Basis von `definition-mapping.ts`, erweitert um: Umbenennen zieht
   Verweise mit, keine doppelten Namen, Live-Prüfung je Schritt, sechs Schritt-Arten
   (Automatisch/Interaktiv/Timer + Workflow/Datencheck/Daten schreiben über Aktion).

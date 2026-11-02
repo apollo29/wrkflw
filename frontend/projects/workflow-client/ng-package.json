@@ -10,5 +10,10 @@
       "glob": "**/*.css",
       "output": "styles"
     }
+  ],
+  "allowedNonPeerDependencies": [
+    "@tiptap/core",
+    "@tiptap/pm",
+    "@tiptap/starter-kit"
   ]
 }

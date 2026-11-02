@@ -236,3 +236,8 @@ textarea.wf-inp {
 .wf-btn--sm.wf-btn--icon {
   width: var(--wfb-control-h-sm);
 }
+
+.wf-field-label {
+  font-size: var(--wfb-text-sm);
+  font-weight: 500;
+}

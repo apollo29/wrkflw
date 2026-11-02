@@ -32,3 +32,14 @@ export * from './lib/shell/admin-shell';
 export * from './lib/shell/placeholder-page';
 export * from './lib/shell/routes';
 export * from './lib/shell/unsaved-changes';
+
+// Editor
+export * from './lib/editor/model/definition-mapping';
+export * from './lib/editor/model/operations';
+export * from './lib/editor/model/flow';
+export * from './lib/editor/model/flow-geometry';
+export * from './lib/editor/model/context-vars';
+export * from './lib/editor/model/local-checks';
+export * from './lib/editor/state/editor-store';
+export * from './lib/editor/html/html-editor';
+export * from './lib/editor/components/workflow-editor';

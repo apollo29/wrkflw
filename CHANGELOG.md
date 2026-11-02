@@ -9,6 +9,43 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 7: Editor
+
+- **Editor als eigene Seite** (`workflows/neu`, `workflows/:id`, `workflows/:id/v/:version`
+  schreibgeschützt):
+  - Kopfleiste mit Status und Ansicht, Meldungen, Ablauf-Vorschau, Seitenspalte und Detail
+    (3/9 von 12 Spalten), «Schritt hinzufügen» mit sechs Karten
+  - Store mit Signals (`EditorStore`) statt mutierter Objekte
+- **Ablauf-Vorschau:** Verzweigungen mit Spuren, Zusammenführung und einspurigem Rest
+  (Port aus 2.x); Knopftext statt «SONST», wenn ein Ausgang nur an einem Knopf hängt;
+  einklappbar mit Speicherung.
+- **Schritte:**
+  - Formulare je Art: Interaktiv mit Eingabefeldern und Datei-Prüfung, Automatisch mit
+    Aktionsfeldern nach Typ, Timer, Workflow, Datencheck, Daten schreiben mit Bedingung
+    «Nur wenn / Sonst»
+  - Umbenennen zieht Übergänge und Start-Schritt mit; doppelte Namen sind gesperrt.
+  - Löschen schliesst die Lücke und lässt sich rückgängig machen.
+  - Schrittliste per Tastatur bedienbar.
+- **Übergänge:** Sonst-Zeile und Bedingungskarte; «Bedingung…» öffnet den Assistenten
+  (sechs Vergleiche, Ausdruck sichtbar), «Erweitert» für eigene Ausdrücke, Knopftext und
+  Vorschau der Knöpfe an interaktiven Schritten.
+- **Laufende Prüfung:** lokal sofort und beim Server (`/workflows/validate`, entprellt);
+  Hinweise erscheinen am Schritt, in der Liste und im roten Kasten. «Aktiv» speichert nur
+  ohne Hinweise, Entwurf und Inaktiv auch mit.
+- **Weitere Funktionen:**
+  - JSON-Ansicht mit Übernahme; ungültiges JSON bleibt mit Meldung stehen.
+  - Speichern in der JSON-Ansicht speichert den Text.
+  - Schutz vor Verlust beim Verlassen.
+- **HTML-Editor** (TipTap 3) für E-Mail-Inhalte:
+  - Formatierung, Listen, Link und Knopf mit Adresse im Editor statt Browser-Dialog
+  - Platzhalter aus den Kontext-Variablen
+  - wird erst bei Bedarf geladen (`@defer`)
+- **Definition wie v3 sie liest:** Knopftext am Übergang (`label`), Seitenvorlage in
+  `ui.template`, kein `ui.events`; die 2.x-Schlüssel `ui.eventLabels` und `ui.templateId`
+  werden weiter gelesen.
+- **Demo:** Ersatz-Backend im Browser mit dem Beispiel `antrag-pruefung`; E2E-Tests für den
+  Editor.
+
 ### Neubau 3.0 – Phase 6: Client-Fundament
 
 - **Gestaltung:** `styles/wf.css` mit Tokens `--wfb-*` nach dem Design-Canvas (hell und

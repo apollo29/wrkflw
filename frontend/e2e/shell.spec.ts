@@ -31,34 +31,4 @@ test.describe('Shell der Admin-Oberfläche', () => {
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/admin\/instanzen$/);
   });
-
-  test('ungespeicherte Änderungen: Rückfrage beim Verlassen', async ({ page }) => {
-    await page.goto('/admin/workflows/antrag');
-    await page.getByTestId('simulate-change').click();
-    await expect(page.getByText('Ungespeicherte Änderungen')).toBeVisible();
-
-    await page.getByRole('link', { name: 'Instanzen' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Ungespeicherte Änderungen' });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('button')).toHaveText([
-      'Verwerfen',
-      'Im Editor bleiben',
-      'Speichern und verlassen',
-    ]);
-    await expect(dialog.getByRole('button', { name: 'Verwerfen' })).toBeFocused();
-
-    await dialog.getByRole('button', { name: 'Im Editor bleiben' }).click();
-    await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/admin\/workflows\/antrag$/);
-
-    await page.getByRole('link', { name: 'Instanzen' }).click();
-    await expect(dialog).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/admin\/workflows\/antrag$/);
-
-    await page.getByRole('link', { name: 'Instanzen' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Speichern und verlassen' }).click();
-    await expect(page).toHaveURL(/\/admin\/instanzen$/);
-  });
 });

@@ -1,0 +1,1013 @@
+import {
+  EditorModel,
+  compileCondition,
+  fromDefinition,
+  orderedStepNames,
+  parseCondition,
+  PreviewNode,
+  previewFlow,
+  removeStep,
+  toDefinition,
+} from './definition-mapping';
+
+describe('definition-mapping', () => {
+  describe('compileCondition', () => {
+    it('quotes string values', () => {
+      expect(compileCondition({ field: 'plan', op: '==', value: 'enterprise' })).toBe(
+        "context['plan'] == 'enterprise'",
+      );
+    });
+
+    it('maps Ja/Nein and true/false to booleans', () => {
+      expect(compileCondition({ field: 'acceptedTerms', op: '==', value: 'Ja' })).toBe(
+        "context['acceptedTerms'] == true",
+      );
+      expect(compileCondition({ field: 'x', op: '!=', value: 'false' })).toBe(
+        "context['x'] != false",
+      );
+    });
+
+    it('keeps numbers bare and returns true for empty field', () => {
+      expect(compileCondition({ field: 'amount', op: '>', value: '1000' })).toBe(
+        "context['amount'] > 1000",
+      );
+      expect(compileCondition({ field: '', op: '==', value: 'x' })).toBe('true');
+    });
+  });
+
+  describe('parseCondition', () => {
+    it('parses string, boolean and number expressions', () => {
+      expect(parseCondition("context['plan'] == 'enterprise'")).toEqual({
+        field: 'plan',
+        op: '==',
+        value: 'enterprise',
+      });
+      expect(parseCondition("context['acceptedTerms'] == true")).toEqual({
+        field: 'acceptedTerms',
+        op: '==',
+        value: 'true',
+      });
+      expect(parseCondition("context['amount'] > 1000")).toEqual({
+        field: 'amount',
+        op: '>',
+        value: '1000',
+      });
+    });
+
+    it('returns null for non-matching expressions', () => {
+      expect(parseCondition("context['a'] and context['b']")).toBeNull();
+      expect(parseCondition('true')).toBeNull();
+    });
+  });
+
+  it('round-trips a model through toDefinition/fromDefinition', () => {
+    const model: EditorModel = {
+      id: 'flow',
+      name: 'Flow',
+      startStep: 'ask',
+      inputs: [],
+      steps: [
+        {
+          name: 'ask',
+          type: 'interactive',
+          action: null,
+          config: {},
+          title: 'Frage',
+          description: 'Bitte ausfüllen',
+          fields: [{ name: 'ok', label: 'OK', type: 'boolean' }],
+          pageTemplateId: '',
+          backAllowed: false,
+          publicVisible: null,
+          delaySeconds: null,
+          transitions: [
+            {
+              to: 'done',
+              event: 'submit',
+              mode: 'assistant',
+              condition: { field: 'ok', op: '==', value: 'Ja' },
+              raw: 'true',
+              label: '',
+            },
+          ],
+        },
+        {
+          name: 'done',
+          type: 'automatic',
+          action: null,
+          config: {},
+          title: '',
+          description: '',
+          fields: [],
+          pageTemplateId: '',
+          backAllowed: false,
+          publicVisible: null,
+          delaySeconds: null,
+          transitions: [],
+        },
+      ],
+    };
+
+    const json = toDefinition(model);
+    const steps = json['steps'] as Record<string, Record<string, unknown>>;
+    expect((steps['ask']['transitions'] as Record<string, unknown>[])[0]).toEqual({
+      to: 'done',
+      event: 'submit',
+      when: "context['ok'] == true",
+    });
+    // v3: Ereignisse ergeben sich aus den Übergängen, `ui.events` schreibt der Editor nicht mehr.
+    expect('events' in (steps['ask']['ui'] as Record<string, unknown>)).toBe(false);
+
+    const restored = fromDefinition(json);
+    expect(restored.startStep).toBe('ask');
+    const t = restored.steps[0].transitions[0];
+    expect(t.mode).toBe('assistant');
+    expect(t.condition).toEqual({ field: 'ok', op: '==', value: 'true' });
+  });
+
+  it('reads the page template from ui.template and writes it there', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: { ask: { type: 'interactive', ui: { template: 'neu' }, transitions: [] } },
+    });
+    expect(model.steps[0].pageTemplateId).toBe('neu');
+  });
+
+  it('reads the 2.x key ui.templateId and writes ui.template', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: {
+        ask: {
+          type: 'interactive',
+          ui: { title: 'Hi', events: ['submit'], templateId: 'welcome-page' },
+          transitions: [{ to: 'ask', event: 'submit' }],
+        },
+      },
+    });
+    expect(model.steps[0].pageTemplateId).toBe('welcome-page');
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect(ui['template']).toBe('welcome-page');
+    expect('templateId' in ui).toBe(false);
+  });
+
+  it('omits ui.template when no page template is selected', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: { ask: { type: 'interactive', ui: { events: [] }, transitions: [] } },
+    });
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect('template' in ui).toBe(false);
+  });
+
+  it('keeps the handler of a file field across a load/save round trip', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'upload',
+      steps: {
+        upload: {
+          type: 'interactive',
+          ui: {
+            fields: [
+              {
+                name: 'zertifikat',
+                label: 'Zertifikat',
+                type: 'file',
+                handler: 'uefa_certificate',
+              },
+            ],
+          },
+          transitions: [],
+        },
+      },
+    });
+    expect(model.steps[0].fields[0].handler).toBe('uefa_certificate');
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['upload'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect((ui['fields'] as Record<string, unknown>[])[0]['handler']).toBe('uefa_certificate');
+  });
+
+  it('drops the handler when the field is not a file field', () => {
+    // Der Editor laesst den Typ umstellen; ein Handler an einem Textfeld
+    // wirkte nirgends, bliebe aber als Altlast in der Definition stehen.
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'ask',
+      steps: {
+        ask: {
+          type: 'interactive',
+          ui: {
+            fields: [{ name: 'wert', label: 'Wert', type: 'text', handler: 'uefa_certificate' }],
+          },
+          transitions: [],
+        },
+      },
+    });
+    expect(model.steps[0].fields[0].handler).toBeUndefined();
+
+    const ui = (toDefinition(model)['steps'] as Record<string, Record<string, unknown>>)['ask'][
+      'ui'
+    ] as Record<string, unknown>;
+    expect('handler' in (ui['fields'] as Record<string, unknown>[])[0]).toBe(false);
+  });
+
+  /**
+   * Einen Schritt zu loeschen liess die Reihenfolge im Editor «zufaellig»
+   * aussehen. Der Grund war keine Sortierung, sondern ein Abriss: die
+   * Uebergaenge zeigten weiter auf den geloeschten Namen, die Kette brach
+   * dort ab, und alles dahinter fiel in die Sammelstelle fuer unerreichbare
+   * Schritte am Ende — in Einfuege- statt Ablaufreihenfolge.
+   *
+   * Loeschen heisst deshalb: die Kette schliessen, nicht nur ein Element
+   * entfernen.
+   */
+  describe('removeStep', () => {
+    function kette(): EditorModel {
+      return fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: {
+          a: { type: 'automatic', transitions: [{ to: 'b' }] },
+          b: { type: 'automatic', transitions: [{ to: 'c' }] },
+          c: { type: 'automatic', transitions: [{ to: 'd' }] },
+          d: { type: 'automatic', transitions: [] },
+        },
+      });
+    }
+
+    it('bridges the gap so the chain stays intact', () => {
+      const model = removeStep(kette(), 1); // b raus
+
+      expect(model.steps.map((s) => s.name)).toEqual(['a', 'c', 'd']);
+      expect(model.steps[0].transitions[0].to).toBe('c');
+      // Der eigentliche Nachweis: die Ablaufreihenfolge stimmt noch. Vorher
+      // stand hier ['a', 'c', 'd'] nur zufaellig — weil c und d als
+      // unerreichbar hinten angehaengt wurden.
+      expect(orderedStepNames(model)).toEqual(['a', 'c', 'd']);
+    });
+
+    it('keeps every remaining step reachable when the start step goes', () => {
+      const model = removeStep(kette(), 0); // a raus
+
+      expect(model.startStep).toBe('b');
+      expect(orderedStepNames(model)).toEqual(['b', 'c', 'd']);
+    });
+
+    /**
+     * Bei mehreren Ausgaengen gibt es kein eindeutiges Ersatzziel — eine
+     * Verzweigung waere geraten. Dann bleiben die eingehenden Uebergaenge
+     * nicht als Verweise ins Leere stehen (die Definition liesse sich nicht
+     * mehr speichern), sondern fallen weg.
+     */
+    it('drops incoming transitions when the deleted step branched', () => {
+      const model = removeStep(
+        fromDefinition({
+          id: 'f',
+          startStep: 'a',
+          steps: {
+            a: { type: 'automatic', transitions: [{ to: 'gabel' }] },
+            gabel: { type: 'automatic', transitions: [{ to: 'links' }, { to: 'rechts' }] },
+            links: { type: 'automatic', transitions: [] },
+            rechts: { type: 'automatic', transitions: [] },
+          },
+        }),
+        1,
+      );
+
+      expect(model.steps[0].transitions).toEqual([]);
+      // Kein Verweis auf einen Schritt, den es nicht mehr gibt.
+      const namen = new Set(model.steps.map((s) => s.name));
+      for (const step of model.steps) {
+        for (const t of step.transitions) {
+          expect(namen.has(t.to)).toBe(true);
+        }
+      }
+    });
+
+    it('does not invent a self-loop when bridging would create one', () => {
+      // a -> b -> a: waere b weg, zeigte a auf sich selbst. Eine Schleife, die
+      // niemand angelegt hat, ist schlimmer als ein fehlender Uebergang.
+      const model = removeStep(
+        fromDefinition({
+          id: 'f',
+          startStep: 'a',
+          steps: {
+            a: { type: 'automatic', transitions: [{ to: 'b' }] },
+            b: { type: 'automatic', transitions: [{ to: 'a' }] },
+          },
+        }),
+        1,
+      );
+
+      expect(model.steps.map((s) => s.name)).toEqual(['a']);
+      expect(model.steps[0].transitions).toEqual([]);
+    });
+
+    it('leaves the model alone for an index that does not exist', () => {
+      const model = kette();
+      expect(removeStep(model, 9)).toBe(model);
+    });
+
+    it('empties the start step when the last step goes', () => {
+      const model = removeStep(
+        fromDefinition({
+          id: 'f',
+          startStep: 'a',
+          steps: { a: { type: 'automatic', transitions: [] } },
+        }),
+        0,
+      );
+
+      expect(model.steps).toEqual([]);
+      expect(model.startStep).toBe('');
+    });
+  });
+
+  /**
+   * `ui.public` entscheidet, ob ein Schritt auf der oeffentlichen Seite
+   * erscheint. Der Vorgabefall ist «nur Eingabe-Schritte» und steht NICHT in
+   * der Definition — sonst waere jede bestehende Definition beim naechsten
+   * Speichern um ein Feld reicher, das nichts aendert.
+   */
+  describe('ui.public', () => {
+    function uiVon(model: EditorModel, step: string): Record<string, unknown> | undefined {
+      const steps = toDefinition(model)['steps'] as Record<string, Record<string, unknown>>;
+      return steps[step]['ui'] as Record<string, unknown> | undefined;
+    }
+
+    it('leaves ui.public out when the step follows the default', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'interactive', ui: { title: 'A' }, transitions: [] } },
+      });
+
+      expect(model.steps[0].publicVisible).toBeNull();
+      expect('public' in (uiVon(model, 'a') ?? {})).toBe(false);
+    });
+
+    it('round-trips an explicit show and an explicit hide', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'zeigen',
+        steps: {
+          zeigen: {
+            type: 'automatic',
+            ui: { public: true, title: 'Wird geprüft' },
+            transitions: [],
+          },
+          verstecken: { type: 'interactive', ui: { public: false }, transitions: [] },
+        },
+      });
+
+      expect(model.steps[0].publicVisible).toBe(true);
+      expect(model.steps[1].publicVisible).toBe(false);
+      expect(uiVon(model, 'zeigen')?.['public']).toBe(true);
+      expect(uiVon(model, 'verstecken')?.['public']).toBe(false);
+    });
+
+    /**
+     * Ein automatischer Schritt hatte bisher gar kein `ui` in der Definition.
+     * Ohne diesen Fall waere «anzeigen» an ihm im Editor einstellbar, aber
+     * nach dem Speichern wieder weg — die stille Sorte Fehler.
+     */
+    it('creates a ui block for an automatic step that opts in', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+      model.steps[0].publicVisible = true;
+
+      expect(uiVon(model, 'a')?.['public']).toBe(true);
+    });
+
+    it('keeps a heading on a visible background step', () => {
+      // Ohne sie stand in der Checkliste der technische Schrittname — genau
+      // das war auf dem Screenshot zu sehen.
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: {
+          a: {
+            type: 'automatic',
+            ui: { public: true, title: 'Zertifikat hochladen' },
+            transitions: [],
+          },
+        },
+      });
+
+      expect(model.steps[0].title).toBe('Zertifikat hochladen');
+      expect(uiVon(model, 'a')?.['title']).toBe('Zertifikat hochladen');
+    });
+
+    it('does not create a ui block for an automatic step on the default', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(uiVon(model, 'a')).toBeUndefined();
+    });
+  });
+
+  /**
+   * Knopftexte stehen in v3 am Übergang (`label`), so liest sie die Engine
+   * (`currentStep.events[].label`). Der 2.x-Schlüssel `ui.eventLabels` wird noch gelesen.
+   */
+  describe('button labels', () => {
+    function transitionsVon(model: EditorModel, step: string): Record<string, unknown>[] {
+      const steps = toDefinition(model)['steps'] as Record<string, Record<string, unknown>>;
+      return steps[step]['transitions'] as Record<string, unknown>[];
+    }
+
+    function uiVon(model: EditorModel, step: string): Record<string, unknown> {
+      const steps = toDefinition(model)['steps'] as Record<string, Record<string, unknown>>;
+      return (steps[step]['ui'] ?? {}) as Record<string, unknown>;
+    }
+
+    it('reads labels from the transitions and writes them back there', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'frage',
+        steps: {
+          frage: {
+            type: 'interactive',
+            transitions: [
+              { to: 'weiter', event: 'submit' },
+              { to: 'hilfe_schritt', event: 'hilfe', label: 'Ich komme nicht weiter' },
+            ],
+          },
+          weiter: { type: 'automatic', transitions: [] },
+          hilfe_schritt: { type: 'automatic', transitions: [] },
+        },
+      });
+
+      expect(model.steps[0].transitions.map((t) => t.label)).toEqual([
+        '',
+        'Ich komme nicht weiter',
+      ]);
+      expect(transitionsVon(model, 'frage')).toEqual([
+        { to: 'weiter', event: 'submit' },
+        { to: 'hilfe_schritt', event: 'hilfe', label: 'Ich komme nicht weiter' },
+      ]);
+      expect('eventLabels' in uiVon(model, 'frage')).toBe(false);
+    });
+
+    it('takes 2.x ui.eventLabels as fallback and moves them to the transitions', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'frage',
+        steps: {
+          frage: {
+            type: 'interactive',
+            ui: { eventLabels: { submit: 'Absenden' } },
+            transitions: [
+              { to: 'a', event: 'submit', when: "context['x'] == 'y'" },
+              { to: 'b', event: 'submit' },
+            ],
+          },
+          a: { type: 'automatic', transitions: [] },
+          b: { type: 'automatic', transitions: [] },
+        },
+      });
+
+      expect(transitionsVon(model, 'frage').map((t) => t['label'])).toEqual([
+        'Absenden',
+        'Absenden',
+      ]);
+      expect('eventLabels' in uiVon(model, 'frage')).toBe(false);
+    });
+
+    it('drops labels at background steps', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: {
+          a: { type: 'automatic', transitions: [{ to: 'b', label: 'x' }] },
+          b: { transitions: [] },
+        },
+      });
+      expect(transitionsVon(model, 'a')).toEqual([{ to: 'b' }]);
+    });
+  });
+
+  /**
+   * Der deklarierte Startkontext (`inputs`). Ohne ihn steht nirgends, was ein
+   * Ablauf beim Start braucht — und fehlt etwas, lief er bisher trotzdem an.
+   */
+  describe('inputs', () => {
+    it('reads a declaration with all its properties', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [
+          { name: 'trainer_id', label: 'Trainer-ID', required: true, beispiel: 'TR-0123' },
+          { name: 'kjs_mail' },
+        ],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs[0]).toEqual({
+        name: 'trainer_id',
+        label: 'Trainer-ID',
+        required: true,
+        beispiel: 'TR-0123',
+      });
+      // Ohne Angabe: Label faellt auf den Namen zurueck, Pflicht ist aus.
+      expect(model.inputs[1]).toEqual({
+        name: 'kjs_mail',
+        label: 'kjs_mail',
+        required: false,
+        beispiel: '',
+      });
+    });
+
+    it('writes the declaration back', () => {
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        inputs: [{ name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' }],
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'E-Mail', required: true, beispiel: 'a@b.ch' },
+      ]);
+    });
+
+    it('writes no inputs key when nothing is declared', () => {
+      // Sonst waere jede bestehende Definition beim naechsten Speichern um ein
+      // leeres Feld reicher.
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+
+      expect(model.inputs).toEqual([]);
+      expect('inputs' in toDefinition(model)).toBe(false);
+    });
+
+    it('drops a nameless row', () => {
+      // Der Editor legt eine leere Zeile an, sobald jemand «+ Angabe» drueckt.
+      // Sie darf keinen Start blockieren.
+      const model = fromDefinition({
+        id: 'f',
+        startStep: 'a',
+        steps: { a: { type: 'automatic', transitions: [] } },
+      });
+      model.inputs = [
+        { name: '  ', label: 'leer', required: true, beispiel: '' },
+        { name: 'mail', label: '', required: false, beispiel: '' },
+      ];
+
+      expect(toDefinition(model)['inputs']).toEqual([
+        { name: 'mail', label: 'mail', required: false, beispiel: '' },
+      ]);
+    });
+  });
+
+  it('orders steps breadth-first from the start step', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'automatic', transitions: [{ to: 'b' }] },
+        b: { type: 'automatic', transitions: [] },
+        orphan: { type: 'automatic', transitions: [] },
+      },
+    });
+    expect(orderedStepNames(model)).toEqual(['a', 'b', 'orphan']);
+  });
+
+  /**
+   * GEMELDET: nach Abschluss eines Kind-Workflows wurde der nächste Schritt
+   * im Eltern-Ablauf übersprungen.
+   *
+   * Der Übergang aus dem Workflow-Schritt trug ein `"event": "submit"` — ein
+   * Rest davon, dass der Schritt vorher interaktiv war. Ein automatischer
+   * Schritt bekommt nie einen Knopfdruck; die Engine fand keinen Weg hinaus
+   * und hielt das für das Ende des Ablaufs.
+   *
+   * Das Feld ist im Editor bei automatischen Schritten gar nicht sichtbar —
+   * genau deshalb muss das Speichern es entfernen: sonst schleppt die
+   * Definition eine Einstellung mit, die niemand mehr sehen oder ändern kann.
+   */
+  it('schreibt kein Ereignis an einen Übergang aus einem automatischen Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: {
+          type: 'automatic',
+          action: 'start_workflow',
+          config: { workflowId: 'kind', waitForCompletion: true },
+          transitions: [{ to: 'b', event: 'submit' }],
+        },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBeUndefined();
+    expect(json['steps']['a']['transitions'][0]['to']).toBe('b');
+  });
+
+  /** Die Gegenprobe: beim interaktiven Schritt bleibt es natürlich stehen. */
+  it('behält das Ereignis am interaktiven Schritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'interactive', transitions: [{ to: 'b', event: 'submit' }] },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['transitions'][0]['event']).toBe('submit');
+  });
+
+  /**
+   * Ein Hintergrundschritt kann stehen bleiben — der Schritt, der auf einen
+   * verknüpften Ablauf wartet, ist genau so einer. Die öffentliche Seite zeigt
+   * dann seinen Text, also muss er einen haben können.
+   */
+  it('schreibt Beschreibung und Seitenvorlage auch an einem sichtbaren Hintergrundschritt', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: {
+          type: 'automatic',
+          action: 'start_workflow',
+          ui: {
+            public: true,
+            title: 'Wird geprüft',
+            description: 'Das dauert einen Moment.',
+            template: 'warten',
+          },
+          transitions: [{ to: 'b' }],
+        },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+
+    const json = toDefinition(model) as Record<string, any>;
+    const ui = json['steps']['a']['ui'];
+
+    expect(ui['title']).toBe('Wird geprüft');
+    expect(ui['description']).toBe('Das dauert einen Moment.');
+    expect(ui['template']).toBe('warten');
+    expect(ui['public']).toBe(true);
+  });
+
+  /**
+   * Die Gegenprobe: ein Schritt auf «Standard» bekommt weiterhin gar kein `ui`.
+   * Sonst wäre jede bestehende Definition beim nächsten Speichern um ein Objekt
+   * reicher, das nichts ändert.
+   */
+  it('schreibt kein ui an einen Hintergrundschritt ohne Sichtbarkeits-Entscheid', () => {
+    const model = fromDefinition({
+      id: 'f',
+      startStep: 'a',
+      steps: {
+        a: { type: 'automatic', transitions: [{ to: 'b' }] },
+        b: { type: 'automatic', transitions: [] },
+      },
+    });
+    model.steps[0].description = 'wird nicht geschrieben';
+
+    const json = toDefinition(model) as Record<string, any>;
+
+    expect(json['steps']['a']['ui']).toBeUndefined();
+  });
+  /**
+   * Die Vorschau eines Ablaufs mit Verzweigung.
+   *
+   * `orderedStepNames()` ist eine Breitensuche und liefert eine flache Liste.
+   * Bei einem Schritt mit zwei Ausgaengen standen danach beide Ziele
+   * nebeneinander in der Reihe, mit einem Pfeil dazwischen — als liefe der eine
+   * nach dem anderen. Es laeuft aber entweder der eine oder der andere, und
+   * wovon das abhaengt, war nicht zu sehen. Das Bild war nicht unvollstaendig,
+   * es war falsch.
+   *
+   * Die Faelle unten gehen alle durch `fromDefinition()` und damit durch den
+   * echten Lese-Weg. Das ist hier wesentlich: ein Uebergang ohne Bedingung
+   * steht in der JSON als `when: "true"` und kommt als `mode: 'raw'` zurueck,
+   * nicht als leerer Assistent. Mit handgebauten Objekten waere genau dieser
+   * Fall nie aufgefallen.
+   */
+  describe('previewFlow', () => {
+    /** Kompakte Schreibweise, damit die Erwartung in eine Zeile passt. */
+    function kurz(nodes: PreviewNode[]): string[] {
+      return nodes.map((n) =>
+        n.kind === 'step'
+          ? `S:${n.name}`
+          : `F:${n.from}[` +
+            n.lanes
+              .map((l) => `${l.isElse ? 'sonst' : l.condition}>${l.steps.join('+')}`)
+              .join('|') +
+            `]=>${n.merge ?? '-'}`,
+      );
+    }
+
+    function ablauf(steps: Record<string, unknown>, startStep = 'a'): EditorModel {
+      return fromDefinition({ id: 'f', startStep, steps });
+    }
+
+    it('reiht einen geraden Ablauf als Schritte', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b' }] },
+              b: { type: 'automatic', transitions: [{ to: 'c' }] },
+              c: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b', 'S:c']);
+    });
+
+    it('macht aus zwei Ausgaengen eine Verzweigung mit Zusammenfuehrung', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['status'] == 'paid'" }, { to: 'c' }],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['status'] == 'paid'>b|sonst>c]=>d"]);
+    });
+
+    /**
+     * Der Fall, den nur der echte Lese-Weg zeigt: `{ to: 'c' }` ohne `when`
+     * wird beim Speichern zu `when: "true"`. Ohne diese Zusage stuende in der
+     * Vorschau die «Bedingung» `true`, wo «Sonst» hingehoert.
+     */
+    it('liest `when: "true"` als bedingungslos, nicht als Bedingung', () => {
+      const [fork] = previewFlow(
+        ablauf({
+          a: {
+            type: 'automatic',
+            transitions: [
+              { to: 'b', when: "context['x'] == 1" },
+              { to: 'c', when: 'true' },
+            ],
+          },
+          b: { type: 'automatic', transitions: [] },
+          c: { type: 'automatic', transitions: [] },
+        }),
+      );
+
+      expect(fork.kind).toBe('fork');
+      if (fork.kind !== 'fork') {
+        return;
+      }
+      expect(fork.lanes[1].isElse).toBe(true);
+      expect(fork.lanes[1].condition).toBe('');
+    });
+
+    it('nimmt mehrere Schritte auf eine Spur und findet die gemeinsame Zusammenfuehrung', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [
+                  { to: 'b', when: "context['x'] == 1" },
+                  { to: 'c', when: "context['x'] == 2" },
+                  { to: 'e' },
+                ],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'z' }] },
+              c: { type: 'automatic', transitions: [{ to: 'c2' }] },
+              c2: { type: 'automatic', transitions: [{ to: 'z' }] },
+              e: { type: 'automatic', transitions: [{ to: 'z' }] },
+              z: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|context['x'] == 2>c+c2|sonst>e]=>z"]);
+    });
+
+    /**
+     * GEMELDET an einem echten Ablauf: «nachweise gibt eine Verzweigung, diese
+     * wird aber wieder zusammengefuehrt bei notify_complete. Ein Zweig geht zu
+     * upload_uefa_certificate und anschliessend zu notify_complete, der andere
+     * direkt. Danach zu done und dort ist Schluss.»
+     *
+     * Die Vorschau zeigte stattdessen zwei Spuren ohne Zusammenfuehrung und
+     * schob `notify_complete` samt `done` in die «Sonst»-Spur. Der Grund:
+     * `upload_uefa_certificate` hat selbst mehrere Ausgaenge, und die Suche sah
+     * nur die einspurige Kette — was dahinter lag, war fuer sie nicht da.
+     */
+    it('findet die Zusammenfuehrung auch hinter einem Schritt, der selbst verzweigt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf(
+              {
+                nachweise: {
+                  type: 'interactive',
+                  transitions: [
+                    { to: 'upload_uefa_certificate', when: "context['uefa_webinar'] == true" },
+                    { to: 'notify_complete' },
+                  ],
+                },
+                upload_uefa_certificate: {
+                  type: 'automatic',
+                  transitions: [
+                    { to: 'notify_complete', when: "context['ok'] == true" },
+                    { to: 'notify_complete' },
+                  ],
+                },
+                notify_complete: { type: 'automatic', transitions: [{ to: 'done' }] },
+                done: { type: 'automatic', transitions: [] },
+              },
+              'nachweise',
+            ),
+          ),
+        ),
+      ).toEqual([
+        "F:nachweise[context['uefa_webinar'] == true>upload_uefa_certificate|sonst>]=>notify_complete",
+        'S:done',
+      ]);
+    });
+
+    /**
+     * Die naheliegende falsche Antwort waere `done`: auch dort kommen beide
+     * Wege an. Gesucht ist aber der Punkt, an dem sie sich TREFFEN.
+     */
+    it('nimmt den ersten gemeinsamen Punkt, nicht irgendeinen', () => {
+      const [fork] = previewFlow(
+        ablauf({
+          a: {
+            type: 'automatic',
+            transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }],
+          },
+          b: { type: 'automatic', transitions: [{ to: 'treffpunkt' }] },
+          c: { type: 'automatic', transitions: [{ to: 'treffpunkt' }] },
+          treffpunkt: { type: 'automatic', transitions: [{ to: 'danach' }] },
+          danach: { type: 'automatic', transitions: [] },
+        }),
+      );
+
+      expect(fork.kind === 'fork' ? fork.merge : null).toBe('treffpunkt');
+    });
+
+    it('laesst die Spuren offen, wenn sie nirgends zusammenlaufen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }],
+              },
+              b: { type: 'automatic', transitions: [] },
+              c: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>-"]);
+    });
+
+    /**
+     * Zwei Bedingungen auf dasselbe Ziel: die Spuren sind leer, die
+     * Zusammenfuehrung ist dieses Ziel. Im Bild zwei Spuren, die nur ihre
+     * Bedingung tragen — und genau das ist richtig, denn mehr passiert nicht.
+     */
+    it('fuehrt zwei Uebergaenge auf dasselbe Ziel sofort zusammen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'b' }],
+              },
+              b: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>|sonst>]=>b"]);
+    });
+
+    it('geht nach der Zusammenfuehrung einspurig weiter', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [{ to: 'e' }] },
+              e: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>d", 'S:e']);
+    });
+
+    it('zeichnet eine zweite Verzweigung, wenn die Zusammenfuehrung selbst verzweigt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: {
+                type: 'automatic',
+                transitions: [{ to: 'e', when: "context['y'] == 2" }, { to: 'f' }],
+              },
+              e: { type: 'automatic', transitions: [{ to: 'g' }] },
+              f: { type: 'automatic', transitions: [{ to: 'g' }] },
+              g: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>d", "F:d[context['y'] == 2>e|sonst>f]=>g"]);
+    });
+
+    /**
+     * Ein Ablauf darf im Kreis laufen — eine Erinnerung, die erneut wartet.
+     * Die Vorschau darf es nicht.
+     */
+    it('endet an einem Zyklus statt sich zu verlaufen', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: { type: 'automatic', transitions: [{ to: 'b' }] },
+              b: { type: 'automatic', transitions: [{ to: 'a' }] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b']);
+    });
+
+    it('haengt nicht erreichbare Schritte hinten an, aber keinen zweimal', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'c' }],
+              },
+              b: { type: 'automatic', transitions: [{ to: 'd' }] },
+              c: { type: 'automatic', transitions: [{ to: 'd' }] },
+              d: { type: 'automatic', transitions: [] },
+              waise: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(["F:a[context['x'] == 1>b|sonst>c]=>d", 'S:waise']);
+    });
+
+    it('ignoriert einen Uebergang auf einen Schritt, den es nicht gibt', () => {
+      expect(
+        kurz(
+          previewFlow(
+            ablauf({
+              a: {
+                type: 'automatic',
+                transitions: [{ to: 'b', when: "context['x'] == 1" }, { to: 'gibtsnicht' }],
+              },
+              b: { type: 'automatic', transitions: [] },
+            }),
+          ),
+        ),
+      ).toEqual(['S:a', 'S:b']);
+    });
+  });
+});

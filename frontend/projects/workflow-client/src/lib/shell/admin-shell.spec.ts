@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -14,6 +16,8 @@ describe('WfAdminShell', () => {
           withComponentInputBinding(),
         ),
         provideWorkflowAdmin({ apiBaseUrl: '/api', theme: 'dunkel' }),
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     });
   });
@@ -56,10 +60,13 @@ describe('WfAdminShell', () => {
     expect(shell.getAttribute('data-theme')).toBe('hell');
   });
 
-  it('passes route parameters to the editor page', async () => {
-    const harness = await RouterTestingHarness.create('/admin/workflows/antrag/v/2');
-    expect(harness.routeNativeElement?.textContent).toContain('Editor: antrag');
-    expect(harness.routeNativeElement?.textContent).toContain('Version 2');
-    expect(TestBed.inject(Router).url).toBe('/admin/workflows/antrag/v/2');
+  it('opens the editor for a new workflow', async () => {
+    const harness = await RouterTestingHarness.create('/admin/workflows/neu');
+    const editor = (harness.fixture.nativeElement as HTMLElement).querySelector(
+      'wf-workflow-editor',
+    );
+    expect(editor).not.toBeNull();
+    expect(editor?.querySelector('[data-testid="editor-version"]')?.textContent).toContain('neu');
+    expect(TestBed.inject(Router).url).toBe('/admin/workflows/neu');
   });
 });

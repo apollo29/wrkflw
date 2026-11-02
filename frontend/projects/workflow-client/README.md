@@ -4,8 +4,8 @@ Angular-Client der Workflow-Engine v3: Übersicht, Editor, Instanzen, Vorlagen u
 Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalone,
 zoneless, Signals; Angular ≥ 22.2.
 
-> Im Aufbau (siehe `PLAN.md`). Phase 6 liefert Shell, Gestaltung, Bausteine, Texte und
-> API-Schicht; die fachlichen Seiten folgen ab Phase 7.
+> Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht und der
+> Editor sind da; Übersicht, Instanzen, Vorlagen und Datenquellen folgen.
 
 ## Einbinden
 
@@ -68,3 +68,15 @@ In eigenen Templates: `{{ 'nav.workflows' | wfT }}`, im Code `inject(WfI18n).t(�
 (alle Routen der API, Fehler als `WfApiError`), `WorkflowResources` (Listen als
 `httpResource`). Seiten mit Eingaben schützen sich mit `wfUnsavedChangesGuard` und
 `wfBeforeUnload()` vor Verlust (E-08). Die Demo zeigt alle Bausteine unter `/bausteine`.
+
+## Editor
+
+`workflowAdminRoutes` enthält den Editor unter `workflows/neu`, `workflows/:id` und
+`workflows/:id/v/:version` (ältere Versionen schreibgeschützt). Er braucht von der API
+`/workflows`, `/workflows/validate`, `/actions`, `/data-models`, `/upload-handlers` und
+`/templates`. Fehlende Kataloge sind kein Fehler: die Auswahl bleibt leer und das Feld
+erklärt es.
+
+Der HTML-Editor für E-Mail-Inhalte (`wf-html-editor`, TipTap 3) wird erst geladen, wenn
+ein solches Feld erscheint. Die Modell-Funktionen (`fromDefinition`, `toDefinition`,
+`renameStep`, `flowSections` …) sind exportiert und ohne Angular nutzbar.
