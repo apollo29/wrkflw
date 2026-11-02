@@ -9,6 +9,30 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 8: Übersicht und Instanzen
+
+- **Übersicht «Workflows»** (9.2, E-60 bis E-68):
+  - eine Zeile je Workflow mit Vorschaubild (gleiche Berechnung wie die Ablauf-Vorschau,
+    verkleinert statt abgeschnitten), Name, ID, Version, Status, Schritten, Durchläufen und
+    Änderungsdatum
+  - Suche und Statusfilter; Zeile öffnet den Editor, auch per Tastatur
+  - ältere Versionen im Aufklapper: «Ansehen» öffnet schreibgeschützt, «×» entfernt nach
+    Rückfrage, gesperrte Versionen mit Grund
+  - leere Zustände; auf schmalen Flächen Karten mit dem Bild oben
+- **Instanzen:**
+  - Statusfilter (in der Adresse), Tabelle mit Workflow und Version, Subjekt, Schritt in
+    der Farbe seiner Art, Status mit Fehlergrund, nächstem Lauf und Aktualisierung
+  - «Verlauf» klappt den Verlauf in Sätzen auf, nur mit Feldnamen (F-90, F-91)
+  - **Durchlauf abbrechen** mit Rückfrage (offener Punkt 4); «Weitere laden» in Schritten
+    von 50
+- **API:** `GET /workflows` liefert `olderRunning`, die laufenden Durchläufe auf älteren
+  Versionen («1 laufend auf v2», E-66).
+- **Demo:** Beispieldurchläufe nach 9.13 mit Verlauf, Fehlschlag, Timer und Abbrechen;
+  `antrag-pruefung` in drei Versionen, `mahnung` als Entwurf.
+- **Korrekturen:**
+  - Linkfarbe der Grundstile überschreibt keine Knöpfe mehr.
+  - Breite Tabellen scrollen in ihrer Zone statt der ganzen Seite.
+
 ### Neubau 3.0 – Phase 7: Editor
 
 - **Editor als eigene Seite** (`workflows/neu`, `workflows/:id`, `workflows/:id/v/:version`

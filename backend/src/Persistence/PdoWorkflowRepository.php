@@ -131,6 +131,17 @@ final readonly class PdoWorkflowRepository implements
              ORDER BY d.name, d.id',
         );
 
+        // Laufende Durchläufe auf älteren Versionen (E-66), eine Abfrage für alle Abläufe.
+        $older = [];
+        foreach ($this->fetchAll(
+            'SELECT i.definition_id, i.definition_ver, COUNT(*) AS n FROM wf_instance i
+             WHERE i.' . self::RUNNING_SQL . '
+               AND i.definition_ver < (SELECT MAX(m.version) FROM wf_definition m WHERE m.id = i.definition_id)
+             GROUP BY i.definition_id, i.definition_ver ORDER BY i.definition_id, i.definition_ver DESC',
+        ) as $row) {
+            $older[self::str($row, 'definition_id')][] = ['version' => self::int($row, 'definition_ver'), 'running' => self::int($row, 'n')];
+        }
+
         $out = [];
         foreach ($rows as $row) {
             $id = self::str($row, 'id');
@@ -149,6 +160,7 @@ final readonly class PdoWorkflowRepository implements
                 totalInstances: self::int($row, 'total'),
                 olderVersions: self::int($row, 'older'),
                 structure: $structure,
+                olderRunning: $older[$id] ?? [],
             );
         }
 

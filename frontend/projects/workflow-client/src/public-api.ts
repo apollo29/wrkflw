@@ -43,3 +43,11 @@ export * from './lib/editor/model/local-checks';
 export * from './lib/editor/state/editor-store';
 export * from './lib/editor/html/html-editor';
 export * from './lib/editor/components/workflow-editor';
+
+// Übersicht und Instanzen
+export * from './lib/format';
+export * from './lib/overview/thumbnail';
+export * from './lib/overview/flow-thumbnail';
+export * from './lib/overview/workflow-overview';
+export * from './lib/instances/history-text';
+export * from './lib/instances/instance-list';

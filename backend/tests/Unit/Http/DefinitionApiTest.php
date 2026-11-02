@@ -95,6 +95,7 @@ final class DefinitionApiTest extends TestCase
         self::assertSame([2, 1], ApiHarness::column($versions, 'versions', 'version'));
         self::assertSame(['latest', 'referenced'], ApiHarness::column($versions, 'versions', 'deleteBlockedBy'));
         self::assertSame(1, ApiHarness::at($versions, 'versions.1.runningInstances'));
+        self::assertSame([['version' => 1, 'running' => 1]], ApiHarness::at($this->api->send('GET', '/workflows'), 'definitions.0.olderRunning'), 'E-66');
 
         $old = $this->api->send('GET', '/workflows/antrag/versions/1');
         self::assertTrue(ApiHarness::at($old, 'readOnly'));

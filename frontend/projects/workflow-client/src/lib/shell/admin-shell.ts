@@ -53,6 +53,9 @@ interface Tab {
       flex-direction: column;
       gap: 20px;
     }
+    .wf-shell__main {
+      min-width: 0;
+    }
     .wf-shell__head {
       display: flex;
       flex-direction: column;

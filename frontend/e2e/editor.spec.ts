@@ -8,7 +8,7 @@ function step(page: Page, name: string) {
 
 async function open(page: Page): Promise<void> {
   await page.goto(EDITOR);
-  await expect(page.getByTestId('editor-version')).toHaveText('v1');
+  await expect(page.getByTestId('editor-version')).toHaveText('v3');
 }
 
 test.describe('Editor', () => {
@@ -79,7 +79,7 @@ test.describe('Editor', () => {
     await page.getByTestId('editor-status').getByRole('radio', { name: 'Entwurf' }).click();
     await page.getByTestId('editor-save').click();
     await expect(page.getByTestId('editor-message')).toHaveText(
-      'Gespeichert: antrag-pruefung v1 (entwurf).',
+      'Gespeichert: antrag-pruefung v4 (entwurf).',
     );
     await expect(page.getByTestId('editor-dirty')).toHaveCount(0);
   });
@@ -89,9 +89,9 @@ test.describe('Editor', () => {
     await page.getByTestId('editor-name').fill('Antrag prüfen (neu)');
     await page.getByTestId('editor-save').click();
     await expect(page.getByTestId('editor-message')).toHaveText(
-      'Gespeichert: antrag-pruefung v2 (aktiv).',
+      'Gespeichert: antrag-pruefung v4 (aktiv).',
     );
-    await expect(page.getByTestId('editor-version')).toHaveText('v2');
+    await expect(page.getByTestId('editor-version')).toHaveText('v4');
   });
 
   test('JSON-Ansicht: ungültiges JSON bleibt mit Meldung', async ({ page }) => {

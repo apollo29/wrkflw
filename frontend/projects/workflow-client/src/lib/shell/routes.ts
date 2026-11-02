@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { WfAdminShell } from './admin-shell';
 import { WfWorkflowEditor } from '../editor/components/workflow-editor';
+import { WfInstanceList } from '../instances/instance-list';
+import { WfWorkflowOverview } from '../overview/workflow-overview';
 import { WfPlaceholderPage } from './placeholder-page';
 import { wfUnsavedChangesGuard } from './unsaved-changes';
 
@@ -18,12 +20,7 @@ export const workflowAdminRoutes: Routes = [
     path: '',
     component: WfAdminShell,
     children: [
-      {
-        path: '',
-        pathMatch: 'full',
-        component: WfPlaceholderPage,
-        data: { title: 'nav.workflows', phase: 8 },
-      },
+      { path: '', pathMatch: 'full', component: WfWorkflowOverview },
       {
         path: 'workflows/neu',
         component: WfWorkflowEditor,
@@ -39,11 +36,7 @@ export const workflowAdminRoutes: Routes = [
         component: WfWorkflowEditor,
         canDeactivate: [wfUnsavedChangesGuard],
       },
-      {
-        path: 'instanzen',
-        component: WfPlaceholderPage,
-        data: { title: 'nav.instances', phase: 8 },
-      },
+      { path: 'instanzen', component: WfInstanceList },
       {
         path: 'vorlagen',
         component: WfPlaceholderPage,

@@ -122,6 +122,7 @@ final class InMemoryWorkflowRepository implements
                 totalInstances: count($mine),
                 olderVersions: count($versions) - 1,
                 structure: DefinitionStructure::of($definition),
+                olderRunning: $this->olderRunning($id, $latest),
             );
         }
         usort($out, static fn (DefinitionSummary $a, DefinitionSummary $b): int => [$a->name, $a->id] <=> [$b->name, $b->id]);
@@ -244,6 +245,26 @@ final class InMemoryWorkflowRepository implements
         }
 
         return $counts;
+    }
+
+    /**
+     * @return list<array{version: int, running: int}>
+     */
+    private function olderRunning(string $id, int $latest): array
+    {
+        $counts = [];
+        foreach ($this->instances as $instance) {
+            if ($instance->definitionId === $id && $instance->definitionVersion < $latest && !$instance->status->isFinished()) {
+                $counts[$instance->definitionVersion] = ($counts[$instance->definitionVersion] ?? 0) + 1;
+            }
+        }
+        krsort($counts);
+        $out = [];
+        foreach ($counts as $version => $running) {
+            $out[] = ['version' => $version, 'running' => $running];
+        }
+
+        return $out;
     }
 
     private function put(WorkflowDefinition $definition, DefinitionStatus $status): void

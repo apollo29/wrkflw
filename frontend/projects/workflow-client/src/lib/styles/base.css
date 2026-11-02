@@ -30,7 +30,7 @@
   margin: 0;
 }
 
-.wf a {
+.wf :where(a) {
   color: var(--wfb-primary-fg);
 }
 
@@ -71,6 +71,8 @@
 }
 
 .wf-sr-only {
+  top: 0;
+  left: 0;
   position: absolute;
   width: 1px;
   height: 1px;

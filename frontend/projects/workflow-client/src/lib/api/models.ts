@@ -117,6 +117,8 @@ export interface DefinitionSummary {
   readonly totalInstances: number;
   readonly olderVersions: number;
   readonly structure: DefinitionStructure | null;
+  /** Laufende Durchläufe auf älteren Versionen (E-66); fehlt bei älteren Engines. */
+  readonly olderRunning?: readonly { readonly version: number; readonly running: number }[];
 }
 
 export interface DefinitionVersion {

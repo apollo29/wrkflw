@@ -712,6 +712,10 @@ components:
         runningInstances: { type: integer }
         totalInstances: { type: integer }
         olderVersions: { type: integer }
+        olderRunning:
+          type: array
+          description: Laufende Durchläufe auf älteren Versionen (E-66), neueste zuerst
+          items: { type: object, properties: { version: { type: integer }, running: { type: integer } } }
         structure:
           type: [object, 'null']
           description: Für das Vorschaubild; null, wenn die gespeicherte Definition nicht lesbar ist

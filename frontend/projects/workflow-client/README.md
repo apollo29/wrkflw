@@ -4,8 +4,8 @@ Angular-Client der Workflow-Engine v3: Übersicht, Editor, Instanzen, Vorlagen u
 Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalone,
 zoneless, Signals; Angular ≥ 22.2.
 
-> Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht und der
-> Editor sind da; Übersicht, Instanzen, Vorlagen und Datenquellen folgen.
+> Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht, Editor,
+> Übersicht und Instanzen sind da; Vorlagen und Datenquellen folgen.
 
 ## Einbinden
 

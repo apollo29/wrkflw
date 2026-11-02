@@ -40,6 +40,7 @@ final readonly class DefinitionController
                 'totalInstances' => $d->totalInstances,
                 'olderVersions' => $d->olderVersions,
                 'structure' => $d->structure,
+                'olderRunning' => $d->olderRunning,
             ], $this->s->definitions->listDefinitions()),
         ]);
     }

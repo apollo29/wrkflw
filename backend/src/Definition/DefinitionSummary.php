@@ -13,7 +13,8 @@ namespace WorkflowEngine\Definition;
 final readonly class DefinitionSummary
 {
     /**
-     * @param Structure|null $structure null, wenn die gespeicherte Definition nicht lesbar ist
+     * @param Structure|null                              $structure    null, wenn die gespeicherte Definition nicht lesbar ist
+     * @param list<array{version: int, running: int}> $olderRunning laufende Durchläufe auf älteren Versionen (E-66)
      */
     public function __construct(
         public string $id,
@@ -25,6 +26,7 @@ final readonly class DefinitionSummary
         public int $totalInstances,
         public int $olderVersions,
         public ?array $structure,
+        public array $olderRunning = [],
     ) {
     }
 }

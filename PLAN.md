@@ -125,7 +125,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   (Klick auf «Visuell» in visueller Ansicht tut nichts). Aktionsfelder generisch nach Typ.
 - Löschen mit Undo, alles per Tastatur, Hinweistexte korrekt.
 
-### 8 – Übersicht und Instanzen
+### 8 – Übersicht und Instanzen ✅ (2026-11-02)
 - Übersicht 9.2 (Zeile je Workflow, Mini-Vorschau aus derselben Layout-Berechnung,
   Versionen-Aufklapper, schreibgeschützte alte Version, Entfernen mit Grund).
 - Instanzen: Status-Filter, Tabelle, Verlauf (nur Feldnamen), Fehlergrund, Abbrechen.

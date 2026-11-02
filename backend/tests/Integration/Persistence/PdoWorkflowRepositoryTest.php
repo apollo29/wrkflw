@@ -118,6 +118,10 @@ final class PdoWorkflowRepositoryTest extends IntegrationTestCase
         $row = $list[0];
         self::assertSame(['antrag', 'Antrag prüfen', 2, DefinitionStatus::Active], [$row->id, $row->name, $row->version, $row->status]);
         self::assertSame([2, 4, 1], [$row->runningInstances, $row->totalInstances, $row->olderVersions]);
+        self::assertSame([], $row->olderRunning, 'v1 hat nur einen abgeschlossenen Durchlauf');
+
+        $this->instance(1, InstanceStatus::Running);
+        self::assertSame([['version' => 1, 'running' => 1]], $this->repo->listDefinitions()[0]->olderRunning);
         self::assertNotNull($row->structure);
         self::assertSame('start', $row->structure['startStep']);
         self::assertSame(['interactive', 'check'], array_column($row->structure['steps'], 'kind'));

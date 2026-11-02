@@ -23,7 +23,7 @@ describe('WfAdminShell', () => {
   });
 
   it('shows four tabs and marks the current one', async () => {
-    const harness = await RouterTestingHarness.create('/admin/instanzen');
+    const harness = await RouterTestingHarness.create('/admin/vorlagen');
     const el =
       harness.routeNativeElement?.closest('wf-admin-shell') ??
       (harness.fixture.nativeElement as HTMLElement);
@@ -41,10 +41,10 @@ describe('WfAdminShell', () => {
       '/admin/vorlagen',
       '/admin/datenquellen',
     ]);
-    expect(tabs[1]?.getAttribute('aria-current')).toBe('page');
+    expect(tabs[2]?.getAttribute('aria-current')).toBe('page');
     expect(tabs[0]?.getAttribute('aria-current')).toBeNull();
-    expect(el.querySelector('h2')?.textContent).toContain('Instanzen');
-    expect(el.textContent).toContain('Dieser Bereich folgt in Phase 8.');
+    expect(el.querySelector('h2')?.textContent).toContain('Vorlagen');
+    expect(el.textContent).toContain('Dieser Bereich folgt in Phase 10.');
   });
 
   it('sets the theme on the root and follows changes', async () => {

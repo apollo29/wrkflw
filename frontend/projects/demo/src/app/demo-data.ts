@@ -58,6 +58,21 @@ export const DEMO_DEFINITIONS: Record<string, unknown>[] = [
     },
   },
   {
+    id: 'mahnung',
+    name: 'Mahnung',
+    draft: true,
+    startStep: 'erinnern',
+    steps: {
+      erinnern: { type: 'timer', delaySeconds: 604800, transitions: [{ to: 'mail' }] },
+      mail: {
+        type: 'automatic',
+        action: 'send_email',
+        config: { to: '{{mail}}', subject: 'Erinnerung' },
+        transitions: [],
+      },
+    },
+  },
+  {
     id: 'archivierung',
     name: 'Archivierung',
     startStep: 'ablegen',
@@ -136,5 +151,112 @@ export const DEMO_TEMPLATES = [
     type: 'email',
     subject: 'Eingang',
     body: '<p>Danke</p>',
+  },
+];
+
+export interface DemoInstanceSeed {
+  readonly id: string;
+  readonly version: number;
+  readonly status:
+    'running' | 'waiting_event' | 'waiting_timer' | 'completed' | 'failed' | 'cancelled';
+  readonly step: string;
+  readonly subject: string;
+  readonly daysAgo: number;
+  readonly lastError?: string;
+  readonly wakeInHours?: number;
+}
+
+/** Durchläufe nach 9.13: v3 mit 8, v1 mit 4 abgeschlossenen; 2 laufen. */
+export const DEMO_INSTANCES: DemoInstanceSeed[] = [
+  {
+    id: 'i-1024',
+    version: 3,
+    status: 'waiting_event',
+    step: 'pruefen',
+    subject: 'A-1024',
+    daysAgo: 0,
+  },
+  {
+    id: 'i-1023',
+    version: 3,
+    status: 'waiting_timer',
+    step: 'warten',
+    subject: 'A-1023',
+    daysAgo: 0,
+    wakeInHours: 20,
+  },
+  {
+    id: 'i-1022',
+    version: 3,
+    status: 'failed',
+    step: 'bestaetigung',
+    subject: 'A-1022',
+    daysAgo: 1,
+    lastError: 'Mailversand: Zeitüberschreitung nach 3 Versuchen.',
+  },
+  { id: 'i-1021', version: 3, status: 'cancelled', step: 'pruefen', subject: 'A-1021', daysAgo: 2 },
+  {
+    id: 'i-1020',
+    version: 3,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-1020',
+    daysAgo: 3,
+  },
+  {
+    id: 'i-1019',
+    version: 3,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-1019',
+    daysAgo: 4,
+  },
+  {
+    id: 'i-1018',
+    version: 3,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-1018',
+    daysAgo: 5,
+  },
+  {
+    id: 'i-1017',
+    version: 3,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-1017',
+    daysAgo: 6,
+  },
+  {
+    id: 'i-0904',
+    version: 1,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-0904',
+    daysAgo: 40,
+  },
+  {
+    id: 'i-0903',
+    version: 1,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-0903',
+    daysAgo: 41,
+  },
+  {
+    id: 'i-0902',
+    version: 1,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-0902',
+    daysAgo: 42,
+  },
+  {
+    id: 'i-0901',
+    version: 1,
+    status: 'completed',
+    step: 'abschluss',
+    subject: 'A-0901',
+    daysAgo: 43,
   },
 ];
