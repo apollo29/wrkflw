@@ -34,7 +34,13 @@ final class SodiumSecretStoreTest extends TestCase
     {
         $store = new SodiumSecretStore(self::key());
         $cipher = $store->encrypt('x');
-        $tampered = substr($cipher, 0, -2) . (str_ends_with($cipher, 'A') ? 'B' : 'A') . substr($cipher, -1);
+        // Ein Byte im Chiffrat kippen (nicht ein Base64-Zeichen: dessen Füllbits wären wirkungslos).
+        [$version, $keyId, $payload] = explode(':', $cipher, 3);
+        $bytes = base64_decode($payload, true);
+        self::assertIsString($bytes);
+        $bytes[intdiv(strlen($bytes), 2)] = chr(ord($bytes[intdiv(strlen($bytes), 2)]) ^ 0x01);
+        $tampered = $version . ':' . $keyId . ':' . base64_encode($bytes);
+        self::assertNotSame($cipher, $tampered);
 
         foreach ([$tampered, (new SodiumSecretStore(self::key()))->encrypt('x'), 'kein-format'] as $bad) {
             try {
