@@ -94,6 +94,10 @@ describe('WfInstanceList', () => {
     );
     expect(el.querySelector('.wf-in-sq')?.classList).toContain('wf-k-interactive');
     expect(el.textContent).toContain('3 Durchläufe, davon 1 laufend.');
+    const edit = [...el.querySelectorAll('[data-testid="instance-edit"]')];
+    expect(edit).toHaveLength(1);
+    expect(edit[0]?.closest('tr')?.getAttribute('data-instance')).toBe('1');
+    expect(edit[0]?.getAttribute('href')).toBe('/1');
   });
 
   it('keeps the status filter in the address', async () => {

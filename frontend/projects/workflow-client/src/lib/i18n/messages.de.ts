@@ -44,6 +44,8 @@ export const MESSAGES_DE = {
   'status.instance.completed': 'Abgeschlossen',
   'status.instance.failed': 'Fehlgeschlagen',
   'status.instance.cancelled': 'Abgebrochen',
+  'status.instance.waitingText.running': 'Läuft im Hintergrund …',
+  'status.instance.waitingText.cancelled': 'Der Ablauf wurde abgebrochen.',
   'status.instance.waitingText.waiting_event':
     'Wartet auf eine Rückmeldung von aussen – hier ist gerade nichts zu tun.',
   'status.instance.waitingText.waiting_timer':
@@ -373,6 +375,30 @@ export const MESSAGES_DE = {
   'instances.cancel.confirm': 'Abbrechen',
   'instances.cancel.keep': 'Weiterlaufen lassen',
   'instances.cancelled': 'Durchlauf abgebrochen.',
+
+  // Runner (F-50 bis F-56)
+  'runner.label': 'Schritt',
+  'runner.loading': 'Wird geladen …',
+  'runner.interactive': 'Bitte ausfüllen',
+  'runner.waitingSub': 'Wartet auf einen Unter-Ablauf – es geht automatisch weiter.',
+  'runner.refresh': 'Aktualisieren',
+  'runner.retry': 'Erneut versuchen',
+  'runner.back': 'Ein Schritt zurück',
+  'runner.error': 'Das hat nicht geklappt: {message}',
+  'runner.sending': 'Wird gesendet …',
+  'runner.stillRunning': 'Das dauert länger als erwartet. Später nochmals nachsehen.',
+  'runner.yes': 'Ja',
+  'runner.no': 'Nein',
+  'runner.empty': '—',
+  'runner.file.choose': 'Datei wählen',
+  'runner.file.checking': 'Wird geprüft …',
+  'runner.file.done': 'Hochgeladen: {name}',
+  'runner.file.stored': 'Bereits hochgeladen.',
+  'runner.file.unavailable': 'Datei-Upload nur über die Seite der Anwendung.',
+  'runner.file.failed': 'Der Upload hat nicht geklappt. Bitte nochmals versuchen.',
+  'runner.page.back': '← Alle Durchläufe',
+  'runner.page.subject': 'Subjekt: {subject}',
+  'instances.edit': 'Bearbeiten',
 
   // Verlauf (history-text.ts)
   'history.start': 'Gestartet · Startkontext: {keys}',

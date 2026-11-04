@@ -130,7 +130,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   Versionen-Aufklapper, schreibgeschützte alte Version, Entfernen mit Grund).
 - Instanzen: Status-Filter, Tabelle, Verlauf (nur Feldnamen), Fehlergrund, Abbrechen.
 
-### 9 – Runner
+### 9 – Runner ✅ (2026-11-04)
 - Generische Darstellung interaktiver Schritte (F-50–F-56, F-85): Felder, Datei-Prüfung
   mit Fehlermeldung, Knöpfe je Ereignis, «Ein Schritt zurück» nur wenn möglich,
   idempotente Event-IDs.

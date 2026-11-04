@@ -23,9 +23,37 @@ export const DEMO_DEFINITIONS: Record<string, unknown>[] = [
         ui: {
           title: 'Antrag prüfen',
           description: 'Bitte den Antrag prüfen.',
-          fields: [{ name: 'bemerkung', label: 'Bemerkung', type: 'text' }],
+          template: 'antrag-info',
+          fields: [
+            { name: 'antrag_betrag', label: 'Betrag', type: 'display' },
+            { name: 'bemerkung', label: 'Bemerkung', type: 'text' },
+            { name: 'geprueft', label: 'Unterlagen vollständig', type: 'boolean' },
+            { name: 'beleg', label: 'Beleg', type: 'file', handler: 'pdf_max_5mb' },
+          ],
         },
-        transitions: [{ to: 'speichern', event: 'submit', label: 'Freigeben' }],
+        transitions: [
+          { to: 'zusammenfassung', event: 'submit', label: 'Freigeben' },
+          { to: 'abgelehnt', event: 'ablehnen', label: 'Ablehnen' },
+        ],
+      },
+      zusammenfassung: {
+        type: 'interactive',
+        ui: {
+          title: 'Zusammenfassung',
+          description: 'Bitte die Angaben bestätigen.',
+          back: true,
+          fields: [
+            { name: 'bemerkung', label: 'Bemerkung', type: 'display' },
+            { name: 'geprueft', label: 'Unterlagen vollständig', type: 'display' },
+          ],
+        },
+        transitions: [{ to: 'speichern', event: 'submit', label: 'Bestätigen' }],
+      },
+      abgelehnt: {
+        type: 'automatic',
+        action: 'send_email',
+        config: { to: '{{antrag_mail}}', subject: 'Ihr Antrag {{antrag_id}} wurde abgelehnt' },
+        transitions: [],
       },
       warten: { type: 'timer', delaySeconds: 3600, transitions: [{ to: 'speichern' }] },
       speichern: {
@@ -143,7 +171,7 @@ export const DEMO_TEMPLATES = [
     name: 'Hinweise zum Antrag',
     type: 'page',
     subject: '',
-    body: '<p>Hinweise</p>',
+    body: '<p>Antrag <strong>{{antrag_id}}</strong>: Bitte Betrag und Beleg prüfen, bevor du ihn freigibst.</p>',
   },
   {
     id: 'eingang',

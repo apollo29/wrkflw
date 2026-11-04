@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { WfApiError } from '../api/api-error';
 import type { InstanceStatus, InstanceSummary } from '../api/models';
@@ -52,7 +52,7 @@ interface History {
 /** Reiter «Instanzen»: Durchläufe mit Status, Verlauf und Abbrechen. */
 @Component({
   selector: 'wf-instance-list',
-  imports: [WfBanner, WfButton, WfPill, WfTranslatePipe],
+  imports: [RouterLink, WfBanner, WfButton, WfPill, WfTranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'wf-in' },
   template: `
@@ -128,6 +128,17 @@ interface History {
               <td>{{ i.wakeAt ? time(i.wakeAt) : '—' }}</td>
               <td>{{ time(i.updatedAt) }}</td>
               <td class="wf-in-actions">
+                @if (i.status === 'waiting_event') {
+                  <a
+                    wfButton
+                    variant="text"
+                    size="sm"
+                    [routerLink]="[i.id]"
+                    queryParamsHandling="preserve"
+                    data-testid="instance-edit"
+                    >{{ 'instances.edit' | wfT }}</a
+                  >
+                }
                 <button
                   type="button"
                   wfButton

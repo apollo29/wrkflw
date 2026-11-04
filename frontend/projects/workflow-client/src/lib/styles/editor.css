@@ -721,3 +721,72 @@
 .wf-ov-expander:empty {
   display: none;
 }
+
+/* Runner (F-50 bis F-56) */
+.wf-run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wfb-space-3);
+  max-width: 720px;
+  width: 100%;
+}
+.wf-run__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+}
+.wf-run__card--interactive {
+  border-top: 3px solid var(--wfb-int-fg);
+}
+.wf-run__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.wf-run__title {
+  outline: none;
+}
+.wf-run__desc {
+  margin: 0;
+  color: var(--wfb-text-muted);
+}
+.wf-run__page {
+  padding: 12px 14px;
+  border-radius: var(--wfb-radius-sm);
+  background: var(--wfb-bg-soft);
+  overflow-wrap: anywhere;
+}
+.wf-run__page :where(p) {
+  margin: 0 0 8px;
+}
+.wf-run__display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wf-run__file {
+  height: auto;
+  padding: 6px 8px;
+}
+.wf-run__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.wf-run-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wfb-space-4);
+}
+@container wf (max-width: 767px) {
+  .wf-run__card {
+    padding: 16px;
+  }
+  .wf-run__actions .wf-btn {
+    flex: 1 1 auto;
+  }
+}

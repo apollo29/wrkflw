@@ -16,13 +16,14 @@ import {
   DEMO_UPLOAD_HANDLERS,
   DemoInstanceSeed,
 } from './demo-data';
+import { advance, currentStep, goBack, handleEvent } from './demo-engine';
 
 /*
  * Ersatz-Backend der Demo im Browser (bis Phase 12 das echte Backend anbindet). Bildet die
  * Routen nach, die der Client braucht; Zustand in localStorage.
  */
 
-const KEY = 'wrkflw-demo-v2';
+const KEY = 'wrkflw-demo-v3';
 
 type Status = 'running' | 'waiting_event' | 'waiting_timer' | 'completed' | 'failed' | 'cancelled';
 const RUNNING: readonly Status[] = ['running', 'waiting_event', 'waiting_timer'];
@@ -55,6 +56,8 @@ interface StoredInstance {
   createdAt: string;
   updatedAt: string;
   history: HistoryRow[];
+  context?: Record<string, unknown>;
+  applied?: string[];
 }
 
 interface Db {
@@ -172,6 +175,13 @@ function seed(): Db {
       createdAt: start,
       updatedAt: ago(s.daysAgo, 1),
       history: demoHistory(s, start),
+      context: {
+        antrag_id: s.subject,
+        antrag: 'offen',
+        antragFound: true,
+        antrag_betrag: 1250,
+        antrag_mail: 'person@example.org',
+      },
     };
   });
   return { definitions, instances };
@@ -378,6 +388,44 @@ function instances(
   if (!instance) {
     return fail(404, 'not_found', `Durchlauf '${path[1] ?? ''}' nicht gefunden.`);
   }
+  const definition =
+    db.definitions[instance.definitionId]?.find((v) => v.version === instance.definitionVersion)
+      ?.definition ?? {};
+  if (req.method === 'GET' && path.length === 2) {
+    const { history: _h, applied: _a, ...rest } = instance;
+    return ok({ ...rest, context: currentStep(instance, definition).context });
+  }
+  if (req.method === 'GET' && path[2] === 'current-step') {
+    return ok(currentStep(instance, definition));
+  }
+  if (req.method === 'POST' && path[2] === 'events') {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const event = typeof body['event'] === 'string' ? body['event'] : '';
+    if (event === '') {
+      return fail(422, 'validation_error', "Das Feld 'event' ist erforderlich.", {
+        fields: { event: ['Pflicht'] },
+      });
+    }
+    const result = handleEvent(
+      instance,
+      definition,
+      event,
+      (body['payload'] ?? {}) as Record<string, unknown>,
+      req.headers.get('Idempotency-Key'),
+    );
+    if (result === 'not_waiting') {
+      return fail(409, 'invalid_state', 'Der Durchlauf wartet auf kein Ereignis.');
+    }
+    persist(db);
+    return ok({ id: instance.id, status: instance.status, currentStep: instance.currentStep });
+  }
+  if (req.method === 'POST' && path[2] === 'back') {
+    if (!goBack(instance, definition)) {
+      return fail(409, 'invalid_state', 'Ein Schritt zurück ist hier nicht möglich.');
+    }
+    persist(db);
+    return ok({ id: instance.id, status: instance.status, currentStep: instance.currentStep });
+  }
   if (req.method === 'GET' && path[2] === 'history') {
     return ok({ instanceId: instance.id, history: instance.history });
   }
@@ -440,6 +488,52 @@ function workflows(
 
   const id = path[1] ?? '';
   const list = defs[id];
+
+  if (req.method === 'POST' && path[2] === 'instances' && list) {
+    const latest = list.at(-1)!;
+    if (latest.status !== 'active') {
+      return fail(
+        404,
+        'not_found',
+        `Workflow '${id}' ist nicht aktiv und lässt sich nicht starten.`,
+      );
+    }
+    const context = (body['context'] ?? {}) as Record<string, unknown>;
+    const missing = ((latest.definition['inputs'] ?? []) as Record<string, unknown>[])
+      .filter(
+        (input) => input['required'] === true && (context[input['name'] as string] ?? '') === '',
+      )
+      .map((input) => input['name'] as string);
+    if (missing.length > 0) {
+      return fail(422, 'missing_input', `Es fehlen Angaben: ${missing.join(', ')}.`, { missing });
+    }
+    const instance: StoredInstance = {
+      id: `i-${Date.now().toString(36)}`,
+      definitionId: id,
+      definitionVersion: latest.version,
+      currentStep: latest.definition['startStep'] as string,
+      status: 'running',
+      subjectType: (body['subjectType'] as string) ?? null,
+      subjectId: (body['subjectId'] as string) ?? null,
+      wakeAt: null,
+      lastError: null,
+      createdAt: now(),
+      updatedAt: now(),
+      history: [
+        {
+          kind: 'start',
+          step: latest.definition['startStep'] as string,
+          detail: { contextKeys: Object.keys(context) },
+          at: now(),
+        },
+      ],
+      context: { ...context },
+    };
+    advance(instance, latest.definition);
+    db.instances.push(instance);
+    persist(db);
+    return ok({ id: instance.id, status: instance.status, currentStep: instance.currentStep }, 201);
+  }
 
   if (req.method === 'POST' && path.length === 2) {
     const status = (body['status'] as StoredVersion['status']) ?? 'active';

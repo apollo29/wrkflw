@@ -4,6 +4,20 @@ import { MESSAGES_DE, WfMessages } from '../i18n/messages.de';
 
 export type WfTheme = 'hell' | 'dunkel' | 'system';
 
+/** Ergebnis eines Uploads: gespeicherter Wert (z. B. Datei-ID) oder Ablehnung mit Grund (F-54). */
+export type WfUploadResult = { readonly value: string } | { readonly rejected: string };
+
+export interface WfUploadContext {
+  /** Datei-Prüfung des Feldes, wie im Editor gewählt. */
+  readonly handler: string | null;
+  readonly instanceId: string;
+  readonly step: string;
+  readonly field: string;
+}
+
+/** Nimmt eine Datei für ein Datei-Feld an. Die Engine selbst nimmt keine Dateien an. */
+export type WfUploadFile = (file: File, context: WfUploadContext) => Promise<WfUploadResult>;
+
 /** Einstellungen der Host-App für die Admin-Oberfläche. */
 export interface WorkflowAdminConfig {
   /** Basis-URL der Engine-API, z. B. `/api` oder `https://host/wrkflw`. */
@@ -16,12 +30,15 @@ export interface WorkflowAdminConfig {
   readonly messages?: Partial<WfMessages>;
   /** Standard: `system` (folgt `prefers-color-scheme`). */
   readonly theme?: WfTheme;
+  /** Upload für Datei-Felder im Runner; ohne sie zeigt der Runner nur einen Hinweis. */
+  readonly uploadFile?: WfUploadFile;
 }
 
 export interface ResolvedWorkflowAdminConfig {
   readonly apiBaseUrl: string;
   readonly authToken: () => string | null;
   readonly theme: WfTheme;
+  readonly uploadFile: WfUploadFile | null;
 }
 
 export const WF_CONFIG = new InjectionToken<ResolvedWorkflowAdminConfig>('WF_CONFIG');
@@ -33,6 +50,7 @@ export function resolveConfig(config: WorkflowAdminConfig): ResolvedWorkflowAdmi
     apiBaseUrl: base,
     authToken: config.authToken ?? (() => (key !== undefined && key !== '' ? key : null)),
     theme: config.theme ?? 'system',
+    uploadFile: config.uploadFile ?? null,
   };
 }
 

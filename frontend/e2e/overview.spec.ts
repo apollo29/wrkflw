@@ -8,7 +8,7 @@ test.describe('Übersicht', () => {
     await expect(row).toContainText('2 laufend · 12 gesamt');
     await expect(row.locator('svg[role="img"]')).toHaveAttribute(
       'aria-label',
-      '6 Schritte, 1 Verzweigung(en)',
+      '8 Schritte, 1 Verzweigung(en)',
     );
 
     await page.getByTestId('overview-search').fill('nichts-da');

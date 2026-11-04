@@ -5,7 +5,7 @@ Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalo
 zoneless, Signals; Angular ≥ 22.2.
 
 > Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht, Editor,
-> Übersicht und Instanzen sind da; Vorlagen und Datenquellen folgen.
+> Übersicht, Instanzen und Runner sind da; Vorlagen und Datenquellen folgen.
 
 ## Einbinden
 
@@ -80,3 +80,23 @@ erklärt es.
 Der HTML-Editor für E-Mail-Inhalte (`wf-html-editor`, TipTap 3) wird erst geladen, wenn
 ein solches Feld erscheint. Die Modell-Funktionen (`fromDefinition`, `toDefinition`,
 `renameStep`, `flowSections` …) sind exportiert und ohne Angular nutzbar.
+
+## Runner
+
+`<wf-workflow-runner [instanceId]="id" (finished)="…" (stepChange)="…" />` zeigt einen
+Durchlauf für Endnutzer an, etwa auf der öffentlichen Seite der Host-App. Ereignisse tragen
+einen `Idempotency-Key`; ein Doppelklick wirkt einmal.
+
+Datei-Felder lädt die Host-App hoch:
+
+```ts
+provideWorkflowAdmin({
+  apiBaseUrl: '/api',
+  uploadFile: async (file, { handler, instanceId, field }) => {
+    const res = await myUpload(file, handler);
+    return res.ok ? { value: res.fileId } : { rejected: res.reason };
+  },
+});
+```
+
+Ohne `uploadFile` zeigt der Runner bei Datei-Feldern nur einen Hinweis.

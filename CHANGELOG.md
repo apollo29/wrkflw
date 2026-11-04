@@ -9,6 +9,27 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 9: Runner
+
+- **`<wf-workflow-runner [instanceId]>`** stellt Durchläufe generisch dar (F-50, F-85):
+  - Titel, Beschreibung und Seitenvorlage; Platzhalter werden escaped
+  - Text-, Ja/Nein-, Anzeige- und Datei-Felder, vorbelegt aus dem Kontext
+  - ein Knopf je Ereignis mit seiner Beschriftung (F-52)
+  - «Ein Schritt zurück», nur wenn möglich (F-56)
+  - Warte-, Lauf-, End- und Fehlerzustände in Klartext (F-22, F-23)
+  - Ausgänge `finished` und `stepChange`
+- **Doppelklicksicher (Q-04):** jedes Absenden mit `Idempotency-Key`; nach einem Netzfehler
+  sendet «Erneut versuchen» denselben Schlüssel.
+- **Datei-Upload über die Host-App** (F-54): `provideWorkflowAdmin({ uploadFile })`.
+  - Eine Ablehnung erscheint mit Grund am Feld, und der Schritt bleibt offen.
+  - Bei Erfolg geht der zurückgegebene Wert mit dem Ereignis.
+  - Ohne Funktion erscheint ein Hinweis.
+- **Admin:** «Bearbeiten» im Reiter «Instanzen» öffnet wartende Durchläufe unter
+  `instanzen/:id`. Editor, Instanzen und Runner werden erst bei Bedarf geladen.
+- **Demo:** Seite «Durchspielen» (Workflow starten und durchspielen). Das
+  Ersatz-Backend startet Durchläufe, verarbeitet Ereignisse samt Idempotenz und «zurück».
+  Der Demo-Upload nimmt PDF bis 5 MB an.
+
 ### Neubau 3.0 – Phase 8: Übersicht und Instanzen
 
 - **Übersicht «Workflows»** (9.2, E-60 bis E-68):

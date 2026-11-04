@@ -4,6 +4,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideWorkflowAdmin } from '@apollo29/workflow-client';
 import { routes } from './app.routes';
 import { demoBackend } from './fake-api';
+import { demoUpload } from './demo-upload';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -11,6 +12,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([demoBackend])),
     // Ersatz-Backend im Browser; Phase 12 bindet das echte Backend an.
-    provideWorkflowAdmin({ apiBaseUrl: '/api' }),
+    provideWorkflowAdmin({ apiBaseUrl: '/api', uploadFile: demoUpload }),
   ],
 };
