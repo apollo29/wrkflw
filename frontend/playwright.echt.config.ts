@@ -40,7 +40,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `php -S 127.0.0.1:${apiPort} -t ../backend/api`,
+      // Erst Schema und Beispieldaten, sonst antwortet /workflows auf einer leeren Datenbank mit 500.
+      command: `php ../backend/demo/seed.php && php -S 127.0.0.1:${apiPort} -t ../backend/api`,
       url: `http://127.0.0.1:${apiPort}/workflows`,
       env,
       // php -S meldet jede Anfrage auf stderr; Fehler zeigt der Test selbst.
