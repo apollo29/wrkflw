@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { WfAdminShell } from './admin-shell';
 import { WfWorkflowOverview } from '../overview/workflow-overview';
-import { WfPlaceholderPage } from './placeholder-page';
 import { wfUnsavedChangesGuard } from './unsaved-changes';
 
 /**
@@ -53,8 +52,9 @@ export const workflowAdminRoutes: Routes = [
       },
       {
         path: 'datenquellen',
-        component: WfPlaceholderPage,
-        data: { title: 'nav.dataSources', phase: 11 },
+        loadComponent: () =>
+          import('../data-sources/data-sources-page').then((m) => m.WfDataSourcesPage),
+        canDeactivate: [wfUnsavedChangesGuard],
       },
     ],
   },

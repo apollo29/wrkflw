@@ -5,7 +5,7 @@ Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalo
 zoneless, Signals; Angular ≥ 22.2.
 
 > Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht, Editor,
-> Übersicht, Instanzen, Runner und Vorlagen sind da; Datenquellen folgen.
+> Übersicht, Instanzen, Runner, Vorlagen und Datenquellen sind da.
 
 ## Einbinden
 
@@ -121,3 +121,15 @@ provideWorkflowAdmin({
 ```
 
 Ohne `uploadImage` gibt es nur «Bild-URL». Daten-URLs (Base64) nimmt der Editor nicht an.
+
+## Datenquellen
+
+Der Reiter `datenquellen` pflegt REST-Verbindungen, REST-Datenmodelle und Trigger
+(`?bereich=verbindungen|modelle|trigger&id=…`). Die Engine erlaubt `/data-sources/*` nur
+Administratoren. Ohne dieses Recht zeigt die Seite «Dafür fehlt das Recht.».
+
+- Zugangsdaten gehen nur hin: beim Anlegen im Formular, danach über «Ersetzen». Angezeigt
+  werden sie nie.
+- «Beispiel abrufen» schickt die ungespeicherte Beschreibung; nichts wird gespeichert.
+- Datenmodelle der Host-App erscheinen im Editor, lassen sich hier aber nicht ändern.
+- Unter jedem Eintrag steht das Protokoll mit den letzten 5 Änderungen.

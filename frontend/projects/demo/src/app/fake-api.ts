@@ -17,13 +17,14 @@ import {
   DemoInstanceSeed,
 } from './demo-data';
 import { advance, currentStep, goBack, handleEvent } from './demo-engine';
+import { dataSources, DefinitionView, seedSources, SourcesDb } from './demo-sources';
 
 /*
  * Ersatz-Backend der Demo im Browser (bis Phase 12 das echte Backend anbindet). Bildet die
  * Routen nach, die der Client braucht; Zustand in localStorage.
  */
 
-const KEY = 'wrkflw-demo-v3.10';
+const KEY = 'wrkflw-demo-v3.11';
 
 type Status = 'running' | 'waiting_event' | 'waiting_timer' | 'completed' | 'failed' | 'cancelled';
 const RUNNING: readonly Status[] = ['running', 'waiting_event', 'waiting_timer'];
@@ -72,6 +73,7 @@ interface Db {
   definitions: Record<string, StoredVersion[]>;
   instances: StoredInstance[];
   templates: StoredTemplate[];
+  sources: SourcesDb;
 }
 
 interface ValidationError {
@@ -193,7 +195,12 @@ function seed(): Db {
       },
     };
   });
-  return { definitions, instances, templates: DEMO_TEMPLATES.map((x) => ({ ...x })) };
+  return {
+    definitions,
+    instances,
+    templates: DEMO_TEMPLATES.map((x) => ({ ...x })),
+    sources: seedSources(),
+  };
 }
 
 function load(): Db {
@@ -202,6 +209,7 @@ function load(): Db {
     if (raw) {
       const db = JSON.parse(raw) as Db;
       db.templates ??= DEMO_TEMPLATES.map((x) => ({ ...x }));
+      db.sources ??= seedSources();
       return db;
     }
   } catch {
@@ -726,6 +734,12 @@ export const demoBackend: HttpInterceptorFn = (req, next) => {
   }
   if (path[0] === 'templates') {
     return templates(db, url, req, path);
+  }
+  if (path[0] === 'data-sources') {
+    const defs: DefinitionView[] = Object.entries(db.definitions).flatMap(([id, list]) =>
+      list.map((v) => ({ id, version: v.version, status: v.status, definition: v.definition })),
+    );
+    return dataSources(db.sources, defs, url, req, path.slice(1), () => persist(db));
   }
   if (path[0] === 'instances') {
     return instances(db, url, req, path);

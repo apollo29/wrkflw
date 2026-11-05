@@ -140,7 +140,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   Inline-Styles, Breiten in %), Link/Button/Bild-URL inline statt Browser-Dialog,
   Platzhalter-Vorschläge aus den verwendenden Abläufen, Vorschau, Verwendung, Löschen mit Rückfrage.
 
-### 11 – Datenquellen-UI (9.16)
+### 11 – Datenquellen-UI (9.16) ✅ (2026-11-05)
 - Verbindungen (Hinterlegt/Ersetzen, Test), Datenmodelle (Vorgänge, Trefferliste, Teilmenge,
   Beispielbaum → Feld übernehmen, Felder mit gesperrtem «×»), Trigger (Bedingungen,
   Startkontext-Zuordnung, Takt ≥5 min, Sperrfrist, «Jetzt prüfen»).

@@ -18,7 +18,7 @@ import { fromDefinition } from '../editor/model/definition-mapping';
 import { WfHtmlEditor } from '../editor/html/html-editor';
 import { previewHtml } from '../editor/html/email-extensions';
 import { WfI18n, WfTranslatePipe } from '../i18n/i18n';
-import { wfBeforeUnload, WfUnsavedChanges } from '../shell/unsaved-changes';
+import { wfBeforeUnload, wfConfirmDiscard, WfUnsavedChanges } from '../shell/unsaved-changes';
 import { WfBanner } from '../ui/banner';
 import { WfButton } from '../ui/button';
 import { WfDialogService } from '../ui/dialog';
@@ -63,12 +63,15 @@ const EMPTY: Draft = { id: '', name: '', subject: '', body: '' };
       class="wf-zone wf-zone--soft wf-c-3 wf-c-md-4 wf-c-sm-12 wf-tpl__list"
       [attr.aria-label]="'templates.label' | wfT"
     >
-      <wf-segment
-        [label]="'templates.type' | wfT"
-        [options]="typeOptions()"
-        [value]="type()"
-        (valueChange)="setType($event)"
-      />
+      <!-- Neu aufgebaut, wenn ein Wechsel abgelehnt wird: dann zeigt er wieder die Art. -->
+      @for (k of [typeReset()]; track k) {
+        <wf-segment
+          [label]="'templates.type' | wfT"
+          [options]="typeOptions()"
+          [value]="type()"
+          (valueChange)="setType($event)"
+        />
+      }
       @for (t of templates(); track t.id) {
         <button
           type="button"
@@ -229,6 +232,7 @@ export class WfTemplateManager implements WfUnsavedChanges {
   protected readonly type = computed<TemplateType>(() =>
     this.params().type === 'page' ? 'page' : 'email',
   );
+  protected readonly typeReset = signal(0);
   protected readonly selectedId = computed(() => this.params().id);
 
   protected readonly templates = signal<readonly TemplateSummary[]>([]);
@@ -387,15 +391,7 @@ export class WfTemplateManager implements WfUnsavedChanges {
     if (!this.dirty()) {
       return true;
     }
-    return this.dialogs.confirm({
-      title: this.i18n.t('templates.switch.title'),
-      text: this.i18n.t('templates.switch.text'),
-      cancelValue: false,
-      actions: [
-        { value: true, label: this.i18n.t('dialog.unsaved.discard'), variant: 'danger' },
-        { value: false, label: this.i18n.t('dialog.unsaved.stay') },
-      ],
-    });
+    return wfConfirmDiscard(this.dialogs, this.i18n, this.i18n.t('templates.switch.text'));
   }
 
   protected async open(id: string): Promise<void> {
@@ -414,6 +410,8 @@ export class WfTemplateManager implements WfUnsavedChanges {
 
   protected async setType(type: TemplateType): Promise<void> {
     if (type === this.type() || !(await this.confirmLeave())) {
+      // Abgelehnt: Umschalter zeigt wieder die aktuelle Art.
+      this.typeReset.update((n) => n + 1);
       return;
     }
     this.isNew.set(false);

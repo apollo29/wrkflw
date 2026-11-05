@@ -9,6 +9,37 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 11: Datenquellen-UI
+
+- **Reiter «Datenquellen»** (9.16) mit den Bereichen Verbindungen, Datenmodelle und Trigger.
+  Bereich und Auswahl stehen in der Adresse (`?bereich=modelle&id=antrag`).
+- **Verbindungen** (F-133 bis F-139):
+  - Basis-URL nur `https://`; die Begründung der Engine erscheint am Feld
+  - Anmeldung: keine, Bearer-Token, API-Schlüssel mit Kopfzeile, Benutzername und Passwort
+  - Zugangsdaten nur «Hinterlegt»/«Ersetzen», nie angezeigt; Ersetzen speichert sofort
+  - «Verbindung testen» zeigt nur Statuscode und Dauer
+- **Datenmodelle** (F-140 bis F-143):
+  - Vorgänge Laden/Suchen/Ändern/Anlegen mit erlaubten Methoden; leerer Pfad = aus
+  - Trefferliste, Teilmenge
+  - «Beispiel abrufen» als Baum; ein Klick übernimmt einen Wert als Feld
+  - «schreibbar» nur mit Ändern oder Anlegen; «×» beim ID-Feld und bei verwendeten Feldern
+    gesperrt, mit Grund
+- **Trigger** (F-144, F-145):
+  - nur Datenmodelle mit «Suchen», nur aktive Abläufe
+  - Bedingungen (UND) mit Werten nach Feldtyp
+  - Startkontext aus den Eingaben des Ablaufs, Pflichtangaben geprüft
+  - Takt in Minuten oder Stunden (mindestens 5 Minuten), Sperrfrist, Schalter «Aktiv»
+  - «Jetzt prüfen» zählt Treffer und startet nichts
+- **Gemeinsam:**
+  - Löschen gesperrt, solange verwendet
+  - Feldfehler der Engine am Feld
+  - Schutz vor ungespeicherten Änderungen auch beim Wechsel von Auswahl und Bereich
+  - Protokoll je Objekt mit den letzten 5 Einträgen
+- **Behoben:** Der Umschalter (Datenquellen-Bereiche, Vorlagen-Art) springt zurück, wenn
+  der Wechsel wegen ungespeicherter Änderungen abgelehnt wird.
+- **Demo:** Ersatz-Backend für `/data-sources/*` mit Verbindung `antrag-api`,
+  REST-Modell `antrag`, Trigger `offene-antraege` und Protokoll.
+
 ### Neubau 3.0 – Phase 10: Vorlagen und HTML-Editor
 
 - **Reiter «Vorlagen»** (9.11, E-40 bis E-43):

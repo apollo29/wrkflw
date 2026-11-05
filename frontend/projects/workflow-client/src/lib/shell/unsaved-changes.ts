@@ -78,3 +78,23 @@ export function wfBeforeUnload(hasUnsavedChanges: () => boolean): void {
   window.addEventListener('beforeunload', listener);
   inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', listener));
 }
+
+/**
+ * Rückfrage beim Wechsel innerhalb einer Seite (andere Auswahl, anderer Bereich), solange
+ * Änderungen offen sind: «Verwerfen» oder «Im Editor bleiben». `true` heisst weiter.
+ */
+export async function wfConfirmDiscard(
+  dialogs: WfDialogService,
+  i18n: WfI18n,
+  text: string,
+): Promise<boolean> {
+  return dialogs.confirm({
+    title: i18n.t('dialog.unsaved.title'),
+    text,
+    cancelValue: false,
+    actions: [
+      { value: true, label: i18n.t('dialog.unsaved.discard'), variant: 'danger' },
+      { value: false, label: i18n.t('dialog.unsaved.stay') },
+    ],
+  });
+}
