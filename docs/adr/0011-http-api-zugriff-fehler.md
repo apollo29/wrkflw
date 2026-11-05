@@ -51,3 +51,20 @@ ein halbfertiger Ablauf sichern, starten lässt er sich nicht.
 - Wer echte Personen im Protokoll will, schreibt einen Resolver auf die eigene Anmeldung.
 - Unbekannte Routen antworten auch ohne Anmeldung mit 404; die Routen sind ohnehin
   dokumentiert.
+
+## Nachtrag 3.1 (2026-11-05): Einhängen in eine bestehende Anwendung
+
+Die Coach-Admin hat eine eigene Slim-Anwendung mit Anmeldung (MSAL) und Rollen je Route
+(Admin, Junior, Onboarding). Eine zweite Anwendung neben ihr wäre doppelt verdrahtet.
+
+**Entscheid:** `ApiFactory::mount($gruppe, '/wf', $services, $resolver, $guard)` hängt
+dieselben Routentabellen als Gruppe in die Anwendung der Host-App.
+- Zugriff, Body-Parsing und Fehlerformat gelten nur in dieser Gruppe
+  (`ErrorBoundaryMiddleware`); Fehler der Host-App behandelt weiter die Host-App.
+- Der optionale Guard läuft nach dem Zugriff und bekommt den Routen-Schlüssel aus
+  `routeList()`, z. B. `POST /instances/{id}/events`, und den `Access`. `false` gibt 403
+  `forbidden` im Fehlerformat. Die Datenquellen bleiben zusätzlich Admin-pflichtig.
+- `create()` baut weiter eine eigene Anwendung mit denselben Tabellen.
+
+**Folge:** Rollen der Host-App brauchen keinen eigenen Code in der Engine; der Guard bildet
+sie auf die Routen ab.

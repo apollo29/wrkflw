@@ -5,7 +5,7 @@ Angular-Client. Abläufe werden als Daten beschrieben und ohne Programmierung in
 visuellen Editor gepflegt; die Engine führt sie aus, auch über Wochen, und hält fest,
 was passiert ist. Hintergrundausführung über Cron + DB-Polling.
 
-> **Status:** 3.0.0 (Tags `v3.0.0` und `client-v3.0.0` auf Branch `v3`). Die Version 2.x
+> **Status:** 3.1.0 (Tags `vX.Y.Z` und `client-vX.Y.Z` auf Branch `v3`). Die Version 2.x
 > bleibt auf `main`, bis die Coach-Admin umgestellt hat ([Migration](docs/migration-v3.md)).
 
 ## Pakete
@@ -25,7 +25,7 @@ composer require apollo29/workflow-engine:^3.0
 
 ```bash
 # Client (GitHub Packages; .npmrc mit @apollo29:registry=https://npm.pkg.github.com)
-npm install @apollo29/workflow-client@^3.0.0
+npm install @apollo29/workflow-client@^3.1.0
 ```
 
 Einbinden des Clients: [`frontend/projects/workflow-client/README.md`](frontend/projects/workflow-client/README.md).

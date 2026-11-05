@@ -12,7 +12,7 @@ namespace WorkflowEngine;
  */
 final class Version
 {
-    public const string ENGINE = '3.0.0-dev';
+    public const string ENGINE = '3.1.0';
 
     public const int API = 3;
 

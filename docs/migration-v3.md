@@ -162,8 +162,8 @@ Das Paket liegt in GitHub Packages:
 
 ## 7. Coach-Admin Schritt für Schritt
 
-1. **Engine:** Den Subtree `packages/wrkflw/` auf den Tag `v3.0.0` ziehen
-   (`git subtree pull --prefix packages/wrkflw https://github.com/apollo29/wrkflw v3.0.0 --squash`).
+1. **Engine:** Den Subtree `packages/wrkflw/` auf den Tag `v3.1.0` ziehen
+   (`git subtree pull --prefix packages/wrkflw https://github.com/apollo29/wrkflw v3.1.0 --squash`).
 2. **Schlüssel:** `WF_SECRET_KEY` in der Umgebung setzen (Kapitel 4). Ohne Schlüssel
    starten die Datenquellen nicht; der Rest läuft.
 3. **Datenbank:** Sicherung ziehen, dann `php packages/wrkflw/backend/bin/migrate.php`
@@ -174,15 +174,17 @@ Das Paket liegt in GitHub Packages:
      freigegebenen Feldern.
    - Bisherige `entity`-Namen bleiben gültig, wenn das Modell gleich heisst.
 5. **Verdrahtung:**
-   - Die Bootstrap-Datei für `api/index.php` (`WF_API_BOOTSTRAP`) gibt `ApiServices` und
-     einen `AccessResolverInterface` auf die Anmeldung der Coach-Admin zurück (Kapitel 5).
-     Admins bekommen das Admin-Recht für die Datenquellen.
+   - Die API in die bestehende Slim-Anwendung einhängen (ab 3.1, ADR 11 Nachtrag):
+     `ApiFactory::mount($v1, '/wf', $services, $resolver, $guard)` in der Gruppe
+     `/api/v1` mit der MSAL-Middleware. Der Resolver liefert `Access` aus der Anmeldung
+     (Admin-Rolle = Admin-Recht für die Datenquellen). Der Guard bildet die heutigen Rollen
+     je Route ab, z. B. `POST /instances/{id}/events` für die Onboarding-Rollen.
    - Die Datei für `bin/run-workflows.php` (`WF_BOOTSTRAP`) gibt den `WorkflowRunner`
      zurück.
    - Vorlage für beides: `backend/demo/services.php`.
 6. **Cron:** unverändert jede Minute `bin/run-workflows.php` (Kapitel 2); er weckt Timer
    und prüft nun auch die Trigger der Datenquellen.
-7. **Client:** Paket `@apollo29/workflow-client@3.0.0` installieren und einbinden
+7. **Client:** Paket `@apollo29/workflow-client@3.1.0` installieren und einbinden
    (Kapitel 6).
    - Die Admin-Seite wird zu einer Route mit `workflowAdminRoutes`.
    - Den Runner auf `<wf-workflow-runner>` umstellen.

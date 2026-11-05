@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideWorkflowAdmin } from '../../config/config';
-import { emailifyHtml, previewHtml } from './email-extensions';
+import { emailifyHtml, placeholderMatches, previewHtml } from './email-extensions';
 import { safeHref, safeImageSrc, WfHtmlEditor } from './html-editor';
 
 // jsdom misst nichts; ProseMirror fragt beim Scrollen zur Auswahl nach Rechtecken.
@@ -58,6 +58,17 @@ const click = (el: HTMLElement, text: string): void =>
   [...el.querySelectorAll('button')]
     .find((b) => b.textContent?.trim() === text || b.getAttribute('aria-label') === text)!
     .click();
+
+describe('placeholderMatches', () => {
+  it('finds values and Bausteine of the host app, not loose braces', () => {
+    // `{{>fuss}}` ist ein Baustein der Host-App (z. B. Coach-Admin), kein Wert der Engine.
+    expect(placeholderMatches('Hallo {{name}}, {{>fuss}} {{ x }} {{>}} {{a.b}}')).toEqual([
+      { index: 6, text: '{{name}}' },
+      { index: 16, text: '{{>fuss}}' },
+      { index: 40, text: '{{a.b}}' },
+    ]);
+  });
+});
 
 describe('WfHtmlEditor', () => {
   it('accepts only safe link and image targets', () => {

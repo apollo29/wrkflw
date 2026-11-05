@@ -6,6 +6,7 @@ namespace WorkflowEngine\Tests\Unit\Http;
 
 use PHPUnit\Framework\TestCase;
 use WorkflowEngine\Http\ApiFactory;
+use WorkflowEngine\Version;
 
 /** `docs/openapi.yaml` beschreibt genau die Routen der ApiFactory. */
 final class OpenApiTest extends TestCase
@@ -14,7 +15,8 @@ final class OpenApiTest extends TestCase
     {
         $yaml = file_get_contents(dirname(__DIR__, 4) . '/docs/openapi.yaml');
         self::assertIsString($yaml);
-        self::assertStringContainsString('version: 3.0.0', $yaml);
+        // Die Doku trägt die Version der Engine.
+        self::assertStringContainsString('version: ' . Version::ENGINE, $yaml);
 
         $documented = [];
         $path = null;

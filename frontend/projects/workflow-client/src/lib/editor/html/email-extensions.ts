@@ -3,7 +3,15 @@ import { Plugin } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 /**
- * Zeigt `{{platzhalter}}` als Chips an, rein visuell. Der Inhalt (und `getHTML()`) bleibt
+ * Platzhalter im Text: Werte `{{feld}}` und Bausteine der Host-App `{{>name}}` (z. B.
+ * Textbausteine der Coach-Admin). Lose Klammern wie `{{ x }}` zählen nicht.
+ */
+export function placeholderMatches(text: string): { index: number; text: string }[] {
+  return [...text.matchAll(/\{\{>?[\w.]+\}\}/g)].map((m) => ({ index: m.index, text: m[0] }));
+}
+
+/**
+ * Zeigt `{{platzhalter}}` und `{{>baustein}}` als Chips an, rein visuell. Der Inhalt (und `getHTML()`) bleibt
  * der Text `{{feld}}`, den die Engine beim Versand ersetzt. Port aus 2.x.
  */
 export const PlaceholderHighlight = Extension.create({
@@ -18,12 +26,10 @@ export const PlaceholderHighlight = Extension.create({
               if (!node.isText || typeof node.text !== 'string') {
                 return;
               }
-              const regex = /\{\{[\w.]+\}\}/g;
-              let match: RegExpExecArray | null;
-              while ((match = regex.exec(node.text)) !== null) {
+              for (const match of placeholderMatches(node.text)) {
                 const from = pos + match.index;
                 decorations.push(
-                  Decoration.inline(from, from + match[0].length, { class: 'wf-ph' }),
+                  Decoration.inline(from, from + match.text.length, { class: 'wf-ph' }),
                 );
               }
             });

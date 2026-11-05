@@ -45,6 +45,12 @@ final class ApiHarness
     /** @var App<\Psr\Container\ContainerInterface|null> */
     public readonly App $app;
 
+    /** Für Tests, die die API selbst einhängen ({@see ApiFactory::mount()}). */
+    public readonly ApiServices $services;
+
+    /** Test-Zugriff über den Header `X-Test-User` (admin, user). */
+    public readonly AccessResolverInterface $access;
+
     public function __construct(bool $withDataSources = true)
     {
         $this->h = new EngineHarness();
@@ -97,7 +103,8 @@ final class ApiHarness
             dataSources: $withDataSources ? new DataSources($admin, $this->store, $this->store, $this->store, $this->store) : null,
         );
 
-        $this->app = ApiFactory::create($services, new class () implements AccessResolverInterface {
+        $this->services = $services;
+        $this->access = new class () implements AccessResolverInterface {
             public function resolve(ServerRequestInterface $request): ?Access
             {
                 return match ($request->getHeaderLine('X-Test-User')) {
@@ -106,7 +113,8 @@ final class ApiHarness
                     default => null,
                 };
             }
-        });
+        };
+        $this->app = ApiFactory::create($services, $this->access);
     }
 
     /**

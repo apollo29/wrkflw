@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace WorkflowEngine\Http;
 
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Interfaces\RouteCollectorProxyInterface;
+use Slim\Middleware\BodyParsingMiddleware;
 use WorkflowEngine\Contracts\AccessResolverInterface;
 
 /**
@@ -93,18 +95,8 @@ final class ApiFactory
     public static function create(ApiServices $services, AccessResolverInterface $access): App
     {
         $app = AppFactory::create();
-        self::map($app, self::INSTANCE_ROUTES, new InstanceController($services));
-        self::map($app, self::DEFINITION_ROUTES, new DefinitionController($services));
-        self::map($app, self::CATALOG_ROUTES, new CatalogController($services));
-        self::map($app, self::TEMPLATE_ROUTES, new TemplateController($services));
-
         $responses = $app->getResponseFactory();
-        if ($services->dataSources !== null) {
-            $controller = new DataSourceController($services->dataSources);
-            $app->group(self::DATA_SOURCE_PREFIX, static function (RouteCollectorProxyInterface $group) use ($controller): void {
-                self::map($group, self::DATA_SOURCE_ROUTES, $controller);
-            })->add(new RequireAdminMiddleware($responses));
-        }
+        self::mapAll($app, $services, $responses, null);
 
         $app->addBodyParsingMiddleware();
         $app->add(new AccessMiddleware($access, $responses));
@@ -114,6 +106,53 @@ final class ApiFactory
         );
 
         return $app;
+    }
+
+    /**
+     * Hängt die API als Gruppe in eine bestehende Slim-Anwendung der Host-App, z. B. unter
+     * `/api/v1/wf` neben deren eigenen Routen (ADR 11, Nachtrag 3.1).
+     *
+     * Zugriff, Body-Parsing und das Fehlerformat gelten nur in dieser Gruppe; die
+     * Routing-Middleware stellt die Host-App. Der Guard entscheidet nach dem Zugriff je
+     * Route, etwa nach Rollen der Host-App; er bekommt den Schlüssel aus {@see routeList()}
+     * («POST /instances/{id}/events») und den Zugriff. `false` heisst 403.
+     *
+     * @param RouteCollectorProxyInterface<\Psr\Container\ContainerInterface|null> $parent
+     * @param (\Closure(string, Access): bool)|null                                    $guard
+     */
+    public static function mount(
+        RouteCollectorProxyInterface $parent,
+        string $prefix,
+        ApiServices $services,
+        AccessResolverInterface $access,
+        ?\Closure $guard = null,
+    ): void {
+        $responses = $parent->getResponseFactory();
+        $parent->group($prefix, static function (RouteCollectorProxyInterface $group) use ($services, $responses, $guard): void {
+            self::mapAll($group, $services, $responses, $guard);
+        })
+            ->add(new BodyParsingMiddleware())
+            ->add(new AccessMiddleware($access, $responses))
+            ->add(new ErrorBoundaryMiddleware($responses));
+    }
+
+    /**
+     * @param RouteCollectorProxyInterface<\Psr\Container\ContainerInterface|null> $collector
+     * @param (\Closure(string, Access): bool)|null                                    $guard
+     */
+    private static function mapAll(RouteCollectorProxyInterface $collector, ApiServices $services, ResponseFactoryInterface $responses, ?\Closure $guard): void
+    {
+        self::map($collector, self::INSTANCE_ROUTES, new InstanceController($services), '', $guard, $responses);
+        self::map($collector, self::DEFINITION_ROUTES, new DefinitionController($services), '', $guard, $responses);
+        self::map($collector, self::CATALOG_ROUTES, new CatalogController($services), '', $guard, $responses);
+        self::map($collector, self::TEMPLATE_ROUTES, new TemplateController($services), '', $guard, $responses);
+
+        if ($services->dataSources !== null) {
+            $controller = new DataSourceController($services->dataSources);
+            $collector->group(self::DATA_SOURCE_PREFIX, static function (RouteCollectorProxyInterface $group) use ($controller, $guard, $responses): void {
+                self::map($group, self::DATA_SOURCE_ROUTES, $controller, self::DATA_SOURCE_PREFIX, $guard, $responses);
+            })->add(new RequireAdminMiddleware($responses));
+        }
     }
 
     /**
@@ -141,13 +180,23 @@ final class ApiFactory
     /**
      * @param RouteCollectorProxyInterface<\Psr\Container\ContainerInterface|null> $collector
      * @param list<array{0: string, 1: string, 2: string}>                         $routes
+     * @param (\Closure(string, Access): bool)|null                                 $guard
      */
-    private static function map(RouteCollectorProxyInterface $collector, array $routes, object $controller): void
-    {
+    private static function map(
+        RouteCollectorProxyInterface $collector,
+        array $routes,
+        object $controller,
+        string $keyPrefix,
+        ?\Closure $guard,
+        ResponseFactoryInterface $responses,
+    ): void {
         foreach ($routes as [$method, $pattern, $action]) {
             $handler = [$controller, $action];
             assert(is_callable($handler));
-            $collector->map([$method], $pattern, $handler);
+            $route = $collector->map([$method], $pattern, $handler);
+            if ($guard !== null) {
+                $route->add(new RouteGuardMiddleware("{$method} {$keyPrefix}{$pattern}", $guard, $responses));
+            }
         }
     }
 }

@@ -9,6 +9,21 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+## [3.1.0] – 2026-11-05
+
+Für die Umstellung der Coach-Admin.
+
+- **`ApiFactory::mount()`** hängt die API als Gruppe in eine bestehende Slim-Anwendung
+  (z. B. unter `/api/v1/wf`).
+  - Zugriff, Body-Parsing und Fehlerformat gelten nur dort (`ErrorBoundaryMiddleware`).
+  - Ein optionaler Guard entscheidet je Route nach den Rollen der Host-App
+    (`RouteGuardMiddleware`, 403 `forbidden`).
+  - ADR 11, Nachtrag.
+- **Korrektur:** `WorkflowEngine\Version::ENGINE` meldet die echte Version (3.0.0 meldete
+  noch `3.0.0-dev`); `docs/openapi.yaml` trägt 3.1.0.
+- **HTML-Editor:** hebt auch Bausteine der Host-App `{{>name}}` hervor
+  (`placeholderMatches()`), nicht nur Werte `{{feld}}`.
+
 ## [3.0.0] – 2026-11-05
 
 Neubau von Engine und Client. Wer von 2.x kommt, folgt [`docs/migration-v3.md`](docs/migration-v3.md).

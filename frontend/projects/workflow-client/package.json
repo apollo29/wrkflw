@@ -1,6 +1,6 @@
 {
   "name": "@apollo29/workflow-client",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "peerDependencies": {
     "@angular/common": "^22.2.0",
     "@angular/core": "^22.2.0",
