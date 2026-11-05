@@ -126,7 +126,8 @@ Ohne `uploadImage` gibt es nur «Bild-URL». Daten-URLs (Base64) nimmt der Edito
 
 Der Reiter `datenquellen` pflegt REST-Verbindungen, REST-Datenmodelle und Trigger
 (`?bereich=verbindungen|modelle|trigger&id=…`). Die Engine erlaubt `/data-sources/*` nur
-Administratoren. Ohne dieses Recht zeigt die Seite «Dafür fehlt das Recht.».
+Administratoren. Ohne dieses Recht zeigt die Seite die Meldung der Engine («Für Datenquellen
+ist das Admin-Recht nötig.»).
 
 - Zugangsdaten gehen nur hin: beim Anlegen im Formular, danach über «Ersetzen». Angezeigt
   werden sie nie.
