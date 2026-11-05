@@ -151,6 +151,8 @@ export const DEMO_MODELS = [
     label: 'Anträge',
     idField: 'id',
     fields: [
+      // Wie die Engine: das ID-Feld steht im Katalog (z. B. für den Startkontext der Trigger).
+      { name: 'id', label: 'ID', type: 'text', writable: false },
       { name: 'status', label: 'Status', type: 'text', writable: true },
       { name: 'betrag', label: 'Betrag', type: 'number', writable: false },
       { name: 'mail', label: 'E-Mail', type: 'text', writable: false },

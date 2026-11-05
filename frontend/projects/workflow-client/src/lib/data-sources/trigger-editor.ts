@@ -7,7 +7,7 @@ import {
   untracked,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { DefinitionSummary, RestModel, Trigger } from '../api/models';
+import type { DefinitionSummary, ModelInfo, Trigger } from '../api/models';
 import { fromDefinition } from '../editor/model/definition-mapping';
 import { WfTranslatePipe } from '../i18n/i18n';
 import { WfBanner } from '../ui/banner';
@@ -380,7 +380,8 @@ export class WfTriggerEditor extends WfSourceEditorBase<TriggerDraft> {
   readonly area = 'trigger' as const;
   protected readonly operators = OPERATORS;
   private readonly triggers = signal<readonly Trigger[]>([]);
-  private readonly models = signal<readonly RestModel[]>([]);
+  /** Alle Datenmodelle (Host-App und REST) aus dem Katalog; Trigger brauchen «Suchen». */
+  private readonly models = signal<readonly ModelInfo[]>([]);
   private readonly workflows = signal<readonly DefinitionSummary[]>([]);
   protected readonly inputs = signal<readonly InputRow[]>([]);
   protected readonly checking = signal(false);
@@ -393,9 +394,7 @@ export class WfTriggerEditor extends WfSourceEditorBase<TriggerDraft> {
       sub: this.i18n.t('sources.trigger.via', { model: t.model, workflow: t.definitionId }),
     })),
   );
-  protected readonly searchable = computed(() =>
-    this.models().filter((m) => m.operations.find?.path),
-  );
+  protected readonly searchable = computed(() => this.models().filter((m) => m.operations.find));
   /** Nur aktive Abläufe, dazu der schon gewählte (falls er inzwischen inaktiv ist). */
   protected readonly activeWorkflows = computed(() =>
     this.workflows().filter((d) => d.status === 'active' || d.id === this.draft().definitionId),
@@ -428,7 +427,7 @@ export class WfTriggerEditor extends WfSourceEditorBase<TriggerDraft> {
     try {
       const [triggers, models, workflows] = await Promise.all([
         firstValueFrom(this.api.dataSources.triggers()),
-        firstValueFrom(this.api.dataSources.models()),
+        firstValueFrom(this.api.catalogs.dataModels()),
         firstValueFrom(this.api.definitions.list()),
       ]);
       this.triggers.set(triggers.triggers);

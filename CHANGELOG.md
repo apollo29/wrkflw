@@ -9,6 +9,61 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+## [3.0.0] – 2026-11-05
+
+Neubau von Engine und Client. Wer von 2.x kommt, folgt [`docs/migration-v3.md`](docs/migration-v3.md).
+
+**Neu**
+- **Datenmodelle** statt Lese- und Schreib-Ports.
+  - Abläufe lesen und schreiben nur freigegebene Felder.
+  - Ablage in der Datenbank, über REST, im Arbeitsspeicher oder eigen (ADR 9).
+- **REST-Datenquellen ohne Code:**
+  - Verbindungen mit verschlüsselten Zugangsdaten
+  - SSRF-Schutz
+  - Beispielabruf
+  - Trigger mit Sperrfrist
+  - Protokoll (ADR 10)
+- **HTTP-API v3:**
+  - Zugriff über einen Port mit Admin-Recht
+  - ein Fehlerformat (ADR 11)
+  - Abbrechen von Durchläufen
+  - Zähler und Struktur für die Übersicht
+- **Client 3.0** (ADR 12): Übersicht, Editor, Instanzen, Runner, Vorlagen mit
+  E-Mail-tauglichen Tabellen, Datenquellen.
+  - standalone und zoneless
+  - Tokens, 12er-Raster, hell und dunkel
+  - alle Texte aus einem Katalog
+- **Demo** mit Ersatz-Backend oder mit Engine und MariaDB (`backend/demo/`, Beispieldaten
+  9.13, `docs/demo.md`).
+- **Abnahme** 9.14–9.16 als Playwright-Suiten, gegen beide Backends
+  (`docs/abnahme.md`).
+
+**Bricht gegenüber 2.x**
+- **Engine und Ablage:**
+  - Die Ports `DataProviderInterface`, `DataCatalogInterface`, `DataWriterInterface` und
+    `DataWriteCatalogInterface` entfallen; Datenmodelle ersetzen sie.
+  - Neues Schema über `bin/migrate.php`.
+  - `WF_SECRET_KEY` für Datenquellen.
+- **HTTP-API:** Fehler überall als `{error: {code, message, details?}}`;
+  `/data-catalog` heisst `/data-models`; Statuscodes und Codes siehe Migration Kapitel 5.
+- **Client:** neue API (`provideWorkflowAdmin`, `workflowAdminRoutes`,
+  `<wf-workflow-runner>`); Angular ≥ 22.2.
+
+### Neubau 3.0 – Phase 12: Demo, Abnahme, Release
+
+- **Abnahme 9.15** (Punkte 1–14) als `e2e/abnahme.spec.ts`, breit und bei 375 px.
+  `docs/abnahme.md` ordnet jedem Punkt aus 9.14–9.16 seinen Beleg zu.
+- **Echtes Backend für die Demo:**
+  - Host-App `backend/demo/services.php`: Ablage in MariaDB, Datenmodell `antrag` auf
+    `demo_antraege`, Mail-Log, Datenquellen
+  - Seed `backend/demo/seed.php` mit den Beispieldaten 9.13
+  - Demo-Konfiguration `echt` mit Proxy
+  - Suite `e2e-echt/` als eigener CI-Job mit MariaDB
+- **Trigger:** wählbar sind alle Datenmodelle mit «Suchen», auch die der Host-App (bisher
+  nur REST-Modelle).
+- **Doku:** ADR 12 «Client-Architektur v3»; Migrationsleitfaden um Client und Coach-Admin
+  ergänzt; README mit Installation und Demo.
+
 ### Neubau 3.0 – Phase 11: Datenquellen-UI
 
 - **Reiter «Datenquellen»** (9.16) mit den Bereichen Verbindungen, Datenmodelle und Trigger.

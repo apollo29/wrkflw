@@ -75,6 +75,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "echt": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "projects/demo/src/app/backend.ts",
+                  "with": "projects/demo/src/app/backend.echt.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -87,6 +98,10 @@
             },
             "development": {
               "buildTarget": "demo:build:development"
+            },
+            "echt": {
+              "buildTarget": "demo:build:echt",
+              "proxyConfig": "projects/demo/proxy.echt.json"
             }
           },
           "defaultConfiguration": "development"

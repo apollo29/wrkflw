@@ -15,6 +15,7 @@
 node_modules/
 /frontend/test-results/
 /frontend/playwright-report/
+/frontend/playwright-report-echt/
 
 # Umgebung & lokale Konfiguration
 .env

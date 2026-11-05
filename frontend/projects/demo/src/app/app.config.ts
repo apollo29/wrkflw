@@ -3,15 +3,15 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideWorkflowAdmin } from '@apollo29/workflow-client';
 import { routes } from './app.routes';
-import { demoBackend } from './fake-api';
+import { DEMO_INTERCEPTORS } from './backend';
 import { demoUpload, demoUploadImage } from './demo-upload';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([demoBackend])),
-    // Ersatz-Backend im Browser; Phase 12 bindet das echte Backend an.
+    // Ersatz-Backend im Browser; `ng serve demo -c echt` spricht mit der Engine (docs/demo.md).
+    provideHttpClient(withFetch(), withInterceptors(DEMO_INTERCEPTORS)),
     provideWorkflowAdmin({
       apiBaseUrl: '/api',
       uploadFile: demoUpload,

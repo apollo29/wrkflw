@@ -16,3 +16,4 @@ ADR 1–7 stammen aus 2.x und gelten weiter, soweit ein späterer ADR sie nicht 
 | 9 | [Datenmodelle statt Lese- und Schreib-Ports](0009-datenmodelle.md) |
 | 10 | [REST-Datenquellen und Geheimnisse](0010-rest-datenquellen.md) |
 | 11 | [HTTP-API v3: Zugriff und Fehler](0011-http-api-zugriff-fehler.md) |
+| 12 | [Client-Architektur v3](0012-client-architektur-v3.md) |

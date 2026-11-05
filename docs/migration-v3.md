@@ -1,7 +1,8 @@
 # Umstieg von 2.x auf 3.0
 
-Dieser Leitfaden wächst mit dem Neubau. Er beschreibt, was eine Host-App (zuerst die
-Coach-Admin) beim Umstieg tun muss und was unverändert bleibt.
+Dieser Leitfaden beschreibt, was eine Host-App (zuerst die Coach-Admin) beim Umstieg auf
+Engine `v3.0.0` und Client `@apollo29/workflow-client@3.0.0` tun muss und was unverändert
+bleibt. Kapitel 7 fasst die Schritte für die Coach-Admin zusammen.
 
 ## 1. Datenbank
 
@@ -120,4 +121,77 @@ Die Routen aus 2.x bleiben, mit diesen Änderungen (ADR 11):
   PHP-Datei, die `ApiServices` zurückgibt), wie `bin/run-workflows.php` über
   `WF_BOOTSTRAP`.
 
-_Weitere Abschnitte (Client) folgen mit den Phasen 6 bis 12._
+## 6. Client
+
+Der Client 3.0 ist ein Neubau (ADR 12). Aus 1.x bleibt nur der Gedanke, nicht die API.
+
+| 1.x | 3.0 |
+| --- | --- |
+| `WORKFLOW_API_BASE_URL`, `WORKFLOW_API_KEY`, `authInterceptor` | `provideWorkflowAdmin({ apiBaseUrl, apiKey \| authToken })`; der Header geht nur an `apiBaseUrl` |
+| `<wf-builder>`, `<wf-template-manager>` und eigene Seiten drumherum | `workflowAdminRoutes` unter einer eigenen Route: Übersicht, Editor, Instanzen, Vorlagen, Datenquellen |
+| `<wf-runner [instanceId] (completed)>` | `<wf-workflow-runner [instanceId] (finished) (stepChange)>` |
+| Datei-Upload im Runner über einen festen Endpunkt | Host-Funktion `uploadFile(file, { handler, instanceId, field })` → `{ value }` oder `{ rejected }` |
+| Bilder im HTML-Editor als Base64 | Host-Funktion `uploadImage(file)` → Adresse; ohne sie nur «Bild-URL» |
+| Texte fest im Template | Katalog `WF_MESSAGES`; einzelne Texte über `provideWorkflowAdmin({ messages })` |
+| CSS des Clients mit festen Breiten | `styles/wf.css` mit Tokens `--wfb-*`; Schriften lädt die Host-App |
+
+Voraussetzungen: Angular ≥ 22.2 ohne zone.js, `provideHttpClient(withFetch())` und
+`provideRouter(…, withComponentInputBinding())`.
+
+```ts
+// app.config.ts der Host-App
+provideRouter([{ path: 'workflows-admin', children: workflowAdminRoutes }], withComponentInputBinding()),
+provideWorkflowAdmin({
+  apiBaseUrl: '/api/wrkflw',
+  authToken: () => session.token(),
+  uploadFile: (file, ctx) => uploads.forWorkflow(file, ctx),
+  uploadImage: (file) => uploads.image(file),
+}),
+```
+
+```json
+// angular.json
+"styles": ["node_modules/@apollo29/workflow-client/styles/wf.css", "src/styles.css"]
+```
+
+Das Paket liegt in GitHub Packages:
+
+```
+@apollo29:registry=https://npm.pkg.github.com
+```
+
+## 7. Coach-Admin Schritt für Schritt
+
+1. **Engine:** Den Subtree `packages/wrkflw/` auf den Tag `v3.0.0` ziehen
+   (`git subtree pull --prefix packages/wrkflw https://github.com/apollo29/wrkflw v3.0.0 --squash`).
+2. **Schlüssel:** `WF_SECRET_KEY` in der Umgebung setzen (Kapitel 4). Ohne Schlüssel
+   starten die Datenquellen nicht; der Rest läuft.
+3. **Datenbank:** Sicherung ziehen, dann `php packages/wrkflw/backend/bin/migrate.php`
+   (Kapitel 1). Laufende Durchläufe bleiben auf ihrer Version und laufen weiter.
+4. **Datenmodelle:** Die bisherigen Lese- und Schreib-Ports durch Datenmodelle ersetzen
+   (Kapitel 3).
+   - Je App-Tabelle, die Abläufe lesen oder schreiben, ein `DataModel::define(…)` mit den
+     freigegebenen Feldern.
+   - Bisherige `entity`-Namen bleiben gültig, wenn das Modell gleich heisst.
+5. **Verdrahtung:**
+   - Die Bootstrap-Datei für `api/index.php` (`WF_API_BOOTSTRAP`) gibt `ApiServices` und
+     einen `AccessResolverInterface` auf die Anmeldung der Coach-Admin zurück (Kapitel 5).
+     Admins bekommen das Admin-Recht für die Datenquellen.
+   - Die Datei für `bin/run-workflows.php` (`WF_BOOTSTRAP`) gibt den `WorkflowRunner`
+     zurück.
+   - Vorlage für beides: `backend/demo/services.php`.
+6. **Cron:** unverändert jede Minute `bin/run-workflows.php` (Kapitel 2); er weckt Timer
+   und prüft nun auch die Trigger der Datenquellen.
+7. **Client:** Paket `@apollo29/workflow-client@3.0.0` installieren und einbinden
+   (Kapitel 6).
+   - Die Admin-Seite wird zu einer Route mit `workflowAdminRoutes`.
+   - Den Runner auf `<wf-workflow-runner>` umstellen.
+   - `uploadFile` und `uploadImage` an die Dateiablage der Coach-Admin anbinden.
+8. **Prüfen:**
+   - Den Beispielablauf und einen bestehenden Ablauf im Editor öffnen.
+   - Eine Instanz durchspielen.
+   - Eine Vorlage mit Tabelle verschicken.
+   - Zum Vergleich: `docs/abnahme.md` und `docs/demo.md`.
+9. **Rückweg:** Subtree auf den letzten 2.x-Stand zurücksetzen und die Sicherung aus
+   Schritt 3 einspielen. Neue Daten nach dem Umstieg (Datenquellen, Versionen) gehen dabei
+   verloren. Der 2.x-Code liest das v3-Schema nicht.

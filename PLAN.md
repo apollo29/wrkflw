@@ -145,7 +145,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   Beispielbaum → Feld übernehmen, Felder mit gesperrtem «×»), Trigger (Bedingungen,
   Startkontext-Zuordnung, Takt ≥5 min, Sperrfrist, «Jetzt prüfen»).
 
-### 12 – Demo, Abnahme, Release
+### 12 – Demo, Abnahme, Release ✅ (2026-11-05)
 - Demo-App mit Beispieldaten 9.13 (Seed-Skripte), Playwright-Suite = Abnahme 9.15 (1–14)
   + 9.16, inkl. 375 px ohne waagrechtes Scrollen und Dunkelmodus.
 - README, CHANGELOG `3.0.0`, ADR 12 «Client-Architektur v3», Migrationsleitfaden für die

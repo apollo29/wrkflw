@@ -383,17 +383,19 @@ describe('WfDataSourcesPage', () => {
 
     async function lists(triggers: unknown[] = [TRIGGER]): Promise<void> {
       await reply('/api/data-sources/triggers', { triggers });
-      await reply('/api/data-sources/models', {
-        models: [
-          MODEL,
-          {
-            ...MODEL,
-            name: 'ohne',
-            label: 'Ohne Suche',
-            operations: { load: MODEL.operations.load },
-          },
-        ],
+      const info = (name: string, find: boolean) => ({
+        name,
+        label: name,
+        idField: 'id',
+        fields: MODEL.fields.map((f) => ({
+          name: f.name,
+          label: f.label,
+          type: f.type,
+          writable: false,
+        })),
+        operations: { load: true, find, update: false, create: false },
       });
+      await reply('/api/data-models', { models: [info('antrag', true), info('ohne', false)] });
       await reply('/api/workflows', workflows);
     }
 

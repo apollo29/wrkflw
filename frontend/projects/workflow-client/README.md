@@ -4,8 +4,20 @@ Angular-Client der Workflow-Engine v3: Übersicht, Editor, Instanzen, Vorlagen u
 Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalone,
 zoneless, Signals; Angular ≥ 22.2.
 
-> Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht, Editor,
-> Übersicht, Instanzen, Runner, Vorlagen und Datenquellen sind da.
+## Installieren
+
+`.npmrc` im Projekt (Token mit `read:packages`):
+
+```
+@apollo29:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+```bash
+npm install @apollo29/workflow-client@^3.0.0
+```
+
+Umstieg von 1.x: `docs/migration-v3.md`, Kapitel 6.
 
 ## Einbinden
 

@@ -106,3 +106,66 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+
+  e2e-echt:
+    name: End-to-End (echtes Backend)
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: workflow_demo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      NG_CLI_ANALYTICS: 'false'
+      WF_DB_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=workflow_demo;charset=utf8mb4'
+      WF_DB_USER: root
+      WF_DB_PASS: root
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, json, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Backend
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Playwright-Browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Abnahme gegen Engine und MariaDB
+        working-directory: frontend
+        run: npx playwright test -c playwright.echt.config.ts
+
+      - name: Playwright-Bericht
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-echt
+          path: frontend/playwright-report-echt
+          retention-days: 7

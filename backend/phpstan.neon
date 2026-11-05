@@ -7,4 +7,5 @@ parameters:
     paths:
         - src
         - tests
+        - demo
     tmpDir: .phpstan.cache
