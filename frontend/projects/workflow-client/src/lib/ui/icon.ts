@@ -19,6 +19,10 @@ export const WF_ICONS = {
   redo: '<path d="M11 3l3 3-3 3M14 6H6.5a4 4 0 0 0 0 8H9"/>',
   close: '<path d="M4 4l8 8M12 4l-8 8"/>',
   plus: '<path d="M8 3v10M3 8h10"/>',
+  'align-left': '<path d="M2 4h12M2 8h8M2 12h11"/>',
+  'align-center': '<path d="M2 4h12M4 8h8M3 12h10"/>',
+  'align-right': '<path d="M2 4h12M6 8h8M3 12h11"/>',
+  'clear-format': '<path d="M4 3h9M8.5 3 6 13M3 13h5M11 10l3 3M14 10l-3 3"/>',
 } as const;
 
 export type WfIconName = keyof typeof WF_ICONS;

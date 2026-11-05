@@ -5,7 +5,7 @@ Datenquellen. Veröffentlicht in GitHub Packages (Tag `client-vX.Y.Z`). Standalo
 zoneless, Signals; Angular ≥ 22.2.
 
 > Im Aufbau (siehe `PLAN.md`). Shell, Gestaltung, Bausteine, Texte, API-Schicht, Editor,
-> Übersicht, Instanzen und Runner sind da; Vorlagen und Datenquellen folgen.
+> Übersicht, Instanzen, Runner und Vorlagen sind da; Datenquellen folgen.
 
 ## Einbinden
 
@@ -100,3 +100,24 @@ provideWorkflowAdmin({
 ```
 
 Ohne `uploadFile` zeigt der Runner bei Datei-Feldern nur einen Hinweis.
+
+## Vorlagen
+
+Der Reiter `vorlagen` verwaltet E-Mail- und Seitenvorlagen (`?type=email|page&id=…`):
+Betreff (nur E-Mail), Inhalt im HTML-Editor, Vorschau mit Beispielwerten, Verwendung je
+Ablauf und Schritt. Eine verwendete Vorlage lässt sich nicht löschen; die Seite zeigt den
+Grund der Engine. Platzhalter-Vorschläge kommen aus den Abläufen, die die Vorlage verwenden.
+
+Der HTML-Editor schreibt Tabellen e-mail-tauglich: Rahmen und Abstände als Inline-Stile,
+Spaltenbreiten in Prozent. Die Vorschau läuft in einem `iframe` mit `sandbox` ohne Skripte.
+
+Bilder lädt die Host-App hoch und gibt eine Adresse zurück (`https:` oder relativ):
+
+```ts
+provideWorkflowAdmin({
+  apiBaseUrl: '/api',
+  uploadImage: async (file) => (await myImageUpload(file)).url,
+});
+```
+
+Ohne `uploadImage` gibt es nur «Bild-URL». Daten-URLs (Base64) nimmt der Editor nicht an.

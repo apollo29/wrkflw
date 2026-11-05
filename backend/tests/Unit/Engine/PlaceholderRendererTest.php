@@ -25,6 +25,13 @@ final class PlaceholderRendererTest extends TestCase
         );
     }
 
+    public function testEscapesValuesForHtmlOnRequest(): void
+    {
+        $context = ['name' => '<b>Anna & "Ben"</b>'];
+        self::assertSame('<p><b>Anna & "Ben"</b></p>', $this->renderer->render('<p>{{name}}</p>', $context));
+        self::assertSame('<p>&lt;b&gt;Anna &amp; &quot;Ben&quot;&lt;/b&gt;</p>', $this->renderer->render('<p>{{name}}</p>', $context, html: true));
+    }
+
     public function testDottedPathsReachNestedValuesButExactKeysWin(): void
     {
         $context = ['subWorkflow' => ['status' => 'completed'], 'a.b' => 'exakt', 'a' => ['b' => 'verschachtelt']];

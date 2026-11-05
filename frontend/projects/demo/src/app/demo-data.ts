@@ -72,8 +72,7 @@ export const DEMO_DEFINITIONS: Record<string, unknown>[] = [
         action: 'send_email',
         config: {
           to: '{{antrag_mail}}',
-          subject: 'Ihr Antrag {{antrag_id}}',
-          body: '<p>Ihr Antrag wurde geprüft.</p>',
+          templateId: 'antrag-ok',
         },
         transitions: [{ to: 'abschluss' }],
       },
@@ -172,6 +171,23 @@ export const DEMO_TEMPLATES = [
     type: 'page',
     subject: '',
     body: '<p>Antrag <strong>{{antrag_id}}</strong>: Bitte Betrag und Beleg prüfen, bevor du ihn freigibst.</p>',
+  },
+  {
+    id: 'antrag-ok',
+    name: 'Antrag bestätigt',
+    type: 'email',
+    subject: 'Ihr Antrag {{antrag_id}} ist geprüft',
+    body:
+      '<h2>Antrag bestätigt</h2>' +
+      '<p>Guten Tag</p><p>Ihr Antrag <strong>{{antrag_id}}</strong> wurde geprüft und freigegeben.</p>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%"><tbody>' +
+      '<tr><th style="border:1px solid #d4d4d9;padding:8px 10px;vertical-align:top;text-align:left;background:#f4f4f5;width:50%">Antrag</th>' +
+      '<th style="border:1px solid #d4d4d9;padding:8px 10px;vertical-align:top;text-align:left;background:#f4f4f5;width:50%">Betrag</th></tr>' +
+      '<tr><td style="border:1px solid #d4d4d9;padding:8px 10px;vertical-align:top;text-align:left;width:50%">{{antrag_id}}</td>' +
+      '<td style="border:1px solid #d4d4d9;padding:8px 10px;vertical-align:top;text-align:left;width:50%">{{antrag_betrag}}</td></tr>' +
+      '</tbody></table>' +
+      '<p><a href="https://example.org/antraege/{{antrag_id}}" data-type="button">Antrag ansehen</a></p>' +
+      '<p>Freundliche Grüsse</p>',
   },
   {
     id: 'eingang',

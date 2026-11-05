@@ -1,4 +1,4 @@
-import type { WfUploadFile } from '@apollo29/workflow-client';
+import type { WfUploadFile, WfUploadImage } from '@apollo29/workflow-client';
 
 /** Demo-Upload: nimmt PDF bis 5 MB an (wie die Prüfung `pdf_max_5mb`), sonst Ablehnung. */
 export const demoUpload: WfUploadFile = async (file, { handler }) => {
@@ -10,4 +10,10 @@ export const demoUpload: WfUploadFile = async (file, { handler }) => {
     };
   }
   return { value: `datei-${file.name}` };
+};
+
+/** Demo-Bildupload: ohne Server gibt es nur eine feste Grafik aus `public/` zurück. */
+export const demoUploadImage: WfUploadImage = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  return '/demo-bild.png';
 };

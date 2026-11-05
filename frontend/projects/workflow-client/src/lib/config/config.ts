@@ -15,6 +15,9 @@ export interface WfUploadContext {
   readonly field: string;
 }
 
+/** Lädt ein Bild für den HTML-Editor hoch und gibt seine öffentliche `https:`-Adresse zurück. */
+export type WfUploadImage = (file: File) => Promise<string>;
+
 /** Nimmt eine Datei für ein Datei-Feld an. Die Engine selbst nimmt keine Dateien an. */
 export type WfUploadFile = (file: File, context: WfUploadContext) => Promise<WfUploadResult>;
 
@@ -32,6 +35,8 @@ export interface WorkflowAdminConfig {
   readonly theme?: WfTheme;
   /** Upload für Datei-Felder im Runner; ohne sie zeigt der Runner nur einen Hinweis. */
   readonly uploadFile?: WfUploadFile;
+  /** Bild-Upload im HTML-Editor; ohne ihn gibt es nur «Bild-URL». */
+  readonly uploadImage?: WfUploadImage;
 }
 
 export interface ResolvedWorkflowAdminConfig {
@@ -39,6 +44,7 @@ export interface ResolvedWorkflowAdminConfig {
   readonly authToken: () => string | null;
   readonly theme: WfTheme;
   readonly uploadFile: WfUploadFile | null;
+  readonly uploadImage: WfUploadImage | null;
 }
 
 export const WF_CONFIG = new InjectionToken<ResolvedWorkflowAdminConfig>('WF_CONFIG');
@@ -51,6 +57,7 @@ export function resolveConfig(config: WorkflowAdminConfig): ResolvedWorkflowAdmi
     authToken: config.authToken ?? (() => (key !== undefined && key !== '' ? key : null)),
     theme: config.theme ?? 'system',
     uploadFile: config.uploadFile ?? null,
+    uploadImage: config.uploadImage ?? null,
   };
 }
 

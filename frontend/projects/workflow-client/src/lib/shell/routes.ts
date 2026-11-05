@@ -47,8 +47,9 @@ export const workflowAdminRoutes: Routes = [
       },
       {
         path: 'vorlagen',
-        component: WfPlaceholderPage,
-        data: { title: 'nav.templates', phase: 10 },
+        loadComponent: () =>
+          import('../templates/template-manager').then((m) => m.WfTemplateManager),
+        canDeactivate: [wfUnsavedChangesGuard],
       },
       {
         path: 'datenquellen',

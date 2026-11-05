@@ -56,3 +56,7 @@ export * from './lib/instances/instance-list';
 export * from './lib/runner/runner-model';
 export * from './lib/runner/workflow-runner';
 export * from './lib/runner/runner-page';
+
+// Vorlagen
+export * from './lib/templates/template-manager';
+export * from './lib/editor/html/email-extensions';

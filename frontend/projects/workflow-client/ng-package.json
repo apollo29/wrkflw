@@ -13,6 +13,9 @@
   ],
   "allowedNonPeerDependencies": [
     "@tiptap/core",
+    "@tiptap/extension-image",
+    "@tiptap/extension-table",
+    "@tiptap/extension-text-align",
     "@tiptap/pm",
     "@tiptap/starter-kit"
   ]

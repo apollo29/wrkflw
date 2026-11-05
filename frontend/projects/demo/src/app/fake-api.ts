@@ -23,7 +23,7 @@ import { advance, currentStep, goBack, handleEvent } from './demo-engine';
  * Routen nach, die der Client braucht; Zustand in localStorage.
  */
 
-const KEY = 'wrkflw-demo-v3';
+const KEY = 'wrkflw-demo-v3.10';
 
 type Status = 'running' | 'waiting_event' | 'waiting_timer' | 'completed' | 'failed' | 'cancelled';
 const RUNNING: readonly Status[] = ['running', 'waiting_event', 'waiting_timer'];
@@ -60,9 +60,18 @@ interface StoredInstance {
   applied?: string[];
 }
 
+interface StoredTemplate {
+  id: string;
+  name: string;
+  type: string;
+  subject: string;
+  body: string;
+}
+
 interface Db {
   definitions: Record<string, StoredVersion[]>;
   instances: StoredInstance[];
+  templates: StoredTemplate[];
 }
 
 interface ValidationError {
@@ -184,14 +193,16 @@ function seed(): Db {
       },
     };
   });
-  return { definitions, instances };
+  return { definitions, instances, templates: DEMO_TEMPLATES.map((x) => ({ ...x })) };
 }
 
 function load(): Db {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      return JSON.parse(raw) as Db;
+      const db = JSON.parse(raw) as Db;
+      db.templates ??= DEMO_TEMPLATES.map((x) => ({ ...x }));
+      return db;
     }
   } catch {
     // ohne Speicher: Beispieldaten
@@ -618,6 +629,80 @@ function workflows(
   return fail(404, 'not_found', 'Diese Adresse gibt es in der Demo nicht.');
 }
 
+/** Wo eine Vorlage verwendet wird: `config.templateId` und `ui.template` (wie die Engine). */
+function templateUsage(
+  db: Db,
+  id: string,
+): { definitionId: string; version: number; step: string }[] {
+  const usage: { definitionId: string; version: number; step: string }[] = [];
+  for (const [definitionId, list] of Object.entries(db.definitions)) {
+    for (const v of list) {
+      const steps = (v.definition['steps'] ?? {}) as Record<string, Record<string, unknown>>;
+      for (const [step, s] of Object.entries(steps)) {
+        const config = (s['config'] ?? {}) as Record<string, unknown>;
+        const ui = (s['ui'] ?? {}) as Record<string, unknown>;
+        if (config['templateId'] === id || ui['template'] === id) {
+          usage.push({ definitionId, version: v.version, step });
+        }
+      }
+    }
+  }
+  return usage;
+}
+
+function templates(db: Db, url: URL, req: HttpRequest<unknown>, path: string[]) {
+  const id = path[1];
+  if (!id) {
+    if (req.method !== 'GET') return fail(405, 'method_not_allowed', 'Nicht erlaubt.');
+    const type = url.searchParams.get('type');
+    return ok({
+      templates: db.templates
+        .filter((t) => !type || t.type === type)
+        .map(({ id: tid, name, type: tt }) => ({ id: tid, name, type: tt })),
+    });
+  }
+  const found = db.templates.find((t) => t.id === id);
+  if (path[2] === 'usage') {
+    return found
+      ? ok({ templateId: id, usage: templateUsage(db, id) })
+      : fail(404, 'not_found', 'Diese Vorlage gibt es nicht.');
+  }
+  switch (req.method) {
+    case 'GET':
+      return found ? ok(found) : fail(404, 'not_found', 'Diese Vorlage gibt es nicht.');
+    case 'POST': {
+      if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/.test(id)) {
+        return fail(422, 'validation_failed', 'Die Vorlage ist ungültig.', {
+          fields: { id: ['Die ID besteht aus Buchstaben, Ziffern, _, . und -.'] },
+        });
+      }
+      const body = (req.body ?? {}) as Partial<StoredTemplate>;
+      const template: StoredTemplate = {
+        id,
+        name: String(body.name ?? id),
+        type: body.type === 'page' ? 'page' : 'email',
+        subject: String(body.subject ?? ''),
+        body: String(body.body ?? ''),
+      };
+      db.templates = [...db.templates.filter((t) => t.id !== id), template];
+      persist(db);
+      return ok(template, found ? 200 : 201);
+    }
+    case 'DELETE': {
+      if (!found) return fail(404, 'not_found', 'Diese Vorlage gibt es nicht.');
+      const usage = templateUsage(db, id);
+      if (usage.length > 0) {
+        const where = usage.map((u) => `${u.definitionId} v${u.version} (${u.step})`).join(', ');
+        return fail(409, 'in_use', `Die Vorlage wird noch verwendet: ${where}.`, { usage });
+      }
+      db.templates = db.templates.filter((t) => t.id !== id);
+      persist(db);
+      return ok(null, 204);
+    }
+  }
+  return fail(405, 'method_not_allowed', 'Nicht erlaubt.');
+}
+
 export const demoBackend: HttpInterceptorFn = (req, next) => {
   const url = new URL(req.urlWithParams, 'http://demo');
   if (!url.pathname.startsWith('/api/')) {
@@ -638,16 +723,9 @@ export const demoBackend: HttpInterceptorFn = (req, next) => {
       });
     case 'GET upload-handlers':
       return ok({ handlers: DEMO_UPLOAD_HANDLERS });
-    case 'GET templates': {
-      const type = url.searchParams.get('type');
-      return path[1]
-        ? ok(DEMO_TEMPLATES.find((t) => t.id === path[1]))
-        : ok({
-            templates: DEMO_TEMPLATES.filter((t) => !type || t.type === type).map(
-              ({ id, name, type: tt }) => ({ id, name, type: tt }),
-            ),
-          });
-    }
+  }
+  if (path[0] === 'templates') {
+    return templates(db, url, req, path);
   }
   if (path[0] === 'instances') {
     return instances(db, url, req, path);

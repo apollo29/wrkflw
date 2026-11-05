@@ -21,7 +21,7 @@ test.describe('Shell der Admin-Oberfläche', () => {
       'aria-current',
       'page',
     );
-    await expect(page.getByRole('heading', { level: 2, name: 'Vorlagen' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Vorlagen' })).toBeVisible();
   });
 
   test('Reiter per Tastatur erreichbar', async ({ page }) => {

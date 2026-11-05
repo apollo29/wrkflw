@@ -69,7 +69,8 @@ final readonly class SendEmailAction implements ActionInterface, ConfigurableAct
         $this->mailer->send(new EmailMessage(
             to: $to,
             subject: $this->renderer->render($subject, $context),
-            body: $this->renderer->render($body, $context),
+            // Werte aus dem Kontext dürfen kein HTML in die Mail bringen.
+            body: $this->renderer->render($body, $context, html: true),
             from: $render('from'),
             cc: $this->addresses(self::text($step->config, 'cc'), $context),
             bcc: $this->addresses(self::text($step->config, 'bcc'), $context),

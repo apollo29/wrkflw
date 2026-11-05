@@ -15,6 +15,7 @@ use WorkflowEngine\Instance\ContextKeys;
  * - Eingebaute Zeitwerte, die der Kontext nicht überschreiben kann:
  *   `{{now}}` Datum (ISO), `{{now.datetime}}` Zeitpunkt (ISO 8601), `{{now.year}}` Jahr.
  * - Fehlende, interne und nicht skalare Werte ergeben einen leeren Text.
+ * - Mit `html: true` werden Werte für HTML maskiert (E-Mail-Inhalt), die Vorlage selbst nicht.
  */
 final readonly class PlaceholderRenderer
 {
@@ -27,11 +28,15 @@ final readonly class PlaceholderRenderer
     /**
      * @param array<string, mixed> $context
      */
-    public function render(string $template, array $context): string
+    public function render(string $template, array $context, bool $html = false): string
     {
         return preg_replace_callback(
             self::PATTERN,
-            fn (array $m): string => self::stringify($this->lookup($m[1], $context)),
+            function (array $m) use ($context, $html): string {
+                $value = self::stringify($this->lookup($m[1], $context));
+
+                return $html ? htmlspecialchars($value, \ENT_QUOTES | \ENT_SUBSTITUTE | \ENT_HTML5, 'UTF-8') : $value;
+            },
             $template,
         ) ?? $template;
     }

@@ -56,15 +56,13 @@ describe('WfWorkflowRunner', () => {
     http.expectOne('/api/instances/i-1/current-step').flush(step);
     await Promise.resolve();
     if (template && step.interactive && step.ui['template']) {
-      http
-        .expectOne('/api/templates/hinweis')
-        .flush({
-          id: 'hinweis',
-          name: 'H',
-          type: 'page',
-          subject: '',
-          body: '<p>Hallo {{name}}</p>',
-        });
+      http.expectOne('/api/templates/hinweis').flush({
+        id: 'hinweis',
+        name: 'H',
+        type: 'page',
+        subject: '',
+        body: '<p>Hallo {{name}}</p>',
+      });
     }
     await fixture.whenStable();
   }

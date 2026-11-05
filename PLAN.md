@@ -135,7 +135,7 @@ docker/   docs/{openapi.yaml,adr/,migration-v3.md}  CLAUDE.md  PLAN.md  CHANGELO
   mit Fehlermeldung, Knöpfe je Ereignis, «Ein Schritt zurück» nur wenn möglich,
   idempotente Event-IDs.
 
-### 10 – Vorlagen und HTML-Editor
+### 10 – Vorlagen und HTML-Editor ✅ (2026-11-05)
 - TipTap 3 portieren; Tabellen-Extension (3×3 Vorgabe, Kopfzeile, Zeile/Spalte ±,
   Inline-Styles, Breiten in %), Link/Button/Bild-URL inline statt Browser-Dialog,
   Platzhalter-Vorschläge aus den verwendenden Abläufen, Vorschau, Verwendung, Löschen mit Rückfrage.

@@ -67,6 +67,19 @@ final class SendEmailActionTest extends TestCase
         self::assertArrayNotHasKey('__parent', $mail->vars);
     }
 
+    public function testValuesAreEscapedInTheHtmlBodyButNotInTheSubject(): void
+    {
+        $instance = new WorkflowInstance('i', 'w', 1, 's', InstanceStatus::Running, ['name' => '<script>x</script> & Co', 'mail' => 'p@example.org']);
+        $this->action->execute($instance, new Step('s', StepType::Automatic, 'send_email', [
+            'to' => '{{mail}}',
+            'subject' => 'Für {{name}}',
+            'body' => '<p>Hallo {{name}}</p>',
+        ]));
+
+        self::assertSame('Für <script>x</script> & Co', $this->mailer->sent[0]->subject);
+        self::assertSame('<p>Hallo &lt;script&gt;x&lt;/script&gt; &amp; Co</p>', $this->mailer->sent[0]->body);
+    }
+
     public function testATemplateOverridesSubjectAndBody(): void
     {
         $this->templates->saveTemplate(new Template('t', 'Vorlage', TemplateType::Email, 'Für {{name}}', 'Inhalt'));

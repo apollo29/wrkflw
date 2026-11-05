@@ -9,6 +9,26 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+### Neubau 3.0 – Phase 10: Vorlagen und HTML-Editor
+
+- **Reiter «Vorlagen»** (9.11, E-40 bis E-43):
+  - Liste je Art (E-Mail/Seite), Auswahl in der Adresse, «+ Vorlage»
+  - ID (nach dem ersten Speichern fest), Name, Betreff, Inhalt mit Vorschau
+  - Verwendung «Ablaufname · vN · Schritt» mit Link in den Editor
+  - Löschen mit Rückfrage samt Anzahl Verwendungen; 409 `in_use` zeigt den Grund
+  - Pill und Rückfrage bei ungespeicherten Änderungen, auch beim Wechsel der Vorlage (E-08)
+- **HTML-Editor** (E-44 bis E-48, F-70 bis F-72):
+  - Werkzeuggruppen Text, Struktur, Ausrichtung, Bearbeiten, Platzhalter, Einfügen, Ansicht
+  - E-Mail-Tabellen (3×3 mit Kopfzeile, Zeile/Spalte ±): Inline-Rahmen und -Abstände,
+    Breiten in Prozent; «2 Spalten» als Layout-Tabelle
+  - Bild-URL inline, Bild-Upload über `provideWorkflowAdmin({ uploadImage })`; keine Daten-URLs
+  - eigener Platzhalter, Vorschläge aus den verwendenden Abläufen
+  - HTML-Quelltext und Vorschau mit Beispielwerten im abgeschotteten `iframe`
+- **Sicherheit (Engine):** `send_email` escapt Kontextwerte im HTML-Inhalt; der Betreff
+  bleibt Klartext. `PlaceholderRenderer::render()` hat dafür die Option `html`.
+- **Demo:** Vorlagen speichern, löschen und Verwendung im Ersatz-Backend; neue Vorlage
+  `antrag-ok` mit Tabelle und Button für den Schritt `bestaetigung`; Demo-Bildupload.
+
 ### Neubau 3.0 – Phase 9: Runner
 
 - **`<wf-workflow-runner [instanceId]>`** stellt Durchläufe generisch dar (F-50, F-85):
