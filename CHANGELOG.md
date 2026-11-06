@@ -11,12 +11,20 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [3.1.1] – 2026-11-06
 
-Nur die Engine; der Client bleibt 3.1.0.
+Korrekturen aus der Umstellung der Coach-Admin.
 
 - **Korrektur:** `ApiFactory::mount()` scheiterte in Host-Apps mit DI-Container
   (`AppFactory::create(null, $container)`, etwa PHP-DI): Slim bindet Gruppen-Closures an
   den Container, und die Gruppen der API waren statische Closures. Sie sind jetzt
   aufrufbare Objekte (`RouteGroup`); Test in `MountTest`.
+- **Korrektur Editor:** Eine zusammengesetzte Bedingung wie
+  `context['a'] == true and context['b'] == true` landete im Assistenten, der Wert
+  verschluckte den Rest des Ausdrucks, und beim Speichern wurde daraus
+  `context['a'] == 'true and …'`. `parseCondition()` nimmt jetzt nur ein Literal als
+  Wert (Text, Zahl, `true`/`false`); alles andere bleibt im Modus «Ausdruck».
+- **Korrektur Editor:** Ein automatischer Schritt ohne Aktion und ohne Ausgang gilt als
+  Ende des Ablaufs, wie in der Engine, und nicht mehr als Fehler «Keine Aktion gewählt».
+  Abläufe aus 2.x enden so (`done`) und liessen sich nicht aktiv speichern.
 
 ## [3.1.0] – 2026-11-05
 

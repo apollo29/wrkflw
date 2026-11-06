@@ -1,5 +1,5 @@
 /** Version des Clients. Wird beim Release aus dem Tag `client-vX.Y.Z` gesetzt. */
-export const CLIENT_VERSION = '3.1.0';
+export const CLIENT_VERSION = '3.1.1';
 
 /** Hauptversion der HTTP-API, die dieser Client spricht. */
 export const API_VERSION = 3;

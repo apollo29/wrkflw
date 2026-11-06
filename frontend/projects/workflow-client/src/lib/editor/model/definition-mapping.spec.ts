@@ -58,6 +58,26 @@ describe('definition-mapping', () => {
       expect(parseCondition("context['a'] and context['b']")).toBeNull();
       expect(parseCondition('true')).toBeNull();
     });
+
+    it('reads a quoted value with an escaped quote and rebuilds it unchanged', () => {
+      const when = "context['name'] == 'D\\'Ascoli'";
+      expect(parseCondition(when)).toEqual({ field: 'name', op: '==', value: "D'Ascoli" });
+      expect(compileCondition(parseCondition(when)!)).toBe(when);
+    });
+
+    // Gefunden an einem Ablauf der Coach-Admin: der Wert verschluckte den Rest des
+    // Ausdrucks, der Assistent zeigte `== 'true and …'` und schrieb es beim Speichern so.
+    it('leaves combined or unusual expressions to the raw mode', () => {
+      for (const when of [
+        "context['auszug_eingereicht'] == true and context['kodex_unterschrieben'] == true",
+        "context['a'] == 1 or context['b'] == 2",
+        "context['a'] == context['b']",
+        "context['a'] == 'x' ~ 'y'",
+        "context['a'] == 'offen",
+      ]) {
+        expect(parseCondition(when), when).toBeNull();
+      }
+    });
   });
 
   it('round-trips a model through toDefinition/fromDefinition', () => {

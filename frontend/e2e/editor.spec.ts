@@ -72,6 +72,8 @@ test.describe('Editor', () => {
   test('Aktiv mit Fehler gesperrt, als Entwurf speicherbar', async ({ page }) => {
     await open(page);
     await page.locator('[data-kind="automatic"]').click();
+    // Ohne Ausgang wäre der Schritt ein gültiges Ende; mit Ausgang braucht er eine Aktion.
+    await page.getByTestId('add-transition').click();
     await expect(page.getByTestId('step-issues')).toContainText('Keine Aktion gewählt.');
     await expect(page.getByTestId('editor-issues')).toBeVisible();
     await expect(page.getByTestId('editor-save')).toBeDisabled();

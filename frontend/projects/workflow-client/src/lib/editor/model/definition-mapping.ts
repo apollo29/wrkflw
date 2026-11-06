@@ -141,9 +141,19 @@ export function compileCondition(cond: EditorCondition): string {
   return `context['${cond.field}'] ${cond.op} ${toLiteral(cond.value)}`;
 }
 
-/** Liest einen einfachen when-Ausdruck zurück; null, wenn er nicht ins Muster passt. */
+/**
+ * Liest einen einfachen when-Ausdruck zurück; null, wenn er nicht ins Muster passt.
+ *
+ * Der Wert muss genau ein Literal sein (Text in einfachen Anführungszeichen, Zahl,
+ * `true`/`false`), so wie {@link compileCondition} ihn schreibt. Alles andere, etwa
+ * `… and …`, bleibt im Modus «Ausdruck»: sonst nähme der Wert den Rest des Ausdrucks
+ * auf und der Assistent schriebe ihn beim Speichern als Text zurück.
+ */
 export function parseCondition(when: string): EditorCondition | null {
-  const match = /^context\['([^']+)'\]\s*(==|!=|>=|<=|>|<)\s*(.+)$/.exec(when.trim());
+  const match =
+    /^context\['([^']+)'\]\s*(==|!=|>=|<=|>|<)\s*('(?:[^'\\]|\\.)*'|-?\d+(?:\.\d+)?|true|false)$/.exec(
+      when.trim(),
+    );
   if (!match) {
     return null;
   }

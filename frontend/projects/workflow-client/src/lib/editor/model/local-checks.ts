@@ -62,7 +62,11 @@ export function localChecks(model: EditorModel, ctx: CheckContext): LocalCheck[]
       });
     } else if (step.type === 'automatic') {
       if (step.action === null || step.action === '') {
-        out.push({ code: 'action_missing', step: step.name, severity: 'error' });
+        // Ohne Ausgang ist ein automatischer Schritt ohne Aktion das Ende des Ablaufs;
+        // die Engine nimmt ihn so an (Abläufe aus 2.x enden mit `done`).
+        if (step.transitions.length > 0) {
+          out.push({ code: 'action_missing', step: step.name, severity: 'error' });
+        }
       } else if (!ctx.hasAction(step.action)) {
         out.push({ code: 'action_unknown', step: step.name, severity: 'error' });
       }
