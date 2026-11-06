@@ -9,6 +9,15 @@ Die Einträge bis 2.3.1 stehen im CHANGELOG auf `main`.
 
 ## [Unreleased]
 
+## [3.1.1] – 2026-11-06
+
+Nur die Engine; der Client bleibt 3.1.0.
+
+- **Korrektur:** `ApiFactory::mount()` scheiterte in Host-Apps mit DI-Container
+  (`AppFactory::create(null, $container)`, etwa PHP-DI): Slim bindet Gruppen-Closures an
+  den Container, und die Gruppen der API waren statische Closures. Sie sind jetzt
+  aufrufbare Objekte (`RouteGroup`); Test in `MountTest`.
+
 ## [3.1.0] – 2026-11-05
 
 Für die Umstellung der Coach-Admin.

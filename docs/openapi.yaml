@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: wrkflw – Workflow-Engine API
-  version: 3.1.0
+  version: 3.1.1
   description: |
     HTTP-API der eingebetteten Workflow-Engine (ADR 11). Pfade ohne Präfix; die Host-App
     kann einen Basis-Pfad setzen. Zugriff über den Port `AccessResolverInterface`; die

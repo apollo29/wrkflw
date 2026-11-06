@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace WorkflowEngine\Tests\Unit\Http;
 
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
@@ -26,19 +27,19 @@ final class MountTest extends TestCase
     private array $guarded = [];
 
     /**
-     * @return App<\Psr\Container\ContainerInterface|null>
+     * @return App<\Psr\Container\ContainerInterface|null>|App<ContainerInterface>
      */
-    private function host(?\Closure $guard = null): App
+    private function host(?\Closure $guard = null, ?ContainerInterface $container = null): App
     {
         $h = new ApiHarness();
-        $app = AppFactory::create();
+        $app = AppFactory::create(null, $container);
         $app->group('/api/v1', function (RouteCollectorProxyInterface $v1) use ($h, $guard): void {
-            $v1->get('/host', static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
+            $v1->get('/host', function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
                 $response->getBody()->write('host');
 
                 return $response;
             });
-            $v1->get('/host-fehler', static function (): never {
+            $v1->get('/host-fehler', function (): never {
                 throw new \LogicException('Fehler der Host-App');
             });
             ApiFactory::mount($v1, '/wf', $h->services, $h->access, $guard);
@@ -49,8 +50,8 @@ final class MountTest extends TestCase
     }
 
     /**
-     * @param App<\Psr\Container\ContainerInterface|null> $app
-     * @param array<string, mixed>|null                    $body
+     * @param App<\Psr\Container\ContainerInterface|null>|App<ContainerInterface> $app
+     * @param array<string, mixed>|null                                            $body
      */
     private static function send(App $app, string $method, string $path, string $user = 'admin', ?array $body = null): ResponseInterface
     {
@@ -63,6 +64,31 @@ final class MountTest extends TestCase
         }
 
         return $app->handle($request);
+    }
+
+    /**
+     * Host-Apps mit DI-Container (PHP-DI u. a.): Slim bindet Gruppen-Closures an den
+     * Container. Eine `static`-Closure lässt sich nicht binden, der Aufbau der
+     * Routentabelle scheiterte (3.1.0).
+     */
+    public function testMountWorksInAnAppWithAContainer(): void
+    {
+        $container = new class () implements ContainerInterface {
+            public function get(string $id): mixed
+            {
+                throw new class ("Kein Eintrag {$id}") extends \RuntimeException implements \Psr\Container\NotFoundExceptionInterface {
+                };
+            }
+
+            public function has(string $id): bool
+            {
+                return false;
+            }
+        };
+        $app = $this->host(null, $container);
+
+        self::assertSame(201, self::send($app, 'POST', '/api/v1/wf/workflows/antrag', 'admin', ['definition' => ApiDefinitions::antrag()])->getStatusCode());
+        self::assertSame('host', (string) self::send($app, 'GET', '/api/v1/host', '')->getBody());
     }
 
     public function testRoutesLiveUnderThePrefixNextToTheHostRoutes(): void

@@ -128,9 +128,11 @@ final class ApiFactory
         ?\Closure $guard = null,
     ): void {
         $responses = $parent->getResponseFactory();
-        $parent->group($prefix, static function (RouteCollectorProxyInterface $group) use ($services, $responses, $guard): void {
+        // Als Objekt, nicht als Closure: Slim bindet Gruppen-Closures an den Container
+        // der Host-App, und eine aus statischem Kontext liesse sich nicht binden.
+        $parent->group($prefix, new RouteGroup(static function (RouteCollectorProxyInterface $group) use ($services, $responses, $guard): void {
             self::mapAll($group, $services, $responses, $guard);
-        })
+        }))
             ->add(new BodyParsingMiddleware())
             ->add(new AccessMiddleware($access, $responses))
             ->add(new ErrorBoundaryMiddleware($responses));
@@ -149,9 +151,9 @@ final class ApiFactory
 
         if ($services->dataSources !== null) {
             $controller = new DataSourceController($services->dataSources);
-            $collector->group(self::DATA_SOURCE_PREFIX, static function (RouteCollectorProxyInterface $group) use ($controller, $guard, $responses): void {
+            $collector->group(self::DATA_SOURCE_PREFIX, new RouteGroup(static function (RouteCollectorProxyInterface $group) use ($controller, $guard, $responses): void {
                 self::map($group, self::DATA_SOURCE_ROUTES, $controller, self::DATA_SOURCE_PREFIX, $guard, $responses);
-            })->add(new RequireAdminMiddleware($responses));
+            }))->add(new RequireAdminMiddleware($responses));
         }
     }
 
